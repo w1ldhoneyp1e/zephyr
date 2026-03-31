@@ -1,0 +1,29 @@
+.def
+.argc 0
+.locals 3
+.name locals
+.constants
+number 5
+number 3
+.code
+const 0
+set_local 0
+
+const 1
+set_local 1
+
+get_local 0
+get_local 1
+add
+set_local 2
+
+inc_local 0
+inc_local 0
+dec_local 1
+
+get_local 0
+get_local 1
+get_local 2
+create_arr 3
+return
+.end_def

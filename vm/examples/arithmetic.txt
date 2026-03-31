@@ -1,0 +1,43 @@
+.def
+.argc 0
+.locals 4
+.name arithmetic
+.constants
+number 2
+number 3
+number 4
+number 1
+number 10
+number 5
+number 20
+.code
+const 0
+const 1
+add
+const 2
+mul
+const 3
+sub
+set_local 0
+
+const 4
+const 1
+mod
+set_local 1
+
+const 5
+neg
+set_local 2
+
+const 6
+const 2
+div
+set_local 3
+
+get_local 0
+get_local 1
+get_local 2
+get_local 3
+create_arr 4
+return
+.end_def

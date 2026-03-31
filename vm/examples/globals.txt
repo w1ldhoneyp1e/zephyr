@@ -1,0 +1,30 @@
+.def
+.argc 0
+.locals 0
+.name globals
+.constants
+string count
+number 0
+number 1
+.code
+const 1
+def_global 0
+
+get_global 0
+const 2
+add
+set_global 0
+
+get_global 0
+const 2
+add
+set_global 0
+
+get_global 0
+const 2
+add
+set_global 0
+
+get_global 0
+return
+.end_def

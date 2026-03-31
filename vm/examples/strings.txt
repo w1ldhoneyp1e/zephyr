@@ -1,0 +1,28 @@
+.def
+.argc 0
+.locals 3
+.name strings
+.constants
+string Hello
+string ,
+string  World
+string !
+.code
+const 0
+const 1
+add
+set_local 0
+
+const 2
+const 3
+add
+set_local 1
+
+get_local 0
+get_local 1
+add
+set_local 2
+
+get_local 2
+return
+.end_def

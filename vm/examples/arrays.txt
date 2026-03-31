@@ -1,0 +1,32 @@
+.def
+.argc 0
+.locals 2
+.name arrays
+.constants
+number 10
+number 20
+number 30
+number 1
+number 99
+.code
+const 0
+const 1
+const 2
+create_arr 3
+set_local 0
+
+const 4
+get_local 0
+const 3
+set_el
+
+get_local 0
+const 3
+get_el
+set_local 1
+
+get_local 0
+get_local 1
+create_arr 2
+return
+.end_def
