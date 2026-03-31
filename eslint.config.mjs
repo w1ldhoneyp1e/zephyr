@@ -490,17 +490,6 @@ export default [
 					'format': null,
 				},
 				{
-					'selector': ['enum',
-						'typeParameter'],
-					'format': ['UPPER_CASE'],
-					'leadingUnderscore': 'allow',
-				},
-				{
-					'selector': 'enumMember',
-					'format': ['camelCase'],
-					'leadingUnderscore': 'allow',
-				},
-				{
 					'selector': 'parameter',
 					'format': ['camelCase'],
 					'leadingUnderscore': 'allow',
