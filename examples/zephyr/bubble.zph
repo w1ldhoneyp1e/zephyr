@@ -1,0 +1,12 @@
+var arr = [9, 4, 7, 2, 1, 8];
+var n = 6;
+for (i in 0..n) {
+	for (j in 0..(n - i - 1)) {
+		if (arr[j] > arr[j + 1]) {
+			var t = arr[j];
+			arr[j] = arr[j + 1];
+			arr[j + 1] = t;
+		}
+	}
+}
+return arr;

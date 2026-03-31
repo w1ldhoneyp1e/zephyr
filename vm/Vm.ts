@@ -62,6 +62,15 @@ class Vm {
 			return v
 		}
 
+		const popBool = (): boolean => {
+			const v = pop()
+			if (typeof v !== 'boolean') {
+				throw new Error(`Ожидался bool, получено: ${typeof v}`)
+			}
+
+			return v
+		}
+
 		while (ip < instructions.length) {
 			const instr = instructions[ip] as Instruction & {arg?: number}
 			ip++
@@ -145,10 +154,78 @@ class Vm {
 					break
 				}
 
+				case Opcode.Eq: {
+					const bEq = pop()
+					const aEq = pop()
+					push(aEq === bEq)
+					break
+				}
+
+				case Opcode.Ne: {
+					const bNe = pop()
+					const aNe = pop()
+					push(aNe !== bNe)
+					break
+				}
+
+				case Opcode.Lt: {
+					const bLt = popNum()
+					push(popNum() < bLt)
+					break
+				}
+
+				case Opcode.Lte: {
+					const bLte = popNum()
+					push(popNum() <= bLte)
+					break
+				}
+
+				case Opcode.Gt: {
+					const bGt = popNum()
+					push(popNum() > bGt)
+					break
+				}
+
+				case Opcode.Gte: {
+					const bGte = popNum()
+					push(popNum() >= bGte)
+					break
+				}
+
+				case Opcode.And: {
+					const bAnd = popBool()
+					push(popBool() && bAnd)
+					break
+				}
+
+				case Opcode.Or: {
+					const bOr = popBool()
+					push(popBool() || bOr)
+					break
+				}
+
+				case Opcode.Not: {
+					push(!popBool())
+					break
+				}
+
 				case Opcode.Return: {
 					return stack.length > 0
 						? pop()
 						: null
+				}
+
+				case Opcode.Jump: {
+					ip = instr.arg!
+					break
+				}
+
+				case Opcode.JumpIfFalse: {
+					const condition = pop()
+					if (condition !== true) {
+						ip = instr.arg!
+					}
+					break
 				}
 
 				case Opcode.GetLocal: {

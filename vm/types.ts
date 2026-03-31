@@ -24,8 +24,19 @@ enum Opcode {
 	Div = 'div',
 	Mod = 'mod',
 	Neg = 'neg',
+	Eq = 'eq',
+	Ne = 'ne',
+	Lt = 'lt',
+	Lte = 'lte',
+	Gt = 'gt',
+	Gte = 'gte',
+	And = 'and',
+	Or = 'or',
+	Not = 'not',
 
 	Return = 'return',
+	Jump = 'jump',
+	JumpIfFalse = 'jump_if_false',
 
 	GetLocal = 'get_local',
 	SetLocal = 'set_local',
@@ -44,10 +55,13 @@ enum Opcode {
 type NoArgOpcode =
 	| Opcode.True | Opcode.False | Opcode.Nil | Opcode.Pop
 	| Opcode.Add | Opcode.Sub | Opcode.Mul | Opcode.Div | Opcode.Mod | Opcode.Neg
+	| Opcode.Eq | Opcode.Ne | Opcode.Lt | Opcode.Lte | Opcode.Gt | Opcode.Gte
+	| Opcode.And | Opcode.Or | Opcode.Not
 	| Opcode.Return | Opcode.GetEl | Opcode.SetEl
 
 type NumArgOpcode =
 	| Opcode.Const
+	| Opcode.Jump | Opcode.JumpIfFalse
 	| Opcode.GetLocal | Opcode.SetLocal | Opcode.IncLocal | Opcode.DecLocal
 	| Opcode.DefGlobal | Opcode.SetGlobal | Opcode.GetGlobal
 	| Opcode.CreateArr

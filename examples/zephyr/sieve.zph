@@ -1,0 +1,23 @@
+var n = 30;
+var isPrime = [];
+for (i in 0..(n + 1)) {
+	isPrime[i] = true;
+}
+isPrime[0] = false;
+isPrime[1] = false;
+for (p in 2..(n + 1)) {
+	if (p * p <= n && isPrime[p] == true) {
+		var k = p * p;
+		while (k <= n) {
+			isPrime[k] = false;
+			k = k + p;
+		}
+	}
+}
+var primes = [];
+for (x in 2..(n + 1)) {
+	if (isPrime[x] == true) {
+		primes = primes + [x];
+	}
+}
+return primes;

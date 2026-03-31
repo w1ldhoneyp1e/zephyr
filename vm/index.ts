@@ -1,3 +1,6 @@
+import {Compiler as ZephyrCompiler} from '../zephyr/Compiler'
+import {Lexer as ZephyrLexer} from '../zephyr/Lexer'
+import {Parser as ZephyrParser} from '../zephyr/Parser'
 import {Parser} from './Parser'
 import {
 	type Instruction,
@@ -21,6 +24,9 @@ export {
 	NumArgOpcode,
 	Opcode,
 	Parser,
+	ZephyrCompiler,
+	ZephyrLexer,
+	ZephyrParser,
 	Value,
 	Vm,
 	VmArray,
