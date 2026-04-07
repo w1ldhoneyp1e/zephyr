@@ -1,8 +1,10 @@
 import {
+	type ClosureInstruction,
+	type ConstantPoolItem,
 	type Instruction,
 	type NoArgOpcode,
 	type NumArgOpcode,
-	type Value,
+	type VmFunctionTemplate,
 	type VmProgram,
 	Opcode,
 } from './types'
@@ -40,10 +42,13 @@ const NUM_ARG_OPCODES = new Map<string, NumArgOpcode>([
 	['set_local', Opcode.SetLocal],
 	['inc_local', Opcode.IncLocal],
 	['dec_local', Opcode.DecLocal],
+	['get_upvalue', Opcode.GetUpvalue],
+	['set_upvalue', Opcode.SetUpvalue],
 	['def_global', Opcode.DefGlobal],
 	['set_global', Opcode.SetGlobal],
 	['get_global', Opcode.GetGlobal],
 	['create_arr', Opcode.CreateArr],
+	['call', Opcode.Call],
 ])
 
 function parseNum(s: string, context: string): number {
@@ -55,7 +60,7 @@ function parseNum(s: string, context: string): number {
 	return n
 }
 
-function parseConstantLine(line: string): Value {
+function parseConstantLine(line: string): ConstantPoolItem {
 	if (line === 'nil') {
 		return null
 	}
@@ -71,6 +76,20 @@ function parseConstantLine(line: string): Value {
 	if (line.startsWith('string ')) {
 		return line.slice(7)
 	}
+	if (line.startsWith('function ')) {
+		const parts = line.slice(9).trim()
+			.split(/\s+/)
+		if (parts.length < 3) {
+			throw new Error(`Неверная константа function: ${line}`)
+		}
+
+		return {
+			kind: 'function',
+			programIndex: parseInt(parts[0], 10),
+			arity: parseInt(parts[1], 10),
+			upvalueCount: parseInt(parts[2], 10),
+		} satisfies VmFunctionTemplate
+	}
 
 	throw new Error(`Неизвестный тип константы: ${line}`)
 }
@@ -83,37 +102,79 @@ function stripLineNumber(line: string): string {
 		: line
 }
 
+function parseClosureLine(parts: string[]): ClosureInstruction {
+	if (parts.length < 3) {
+		throw new Error(`Неверная инструкция closure: ${parts.join(' ')}`)
+	}
+	const functionConstIndex = parseNum(parts[1], 'closure')
+	const pairCount = parseNum(parts[2], 'closure')
+	const upvalues: {
+		isLocal: boolean,
+		index: number,
+	}[] = []
+	let idx = 3
+	for (let i = 0; i < pairCount; i++) {
+		if (idx + 1 >= parts.length) {
+			throw new Error('closure: не хватает пар upvalue')
+		}
+		const isLocal = parts[idx] === '1'
+		const index = parseNum(parts[idx + 1], 'closure upvalue')
+		upvalues.push({
+			isLocal,
+			index,
+		})
+		idx += 2
+	}
+
+	return {
+		op: Opcode.Closure,
+		functionConstIndex,
+		upvalues,
+	}
+}
+
 function parseInstruction(line: string): Instruction {
 	const stripped = stripLineNumber(line)
+	const parts = stripped.split(/\s+/).filter(p => p.length > 0)
+	if (parts.length === 0) {
+		throw new Error('Пустая инструкция')
+	}
+	const op = parts[0].toLowerCase()
+
+	if (op === 'closure') {
+
+		return parseClosureLine(parts)
+	}
+
 	const spaceIdx = stripped.indexOf(' ')
-	const op = (spaceIdx === -1
+	const opSingle = (spaceIdx === -1
 		? stripped
 		: stripped.slice(0, spaceIdx)).toLowerCase()
 	const arg = spaceIdx === -1
 		? ''
 		: stripped.slice(spaceIdx + 1).trim()
 
-	const noArgOp = NO_ARG_OPCODES.get(op)
+	const noArgOp = NO_ARG_OPCODES.get(opSingle)
 	if (noArgOp !== undefined) {
 		return {op: noArgOp}
 	}
 
-	const numArgOp = NUM_ARG_OPCODES.get(op)
+	const numArgOp = NUM_ARG_OPCODES.get(opSingle)
 	if (numArgOp !== undefined) {
 		return {
 			op: numArgOp,
-			arg: parseNum(arg, op),
+			arg: parseNum(arg, opSingle),
 		}
 	}
 
-	throw new Error(`Неизвестный опкод: "${op}"`)
+	throw new Error(`Неизвестный опкод: "${opSingle}"`)
 }
 
 function parseProgramBlock(lines: string[]): VmProgram {
 	let name = '__anonymous__'
 	let argc = 0
 	let localsCount = 0
-	const constants: Value[] = []
+	const constants: ConstantPoolItem[] = []
 	const instructions: Instruction[] = []
 
 	type Section = 'header' | 'constants' | 'code'

@@ -1,8 +1,11 @@
 import {
+	type ClosureInstruction,
+	type ConstantPoolItem,
 	type Instruction,
 	type NoArgOpcode,
 	type NumArgOpcode,
 	type Value,
+	type VmFunctionTemplate,
 	type VmProgram,
 	Opcode,
 } from '../vm/types'
@@ -10,6 +13,7 @@ import {
 	type AssignmentStatementNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
+	type FunctionDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
 } from './Parser'
@@ -19,38 +23,160 @@ interface ScopeInfo {
 }
 
 class BytecodeGenerator {
-	private constants: Value[] = []
+	functionPrograms: VmProgram[] = []
+
+	generate(program: ProgramNode): VmProgram[] {
+		this.functionPrograms = []
+		const main = new FunctionCompiler(this, null, '__main__', 0)
+		main.enterScope()
+		for (const statement of program.body) {
+			main.emitStatement(statement)
+		}
+		main.emitNilReturn()
+		main.leaveScope()
+		const mainVm = main.buildVmProgram()
+
+		return [mainVm, ...this.functionPrograms]
+	}
+}
+
+class FunctionCompiler {
+	private constants: ConstantPoolItem[] = []
 	private instructions: Instruction[] = []
 	private localSlots = new Map<string, number>()
 	private constBindings = new Set<string>()
 	private localCount = 0
 	private scopes: ScopeInfo[] = []
+	private upvalues: {
+		isLocal: boolean,
+		index: number,
+	}[] = []
+	private upvalueDedup = new Map<string, number>()
 
-	generate(program: ProgramNode): VmProgram {
-		this.constants = []
-		this.instructions = []
-		this.localSlots = new Map()
-		this.constBindings = new Set()
-		this.localCount = 0
-		this.scopes = []
-		this.enterScope()
-		for (const statement of program.body) {
-			this.emitStatement(statement)
-		}
-		this.emitNoArg(Opcode.Nil)
-		this.emitNoArg(Opcode.Return)
-		this.leaveScope()
+	constructor(
+		private readonly generator: BytecodeGenerator,
+		private readonly parent: FunctionCompiler | null,
+		private readonly fnName: string,
+		private readonly arity: number,
+	) {
+	}
+
+	buildVmProgram(): VmProgram {
 
 		return {
-			name: '__main__',
-			argc: 0,
+			name: this.fnName,
+			argc: this.arity,
 			localsCount: this.localCount,
 			constants: this.constants,
 			instructions: this.instructions,
 		}
 	}
 
-	private emitStatement(statement: StatementNode): void {
+	private resolveLocal(name: string): number {
+		const slot = this.localSlots.get(name)
+
+		return slot === undefined
+			? -1
+			: slot
+	}
+
+	private addUpvalue(desc: {
+		isLocal: boolean,
+		index: number,
+	}): number {
+		const key = `${desc.isLocal}:${desc.index}`
+		const existing = this.upvalueDedup.get(key)
+		if (existing !== undefined) {
+
+			return existing
+		}
+		const idx = this.upvalues.length
+		this.upvalues.push(desc)
+		this.upvalueDedup.set(key, idx)
+
+		return idx
+	}
+
+	private resolveUpvalue(name: string): number {
+		if (this.parent === null) {
+			return -1
+		}
+		const localSlot = this.parent.resolveLocal(name)
+		if (localSlot !== -1) {
+
+			return this.addUpvalue({
+				isLocal: true,
+				index: localSlot,
+			})
+		}
+		const parentUv = this.parent.resolveUpvalue(name)
+		if (parentUv !== -1) {
+
+			return this.addUpvalue({
+				isLocal: false,
+				index: parentUv,
+			})
+		}
+
+		return -1
+	}
+
+	private resolve(name: string): {
+		kind: 'local',
+		slot: number,
+	} | {
+		kind: 'upvalue',
+		index: number,
+	} {
+		const slot = this.resolveLocal(name)
+		if (slot !== -1) {
+
+			return {
+				kind: 'local',
+				slot,
+			}
+		}
+		const uv = this.resolveUpvalue(name)
+		if (uv !== -1) {
+
+			return {
+				kind: 'upvalue',
+				index: uv,
+			}
+		}
+		throw new Error(`Неизвестная переменная: ${name}`)
+	}
+
+	emitNilReturn(): void {
+		this.emitNoArg(Opcode.Nil)
+		this.emitNoArg(Opcode.Return)
+	}
+
+	private emitFunctionDeclaration(node: FunctionDeclarationNode): void {
+		const slot = this.declareLocal(node.name, true)
+		const nested = new FunctionCompiler(this.generator, this, node.name, node.params.length)
+		nested.enterScope()
+		for (const param of node.params) {
+			nested.declareLocal(param, false)
+		}
+		nested.emitBlock(node.body.statements)
+		nested.emitNilReturn()
+		nested.leaveScope()
+		const prog = nested.buildVmProgram()
+		this.generator.functionPrograms.push(prog)
+		const programIndex = this.generator.functionPrograms.length
+		const tmpl: VmFunctionTemplate = {
+			kind: 'function',
+			programIndex,
+			arity: node.params.length,
+			upvalueCount: nested.upvalues.length,
+		}
+		const constIdx = this.addConstant(tmpl)
+		this.emitClosureInstr(constIdx, nested.upvalues)
+		this.emitNumArg(Opcode.SetLocal, slot)
+	}
+
+	emitStatement(statement: StatementNode): void {
 		switch (statement.type) {
 			case 'VariableDeclaration': {
 				const slot = this.declareLocal(statement.name, statement.kind === 'const')
@@ -115,7 +241,8 @@ class BytecodeGenerator {
 				break
 			}
 			case 'FunctionDeclaration': {
-				throw new Error('Функции пока не поддерживаются в генераторе')
+				this.emitFunctionDeclaration(statement)
+				break
 			}
 			default: {
 				throw new Error(`Неподдерживаемый statement: ${(statement as {type: string}).type}`)
@@ -147,9 +274,14 @@ class BytecodeGenerator {
 	private emitAssignment(statement: AssignmentStatementNode): void {
 		if (statement.target.type === 'IdentifierTarget') {
 			this.assertMutable(statement.target.name)
-			const slot = this.resolveLocal(statement.target.name)
+			const resolved = this.resolve(statement.target.name)
 			this.emitExpression(statement.value)
-			this.emitNumArg(Opcode.SetLocal, slot)
+			if (resolved.kind === 'local') {
+				this.emitNumArg(Opcode.SetLocal, resolved.slot)
+			}
+			else {
+				this.emitNumArg(Opcode.SetUpvalue, resolved.index)
+			}
 
 			return
 		}
@@ -185,14 +317,19 @@ class BytecodeGenerator {
 					this.emitNoArg(Opcode.False)
 				}
 				else {
-					const idx = this.addConstant(expression.value)
+					const idx = this.addConstant(expression.value as Value)
 					this.emitNumArg(Opcode.Const, idx)
 				}
 				break
 			}
 			case 'IdentifierExpression': {
-				const slot = this.resolveLocal(expression.name)
-				this.emitNumArg(Opcode.GetLocal, slot)
+				const resolved = this.resolve(expression.name)
+				if (resolved.kind === 'local') {
+					this.emitNumArg(Opcode.GetLocal, resolved.slot)
+				}
+				else {
+					this.emitNumArg(Opcode.GetUpvalue, resolved.index)
+				}
 				break
 			}
 			case 'UnaryExpression': {
@@ -247,7 +384,13 @@ class BytecodeGenerator {
 				break
 			}
 			case 'CallExpression': {
-				throw new Error('Вызовы функций пока не поддерживаются')
+				const argc = expression.args.length
+				for (const arg of expression.args) {
+					this.emitExpression(arg)
+				}
+				this.emitExpression(expression.callee)
+				this.emitNumArg(Opcode.Call, argc)
+				break
 			}
 			default: {
 				throw new Error(`Неподдерживаемое выражение: ${(expression as {type: string}).type}`)
@@ -255,7 +398,7 @@ class BytecodeGenerator {
 		}
 	}
 
-	private addConstant(value: Value): number {
+	private addConstant(value: Value | VmFunctionTemplate): number {
 		this.constants.push(value)
 
 		return this.constants.length - 1
@@ -270,6 +413,18 @@ class BytecodeGenerator {
 			op,
 			arg,
 		})
+	}
+
+	private emitClosureInstr(functionConstIndex: number, ups: {
+		isLocal: boolean,
+		index: number,
+	}[]): void {
+		const instr: ClosureInstruction = {
+			op: Opcode.Closure,
+			functionConstIndex,
+			upvalues: ups,
+		}
+		this.instructions.push(instr)
 	}
 
 	private emitJump(op: Opcode.Jump | Opcode.JumpIfFalse): number {
@@ -302,26 +457,17 @@ class BytecodeGenerator {
 		return slot
 	}
 
-	private resolveLocal(name: string): number {
-		const slot = this.localSlots.get(name)
-		if (slot === undefined) {
-			throw new Error(`Неизвестная переменная: ${name}`)
-		}
-
-		return slot
-	}
-
 	private assertMutable(name: string): void {
 		if (this.constBindings.has(name)) {
 			throw new Error(`Нельзя присвоить const переменной: ${name}`)
 		}
 	}
 
-	private enterScope(): void {
+	enterScope(): void {
 		this.scopes.push({locals: new Set()})
 	}
 
-	private leaveScope(): void {
+	leaveScope(): void {
 		const scope = this.scopes.pop()
 		if (scope === undefined) {
 			throw new Error('Неожиданный выход из scope')

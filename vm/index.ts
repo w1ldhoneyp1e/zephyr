@@ -3,21 +3,29 @@ import {Lexer as ZephyrLexer} from '../zephyr/Lexer'
 import {Parser as ZephyrParser} from '../zephyr/Parser'
 import {Parser} from './Parser'
 import {
+	type ClosureInstruction,
+	type ConstantPoolItem,
 	type Instruction,
+	type LocalCell,
 	type NoArgInstruction,
 	type NoArgOpcode,
 	type NumArgInstruction,
 	type NumArgOpcode,
 	type Value,
 	type VmArray,
+	type VmClosure,
+	type VmFunctionTemplate,
 	type VmProgram,
 	Opcode,
 } from './types'
 import {formatValue, Vm} from './Vm'
 
 export {
+	ClosureInstruction,
+	ConstantPoolItem,
 	formatValue,
 	Instruction,
+	LocalCell,
 	NoArgInstruction,
 	NoArgOpcode,
 	NumArgInstruction,
@@ -30,5 +38,7 @@ export {
 	Value,
 	Vm,
 	VmArray,
+	VmClosure,
+	VmFunctionTemplate,
 	VmProgram,
 }

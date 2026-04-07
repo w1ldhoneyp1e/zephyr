@@ -11,7 +11,7 @@ interface BlockStatementNode {
 interface VariableDeclarationNode {
 	type: 'VariableDeclaration',
 	kind: 'var' | 'const',
-	name: string,
+	name: string, // TODO: Ограничить правила типизацией
 	initializer: ExpressionNode | null,
 }
 
@@ -90,7 +90,7 @@ interface LiteralExpressionNode {
 
 interface IdentifierExpressionNode {
 	type: 'IdentifierExpression',
-	name: string,
+	name: string, // TODO: Ограничить правила типизацией
 }
 
 interface UnaryExpressionNode {

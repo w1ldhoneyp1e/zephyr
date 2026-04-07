@@ -1,8 +1,10 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {
+	type ConstantPoolItem,
 	type Instruction,
 	type Value,
+	type VmFunctionTemplate,
 	type VmProgram,
 } from '../vm/types'
 import {formatValue, Vm} from '../vm/Vm'
@@ -81,7 +83,7 @@ function parseArgs(args: string[]): CliOptions {
 	}
 }
 
-function serializeConstant(value: Value): string {
+function serializeConstant(value: ConstantPoolItem): string {
 	if (value === null) {
 		return 'nil'
 	}
@@ -96,16 +98,40 @@ function serializeConstant(value: Value): string {
 	if (typeof value === 'string') {
 		return `string ${value}`
 	}
+	if (typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'function') {
+		const fn = value as VmFunctionTemplate
+
+		return `function ${fn.programIndex} ${fn.arity} ${fn.upvalueCount}`
+	}
 
 	return `string ${JSON.stringify(value)}`
 }
 
 function serializeInstruction(instruction: Instruction): string {
+	if (instruction.op === 'closure') {
+		const parts = [
+			instruction.op,
+			String(instruction.functionConstIndex),
+			String(instruction.upvalues.length),
+		]
+		for (const uv of instruction.upvalues) {
+			parts.push(uv.isLocal
+				? '1'
+				: '0')
+			parts.push(String(uv.index))
+		}
+
+		return parts.join(' ')
+	}
 	if ('arg' in instruction) {
 		return `${instruction.op} ${instruction.arg}`
 	}
 
 	return instruction.op
+}
+
+function serializeAllPrograms(programs: VmProgram[]): string {
+	return programs.map(serializeProgram).join('\n')
 }
 
 function serializeProgram(program: VmProgram): string {
@@ -133,12 +159,12 @@ function main(): void {
 	const filePath = resolveInputPath(options.inputPath)
 	const source = fs.readFileSync(filePath, 'utf-8')
 	const compiler = new Compiler()
-	const program = compiler.compile(source)
+	const programs = compiler.compile(source)
 	if (options.emitBytecode) {
 		const outPath = options.outputPath === null
 			? defaultBytecodePath(filePath)
 			: path.resolve(process.cwd(), options.outputPath)
-		const bytecode = serializeProgram(program)
+		const bytecode = serializeAllPrograms(programs)
 		fs.writeFileSync(outPath, bytecode)
 		console.log(`Bytecode: ${outPath}`)
 	}
@@ -147,7 +173,7 @@ function main(): void {
 		return
 	}
 	const vm = new Vm()
-	vm.load([program])
+	vm.load(programs)
 	const result = vm.run()
 	if (result !== null) {
 		console.log(formatValue(result))

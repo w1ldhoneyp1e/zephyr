@@ -202,7 +202,7 @@ class Lexer {
 					? TokenType.Range
 					: TokenType.Dot)
 				break
-			case '"':
+			case '"': // TODO: добавить ' и сырые строки
 				this.scanString()
 				break
 			case ' ':

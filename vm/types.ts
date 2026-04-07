@@ -1,13 +1,32 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+
 type VmArray = Value[]
 
-type Value = null | number | boolean | string | VmArray
+interface LocalCell {
+	value: Value,
+}
+
+interface VmFunctionTemplate {
+	kind: 'function',
+	programIndex: number,
+	arity: number,
+	upvalueCount: number,
+}
+
+interface VmClosure {
+	kind: 'closure',
+	template: VmFunctionTemplate,
+	upvalues: LocalCell[],
+}
+
+type Value = null | number | boolean | string | VmArray | VmClosure
+
+type ConstantPoolItem = Value | VmFunctionTemplate
 
 interface VmProgram {
 	name: string,
 	argc: number,
 	localsCount: number,
-	constants: Value[],
+	constants: ConstantPoolItem[],
 	instructions: Instruction[],
 }
 
@@ -43,6 +62,9 @@ enum Opcode {
 	IncLocal = 'inc_local',
 	DecLocal = 'dec_local',
 
+	GetUpvalue = 'get_upvalue',
+	SetUpvalue = 'set_upvalue',
+
 	DefGlobal = 'def_global',
 	SetGlobal = 'set_global',
 	GetGlobal = 'get_global',
@@ -50,6 +72,9 @@ enum Opcode {
 	CreateArr = 'create_arr',
 	GetEl = 'get_el',
 	SetEl = 'set_el',
+
+	Call = 'call',
+	Closure = 'closure',
 }
 
 type NoArgOpcode =
@@ -63,8 +88,10 @@ type NumArgOpcode =
 	| Opcode.Const
 	| Opcode.Jump | Opcode.JumpIfFalse
 	| Opcode.GetLocal | Opcode.SetLocal | Opcode.IncLocal | Opcode.DecLocal
+	| Opcode.GetUpvalue | Opcode.SetUpvalue
 	| Opcode.DefGlobal | Opcode.SetGlobal | Opcode.GetGlobal
 	| Opcode.CreateArr
+	| Opcode.Call
 
 interface NoArgInstruction {
 	op: NoArgOpcode,
@@ -75,16 +102,30 @@ interface NumArgInstruction {
 	arg: number,
 }
 
-type Instruction = NoArgInstruction | NumArgInstruction
+interface ClosureInstruction {
+	op: Opcode.Closure,
+	functionConstIndex: number,
+	upvalues: {
+		isLocal: boolean,
+		index: number,
+	}[],
+}
+
+type Instruction = NoArgInstruction | NumArgInstruction | ClosureInstruction
 
 export {
+	LocalCell,
+	VmFunctionTemplate,
+	VmClosure,
 	VmArray,
 	VmProgram,
 	Value,
+	ConstantPoolItem,
 	Opcode,
 	NoArgOpcode,
 	NumArgOpcode,
 	NoArgInstruction,
 	NumArgInstruction,
+	ClosureInstruction,
 	Instruction,
 }

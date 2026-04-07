@@ -4,7 +4,7 @@ export default defineConfig({
 	entry: {
 		main: 'vm/main.ts',
 		index: 'vm/index.ts',
-		zephyrMain: 'zephyr/zephyrMain.ts',
+		zephyrMain: 'zephyr/main.ts',
 	},
 	format: ['cjs'],
 	target: 'node18',

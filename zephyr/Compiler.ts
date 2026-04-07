@@ -4,7 +4,7 @@ import {Lexer} from './Lexer'
 import {Parser} from './Parser'
 
 class Compiler {
-	compile(source: string): VmProgram {
+	compile(source: string): VmProgram[] {
 		const lexer = new Lexer(source)
 		const tokens = lexer.scanTokens()
 		const parser = new Parser(tokens)

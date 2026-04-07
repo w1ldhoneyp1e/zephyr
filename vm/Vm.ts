@@ -1,7 +1,12 @@
 import {
+	type ClosureInstruction,
+	type ConstantPoolItem,
 	type Instruction,
+	type LocalCell,
 	type Value,
 	type VmArray,
+	type VmClosure,
+	type VmFunctionTemplate,
 	type VmProgram,
 	Opcode,
 } from './types'
@@ -10,6 +15,9 @@ function formatValue(v: Value): string {
 	if (v === null) {
 		return 'null'
 	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
+		return `[closure fn#${v.template.programIndex}]`
+	}
 	if (Array.isArray(v)) {
 		return `[${v.map(formatValue).join(', ')}]`
 	}
@@ -17,9 +25,18 @@ function formatValue(v: Value): string {
 	return String(v)
 }
 
+interface CallFrame {
+	program: VmProgram,
+	ip: number,
+	locals: LocalCell[],
+	closure: VmClosure | null,
+}
+
 class Vm {
 	private programs: VmProgram[] = []
 	private globals = new Map<string, Value>()
+	private frames: CallFrame[] = []
+	private stack: Value[] = []
 
 	load(programs: VmProgram[]): void {
 		this.programs = programs
@@ -29,30 +46,61 @@ class Vm {
 		if (this.programs.length === 0) {
 			throw new Error('Нет программы для выполнения')
 		}
+		const mainProgram = this.programs[0]
+		this.frames = []
+		this.stack = []
+		this.frames.push({
+			program: mainProgram,
+			ip: 0,
+			locals: this.makeLocals(mainProgram.localsCount),
+			closure: null,
+		})
 
-		return this.execProgram(this.programs[0])
+		return this.runLoop()
 	}
 
-	private execProgram(program: VmProgram): Value {
-		const {
-			constants, instructions, localsCount, argc,
-		} = program
-		const locals: Value[] = new Array(Math.max(localsCount, argc)).fill(null)
-		const stack: Value[] = []
-		let ip = 0
+	private makeLocals(count: number): LocalCell[] {
+		return Array.from({length: count}, () => ({value: null as Value}))
+	}
 
-		const push = (v: Value): void => {
-			stack.push(v)
+	private runLoop(): Value {
+		while (this.frames.length > 0) {
+			const frame = this.frames[this.frames.length - 1]
+			if (frame.ip >= frame.program.instructions.length) {
+				this.frames.pop()
+				if (this.frames.length > 0) {
+					this.stack.push(null)
+				}
+
+				continue
+			}
+			const instr = frame.program.instructions[frame.ip] as Instruction
+			frame.ip++
+
+			const done = this.execInstruction(instr, frame)
+			if (done !== undefined) {
+
+				return done
+			}
 		}
 
+		return this.stack.length > 0
+			? this.stack[this.stack.length - 1]
+			: null
+	}
+
+	private execInstruction(instr: Instruction, frame: CallFrame): Value | undefined {
+		const {constants} = frame.program
+		const push = (v: Value): void => {
+			this.stack.push(v)
+		}
 		const pop = (): Value => {
-			if (stack.length === 0) {
-				throw new Error(`Стек пуст (ip=${ip})`)
+			if (this.stack.length === 0) {
+				throw new Error(`Стек пуст (ip=${frame.ip - 1})`)
 			}
 
-			return stack.pop()!
+			return this.stack.pop()!
 		}
-
 		const popNum = (): number => {
 			const v = pop()
 			if (typeof v !== 'number') {
@@ -61,7 +109,6 @@ class Vm {
 
 			return v
 		}
-
 		const popBool = (): boolean => {
 			const v = pop()
 			if (typeof v !== 'boolean') {
@@ -71,250 +118,385 @@ class Vm {
 			return v
 		}
 
-		while (ip < instructions.length) {
-			const instr = instructions[ip] as Instruction & {arg?: number}
-			ip++
-
-			switch (instr.op) {
-				case Opcode.Const: {
-					push(constants[instr.arg!])
-					break
+		switch (instr.op) {
+			case Opcode.Const: {
+				const idx = instr.arg!
+				const c = constants[idx]
+				if (c === undefined) {
+					throw new Error(`const: нет константы ${idx}`)
 				}
-
-				case Opcode.True: {
-					push(true)
-					break
+				if (typeof c === 'object' && c !== null && 'kind' in c && c.kind === 'function') {
+					throw new Error('const: нельзя загружать шаблон функции как значение')
 				}
+				push(c as Value)
+				break
+			}
 
-				case Opcode.False: {
-					push(false)
-					break
+			case Opcode.True: {
+				push(true)
+				break
+			}
+
+			case Opcode.False: {
+				push(false)
+				break
+			}
+
+			case Opcode.Nil: {
+				push(null)
+				break
+			}
+
+			case Opcode.Pop: {
+				pop()
+				break
+			}
+
+			case Opcode.Add: {
+				const b = pop()
+				const a = pop()
+				if (typeof a === 'number' && typeof b === 'number') {
+					push(a + b)
 				}
-
-				case Opcode.Nil: {
-					push(null)
-					break
+				else if (typeof a === 'string' && typeof b === 'string') {
+					push(a + b)
 				}
-
-				case Opcode.Pop: {
-					pop()
-					break
+				else if (Array.isArray(a) && Array.isArray(b)) {
+					push([...(a as VmArray), ...(b as VmArray)])
 				}
+				else {
+					throw new Error(`add: несовместимые типы: ${typeof a} и ${typeof b}`)
+				}
+				break
+			}
 
-				case Opcode.Add: {
-					const b = pop()
-					const a = pop()
-					if (typeof a === 'number' && typeof b === 'number') {
-						push(a + b)
-					}
-					else if (typeof a === 'string' && typeof b === 'string') {
-						push(a + b)
-					}
-					else if (Array.isArray(a) && Array.isArray(b)) {
-						push([...(a as VmArray), ...(b as VmArray)])
+			case Opcode.Sub: {
+				const bSub = popNum()
+				push(popNum() - bSub)
+				break
+			}
+
+			case Opcode.Mul: {
+				const bMul = popNum()
+				push(popNum() * bMul)
+				break
+			}
+
+			case Opcode.Div: {
+				const bDiv = popNum()
+				if (bDiv === 0) {
+					throw new Error('Divide by zero')
+				}
+				push(popNum() / bDiv)
+				break
+			}
+
+			case Opcode.Mod: {
+				const bMod = popNum()
+				if (bMod === 0) {
+					throw new Error('Divide by zero')
+				}
+				push(popNum() % bMod)
+				break
+			}
+
+			case Opcode.Neg: {
+				push(-popNum())
+				break
+			}
+
+			case Opcode.Eq: {
+				const bEq = pop()
+				const aEq = pop()
+				push(aEq === bEq)
+				break
+			}
+
+			case Opcode.Ne: {
+				const bNe = pop()
+				const aNe = pop()
+				push(aNe !== bNe)
+				break
+			}
+
+			case Opcode.Lt: {
+				const bLt = popNum()
+				push(popNum() < bLt)
+				break
+			}
+
+			case Opcode.Lte: {
+				const bLte = popNum()
+				push(popNum() <= bLte)
+				break
+			}
+
+			case Opcode.Gt: {
+				const bGt = popNum()
+				push(popNum() > bGt)
+				break
+			}
+
+			case Opcode.Gte: {
+				const bGte = popNum()
+				push(popNum() >= bGte)
+				break
+			}
+
+			case Opcode.And: {
+				const bAnd = popBool()
+				push(popBool() && bAnd)
+				break
+			}
+
+			case Opcode.Or: {
+				const bOr = popBool()
+				push(popBool() || bOr)
+				break
+			}
+
+			case Opcode.Not: {
+				push(!popBool())
+				break
+			}
+
+			case Opcode.Return: {
+				const retVal = this.stack.length > 0
+					? pop()
+					: null
+				this.frames.pop()
+				if (this.frames.length === 0) {
+
+					return retVal
+				}
+				push(retVal)
+
+				return undefined
+			}
+
+			case Opcode.Jump: {
+				frame.ip = instr.arg!
+
+				return undefined
+			}
+
+			case Opcode.JumpIfFalse: {
+				const condition = pop()
+				if (condition !== true) {
+					frame.ip = instr.arg!
+				}
+				break
+			}
+
+			case Opcode.GetLocal: {
+				const slot = instr.arg!
+				const cell = frame.locals[slot]
+				if (cell === undefined) {
+					throw new Error(`get_local: слот ${slot}`)
+				}
+				push(cell.value ?? null)
+				break
+			}
+
+			case Opcode.SetLocal: {
+				const slotSet = instr.arg!
+				const cellSet = frame.locals[slotSet]
+				if (cellSet === undefined) {
+					throw new Error(`set_local: слот ${slotSet}`)
+				}
+				cellSet.value = pop()
+				break
+			}
+
+			case Opcode.IncLocal: {
+				const slotInc = instr.arg!
+				const cellInc = frame.locals[slotInc]
+				if (cellInc === undefined) {
+					throw new Error(`inc_local: слот ${slotInc}`)
+				}
+				cellInc.value = (cellInc.value as number) + 1
+				break
+			}
+
+			case Opcode.DecLocal: {
+				const slotDec = instr.arg!
+				const cellDec = frame.locals[slotDec]
+				if (cellDec === undefined) {
+					throw new Error(`dec_local: слот ${slotDec}`)
+				}
+				cellDec.value = (cellDec.value as number) - 1
+				break
+			}
+
+			case Opcode.GetUpvalue: {
+				if (frame.closure === null) {
+					throw new Error('get_upvalue: нет замыкания')
+				}
+				const uv = frame.closure.upvalues[instr.arg!]
+				if (uv === undefined) {
+					throw new Error(`get_upvalue: индекс ${instr.arg}`)
+				}
+				push(uv.value ?? null)
+				break
+			}
+
+			case Opcode.SetUpvalue: {
+				if (frame.closure === null) {
+					throw new Error('set_upvalue: нет замыкания')
+				}
+				const uvSet = frame.closure.upvalues[instr.arg!]
+				if (uvSet === undefined) {
+					throw new Error(`set_upvalue: индекс ${instr.arg}`)
+				}
+				uvSet.value = pop()
+				break
+			}
+
+			case Opcode.DefGlobal: {
+				const defName = constants[instr.arg!] as string
+				this.globals.set(defName, pop())
+				break
+			}
+
+			case Opcode.SetGlobal: {
+				const setName = constants[instr.arg!] as string
+				this.globals.set(setName, pop())
+				break
+			}
+
+			case Opcode.GetGlobal: {
+				const getName = constants[instr.arg!] as string
+				const val = this.globals.get(getName)
+				if (val === undefined) {
+					throw new Error(`Неизвестная глобальная переменная: ${getName}`)
+				}
+				push(val)
+				break
+			}
+
+			case Opcode.CreateArr: {
+				const count = instr.arg!
+				const items: Value[] = new Array(count)
+				for (let i = count - 1; i >= 0; i--) {
+					items[i] = pop()
+				}
+				push(items)
+				break
+			}
+
+			case Opcode.GetEl: {
+				const idxGet = pop()
+				const collGet = pop()
+				if (Array.isArray(collGet)) {
+					push((collGet as VmArray)[idxGet as number] ?? null)
+				}
+				else if (typeof collGet === 'string') {
+					push(collGet[idxGet as number] ?? null)
+				}
+				else {
+					throw new Error('get_el: ожидался массив или строка')
+				}
+				break
+			}
+
+			case Opcode.SetEl: {
+				const idxSet = pop()
+				const arrSet = pop()
+				const valSet = pop()
+				if (!Array.isArray(arrSet)) {
+					throw new Error('set_el: ожидался массив')
+				}
+				(arrSet as VmArray)[idxSet as number] = valSet
+				break
+			}
+
+			case Opcode.Call: {
+				const argc = instr.arg!
+				const callee = pop()
+				if (
+					typeof callee !== 'object'
+					|| callee === null
+					|| !('kind' in callee)
+					|| callee.kind !== 'closure'
+				) {
+					throw new Error('call: ожидалось замыкание')
+				}
+				const closure = callee as VmClosure
+				const {template} = closure
+				if (argc !== template.arity) {
+					throw new Error(`call: ожидалось ${template.arity} аргументов, получено ${argc}`)
+				}
+				const args: Value[] = []
+				for (let i = 0; i < argc; i++) {
+					args.unshift(pop())
+				}
+				const program = this.programs[template.programIndex]
+				if (program === undefined) {
+					throw new Error(`call: нет программы #${template.programIndex}`)
+				}
+				const locals = this.makeLocals(program.localsCount)
+				for (let i = 0; i < argc; i++) {
+					locals[i].value = args[i]
+				}
+				this.frames.push({
+					program,
+					ip: 0,
+					locals,
+					closure,
+				})
+				break
+			}
+
+			case Opcode.Closure: {
+				const ci = instr as ClosureInstruction
+				const tplRaw = constants[ci.functionConstIndex]
+				if (
+					tplRaw === undefined
+					|| typeof tplRaw !== 'object'
+					|| tplRaw === null
+					|| !('kind' in tplRaw)
+					|| tplRaw.kind !== 'function'
+				) {
+					throw new Error('closure: ожидался шаблон функции в константах')
+				}
+				const template = tplRaw as VmFunctionTemplate
+				const cells: LocalCell[] = []
+				for (const uv of ci.upvalues) {
+					if (uv.isLocal) {
+						const cell = frame.locals[uv.index]
+						if (cell === undefined) {
+							throw new Error(`closure: локальный слот ${uv.index}`)
+						}
+						cells.push(cell)
 					}
 					else {
-						throw new Error(`add: несовместимые типы: ${typeof a} и ${typeof b}`)
+						if (frame.closure === null) {
+							throw new Error('closure: нет внешнего замыкания')
+						}
+						const parentCell = frame.closure.upvalues[uv.index]
+						if (parentCell === undefined) {
+							throw new Error(`closure: upvalue ${uv.index}`)
+						}
+						cells.push(parentCell)
 					}
-					break
 				}
+				if (cells.length !== template.upvalueCount) {
+					throw new Error('closure: неверное число захватов')
+				}
+				push({
+					kind: 'closure',
+					template,
+					upvalues: cells,
+				})
+				break
+			}
 
-				case Opcode.Sub: {
-					const bSub = popNum()
-					push(popNum() - bSub)
-					break
-				}
-
-				case Opcode.Mul: {
-					const bMul = popNum()
-					push(popNum() * bMul)
-					break
-				}
-
-				case Opcode.Div: {
-					const bDiv = popNum()
-					if (bDiv === 0) {
-						throw new Error('Divide by zero')
-					}
-					push(popNum() / bDiv)
-					break
-				}
-
-				case Opcode.Mod: {
-					const bMod = popNum()
-					if (bMod === 0) {
-						throw new Error('Divide by zero')
-					}
-					push(popNum() % bMod)
-					break
-				}
-
-				case Opcode.Neg: {
-					push(-popNum())
-					break
-				}
-
-				case Opcode.Eq: {
-					const bEq = pop()
-					const aEq = pop()
-					push(aEq === bEq)
-					break
-				}
-
-				case Opcode.Ne: {
-					const bNe = pop()
-					const aNe = pop()
-					push(aNe !== bNe)
-					break
-				}
-
-				case Opcode.Lt: {
-					const bLt = popNum()
-					push(popNum() < bLt)
-					break
-				}
-
-				case Opcode.Lte: {
-					const bLte = popNum()
-					push(popNum() <= bLte)
-					break
-				}
-
-				case Opcode.Gt: {
-					const bGt = popNum()
-					push(popNum() > bGt)
-					break
-				}
-
-				case Opcode.Gte: {
-					const bGte = popNum()
-					push(popNum() >= bGte)
-					break
-				}
-
-				case Opcode.And: {
-					const bAnd = popBool()
-					push(popBool() && bAnd)
-					break
-				}
-
-				case Opcode.Or: {
-					const bOr = popBool()
-					push(popBool() || bOr)
-					break
-				}
-
-				case Opcode.Not: {
-					push(!popBool())
-					break
-				}
-
-				case Opcode.Return: {
-					return stack.length > 0
-						? pop()
-						: null
-				}
-
-				case Opcode.Jump: {
-					ip = instr.arg!
-					break
-				}
-
-				case Opcode.JumpIfFalse: {
-					const condition = pop()
-					if (condition !== true) {
-						ip = instr.arg!
-					}
-					break
-				}
-
-				case Opcode.GetLocal: {
-					push(locals[instr.arg!] ?? null)
-					break
-				}
-
-				case Opcode.SetLocal: {
-					locals[instr.arg!] = pop()
-					break
-				}
-
-				case Opcode.IncLocal: {
-					locals[instr.arg!] = (locals[instr.arg!] as number) + 1
-					break
-				}
-
-				case Opcode.DecLocal: {
-					locals[instr.arg!] = (locals[instr.arg!] as number) - 1
-					break
-				}
-
-				case Opcode.DefGlobal: {
-					const defName = constants[instr.arg!] as string
-					this.globals.set(defName, pop())
-					break
-				}
-
-				case Opcode.SetGlobal: {
-					const setName = constants[instr.arg!] as string
-					this.globals.set(setName, pop())
-					break
-				}
-
-				case Opcode.GetGlobal: {
-					const getName = constants[instr.arg!] as string
-					const val = this.globals.get(getName)
-					if (val === undefined) {
-						throw new Error(`Неизвестная глобальная переменная: ${getName}`)
-					}
-					push(val)
-					break
-				}
-
-				case Opcode.CreateArr: {
-					const count = instr.arg!
-					const items: Value[] = new Array(count)
-					for (let i = count - 1; i >= 0; i--) {
-						items[i] = pop()
-					}
-					push(items)
-					break
-				}
-
-				case Opcode.GetEl: {
-					const idxGet = pop()
-					const collGet = pop()
-					if (Array.isArray(collGet)) {
-						push((collGet as VmArray)[idxGet as number] ?? null)
-					}
-					else if (typeof collGet === 'string') {
-						push(collGet[idxGet as number] ?? null)
-					}
-					else {
-						throw new Error('get_el: ожидался массив или строка')
-					}
-					break
-				}
-
-				case Opcode.SetEl: {
-					const idxSet = pop()
-					const arrSet = pop()
-					const valSet = pop()
-					if (!Array.isArray(arrSet)) {
-						throw new Error('set_el: ожидался массив')
-					}
-					(arrSet as VmArray)[idxSet as number] = valSet
-					break
-				}
-
-				default: {
-					throw new Error(`Неизвестный опкод по адресу ${ip - 1}`)
-				}
+			default: {
+				throw new Error(`Неизвестный опкод по адресу ${frame.ip - 1}`)
 			}
 		}
 
-		return stack.length > 0
-			? stack[stack.length - 1]
-			: null
+		return undefined
 	}
 }
 
