@@ -1,0 +1,51 @@
+.def
+.name __main__
+.argc 0
+.locals 2
+.constants
+function 2 1 0
+number 10
+number 5
+.code
+closure 0 0
+set_local 0
+const 1
+get_local 0
+call 1
+set_local 1
+const 2
+get_local 1
+call 1
+return
+nil
+return
+.end_def
+
+.def
+.name add
+.argc 1
+.locals 1
+.constants
+.code
+get_upvalue 0
+get_local 0
+add
+return
+nil
+return
+.end_def
+
+.def
+.name makeAdder
+.argc 1
+.locals 2
+.constants
+function 1 1 1
+.code
+closure 0 1 1 0
+set_local 1
+get_local 1
+return
+nil
+return
+.end_def

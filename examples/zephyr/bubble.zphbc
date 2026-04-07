@@ -1,0 +1,86 @@
+.def
+.name __main__
+.argc 0
+.locals 7
+.constants
+number 9
+number 4
+number 7
+number 2
+number 1
+number 8
+number 6
+number 0
+number 0
+number 1
+number 1
+number 1
+number 1
+.code
+const 0
+const 1
+const 2
+const 3
+const 4
+const 5
+create_arr 6
+set_local 0
+const 6
+set_local 1
+const 7
+set_local 2
+get_local 1
+set_local 3
+get_local 2
+get_local 3
+lt
+jump_if_false 62
+const 8
+set_local 4
+get_local 1
+get_local 2
+sub
+const 9
+sub
+set_local 5
+get_local 4
+get_local 5
+lt
+jump_if_false 60
+get_local 0
+get_local 4
+get_el
+get_local 0
+get_local 4
+const 10
+add
+get_el
+gt
+jump_if_false 58
+get_local 0
+get_local 4
+get_el
+set_local 6
+get_local 0
+get_local 4
+const 11
+add
+get_el
+get_local 0
+get_local 4
+set_el
+get_local 6
+get_local 0
+get_local 4
+const 12
+add
+set_el
+inc_local 4
+jump 26
+inc_local 2
+jump 14
+get_local 0
+return
+nil
+return
+.end_def

@@ -1,0 +1,8 @@
+fn makeAdder(x) {
+  fn add(y) {
+    return x + y;
+  }
+  return add;
+}
+var f = makeAdder(10);
+return f(5);

@@ -1,0 +1,59 @@
+.def
+.name __main__
+.argc 0
+.locals 2
+.constants
+function 2 0 0
+.code
+closure 0 0
+set_local 0
+get_local 0
+call 0
+set_local 1
+get_local 1
+call 0
+get_local 1
+call 0
+add
+get_local 1
+call 0
+add
+return
+nil
+return
+.end_def
+
+.def
+.name inc
+.argc 0
+.locals 0
+.constants
+number 1
+.code
+get_upvalue 0
+const 0
+add
+set_upvalue 0
+get_upvalue 0
+return
+nil
+return
+.end_def
+
+.def
+.name makeCounter
+.argc 0
+.locals 2
+.constants
+number 0
+function 1 0 1
+.code
+const 0
+set_local 0
+closure 1 1 1 0
+set_local 1
+get_local 1
+return
+nil
+return
+.end_def
