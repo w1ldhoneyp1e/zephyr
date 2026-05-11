@@ -1,0 +1,14 @@
+%start Program
+%eof Eof
+
+Program -> StatementList
+StatementList -> StatementList Statement | ε
+
+Statement -> VariableDeclaration
+Statement -> FunctionDeclaration
+Statement -> IfStatement
+Statement -> WhileStatement
+Statement -> ForRangeStatement
+Statement -> ReturnStatement
+Statement -> BlockStatement
+Statement -> ExpressionStatement

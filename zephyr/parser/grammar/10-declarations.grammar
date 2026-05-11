@@ -1,0 +1,7 @@
+VariableDeclaration -> var Identifier VariableInitializerOpt ';'
+VariableDeclaration -> const Identifier VariableInitializerOpt ';'
+VariableInitializerOpt -> '=' Expression | ε
+
+FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
+ParameterListOpt -> ParameterList | ε
+ParameterList -> ParameterList ',' Identifier | Identifier

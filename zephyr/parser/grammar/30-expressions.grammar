@@ -1,37 +1,5 @@
-%start Program
-%eof Eof
-
-Program -> StatementList
-StatementList -> StatementList Statement | ε
-
-Statement -> VariableDeclaration
-Statement -> FunctionDeclaration
-Statement -> IfStatement
-Statement -> WhileStatement
-Statement -> ForRangeStatement
-Statement -> ReturnStatement
-Statement -> BlockStatement
-Statement -> ExpressionStatement
-
-VariableDeclaration -> var Identifier VariableInitializerOpt ';'
-VariableDeclaration -> const Identifier VariableInitializerOpt ';'
-VariableInitializerOpt -> '=' Expression | ε
-
-FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
-ParameterListOpt -> ParameterList | ε
-ParameterList -> ParameterList ',' Identifier | Identifier
-
-IfStatement -> if '(' Expression ')' BlockStatement ElseBranchOpt
-ElseBranchOpt -> else BlockStatement | ε
-
-WhileStatement -> while '(' Expression ')' BlockStatement
-ForRangeStatement -> for '(' Identifier in Expression '..' Expression ')' BlockStatement
-ReturnStatement -> return ReturnValueOpt ';'
-ReturnValueOpt -> Expression | ε
-
-BlockStatement -> '{' StatementList '}'
-
 ExpressionStatement -> Expression ';'
+
 Expression -> AssignmentExpression
 AssignmentExpression -> PostfixExpression '=' AssignmentExpression | OrExpression
 OrExpression -> OrExpression '||' AndExpression | AndExpression
