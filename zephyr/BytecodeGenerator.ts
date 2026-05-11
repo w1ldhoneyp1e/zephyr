@@ -16,7 +16,7 @@ import {
 	type FunctionDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
-} from './Parser'
+} from './ast'
 
 interface ScopeInfo {
 	locals: Set<string>,

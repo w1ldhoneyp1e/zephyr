@@ -1,13 +1,13 @@
 import {type VmProgram} from '../vm/types'
 import {BytecodeGenerator} from './BytecodeGenerator'
 import {Lexer} from './Lexer'
-import {Parser} from './Parser'
+import {LalrAstParser} from './parser/LalrAstParser'
 
 class Compiler {
 	compile(source: string): VmProgram[] {
 		const lexer = new Lexer(source)
 		const tokens = lexer.scanTokens()
-		const parser = new Parser(tokens)
+		const parser = new LalrAstParser(tokens)
 		const program = parser.parseProgram()
 		const generator = new BytecodeGenerator()
 
