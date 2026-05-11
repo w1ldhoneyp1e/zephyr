@@ -1,12 +1,15 @@
+import * as fs from 'fs'
+import {type BuiltinGlobalName, BUILTIN_GLOBALS} from '../zephyr/builtins'
+import {choose, match} from '../zephyr/utils'
 import {
 	type ClosureInstruction,
-	type ConstantPoolItem,
 	type Instruction,
 	type LocalCell,
 	type Value,
 	type VmArray,
 	type VmClosure,
 	type VmFunctionTemplate,
+	type VmNative,
 	type VmProgram,
 	Opcode,
 } from './types'
@@ -17,6 +20,9 @@ function formatValue(v: Value): string {
 	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
 		return `[closure fn#${v.template.programIndex}]`
+	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'native') {
+		return `[native ${v.name}]`
 	}
 	if (Array.isArray(v)) {
 		return `[${v.map(formatValue).join(', ')}]`
@@ -32,11 +38,24 @@ interface CallFrame {
 	closure: VmClosure | null,
 }
 
+interface VmOptions {
+	read?: () => string | null,
+	write?: (text: string) => void,
+	writeLine?: (text: string) => void,
+}
+
+type NativeImplementation = (args: Value[]) => Value
+
 class Vm {
 	private programs: VmProgram[] = []
 	private globals = new Map<string, Value>()
+	private natives = new Map<BuiltinGlobalName, NativeImplementation>()
 	private frames: CallFrame[] = []
 	private stack: Value[] = []
+	private stdinCache: string | null | undefined
+
+	constructor(private readonly options: VmOptions = {}) {
+	}
 
 	load(programs: VmProgram[]): void {
 		this.programs = programs
@@ -49,6 +68,8 @@ class Vm {
 		const mainProgram = this.programs[0]
 		this.frames = []
 		this.stack = []
+		this.stdinCache = undefined
+		this.installBuiltins()
 		this.frames.push({
 			program: mainProgram,
 			ip: 0,
@@ -413,6 +434,15 @@ class Vm {
 			case Opcode.Call: {
 				const argc = instr.arg!
 				const callee = pop()
+				const args: Value[] = []
+				for (let i = 0; i < argc; i++) {
+					args.unshift(pop())
+				}
+				if (this.isNative(callee)) {
+					this.assertNativeArity(callee, argc)
+					push(this.invokeNative(callee, args))
+					break
+				}
 				if (
 					typeof callee !== 'object'
 					|| callee === null
@@ -425,10 +455,6 @@ class Vm {
 				const {template} = closure
 				if (argc !== template.arity) {
 					throw new Error(`call: ожидалось ${template.arity} аргументов, получено ${argc}`)
-				}
-				const args: Value[] = []
-				for (let i = 0; i < argc; i++) {
-					args.unshift(pop())
 				}
 				const program = this.programs[template.programIndex]
 				if (program === undefined) {
@@ -497,6 +523,131 @@ class Vm {
 		}
 
 		return undefined
+	}
+
+	private installBuiltins(): void {
+		this.globals = new Map<string, Value>()
+		this.natives = new Map<BuiltinGlobalName, NativeImplementation>([
+			['read', () => this.readStdin()],
+			['readf', args => {
+				const pathValue = this.requireStringArg('readf', 0, 1, args)
+				return fs.readFileSync(pathValue, 'utf-8')
+			}],
+			['print', args => {
+				this.write(formatValue(args[0] ?? null))
+
+				return null
+			}],
+			['printf', args => {
+				const filePath = this.requireStringArg('printf', 0, 2, args)
+				const content = formatValue(args[1] ?? null)
+				fs.writeFileSync(filePath, content)
+
+				return null
+			}],
+		])
+
+		for (const name of BUILTIN_GLOBALS) {
+			const nativeConfig = match(name, {
+				print: {
+					arity: 1,
+					minArity: 1,
+				},
+				readf: {
+					arity: 1,
+					minArity: 1,
+				},
+				printf: {
+					arity: 2,
+					minArity: 2,
+				},
+				read: {
+					arity: 0,
+					minArity: 0,
+				},
+			})
+			const nativeValue: VmNative = {
+				kind: 'native',
+				name,
+				arity: nativeConfig.arity,
+				minArity: nativeConfig.minArity,
+			}
+			this.globals.set(name, nativeValue)
+		}
+	}
+
+	private isNative(value: Value): value is VmNative {
+		return typeof value === 'object'
+			&& value !== null
+			&& 'kind' in value
+			&& value.kind === 'native'
+	}
+
+	private assertNativeArity(nativeFn: VmNative, argc: number): void {
+		const exactArityError = choose(
+			[
+				nativeFn.arity !== null && argc !== nativeFn.arity,
+				`call ${nativeFn.name}: ожидалось ${nativeFn.arity} аргументов, получено ${argc}`,
+			],
+			null,
+		)
+		if (exactArityError !== null) {
+			throw new Error(exactArityError)
+		}
+		const minArityError = choose(
+			[
+				argc < nativeFn.minArity,
+				`call ${nativeFn.name}: ожидалось минимум ${nativeFn.minArity} аргументов, получено ${argc}`,
+			],
+			null,
+		)
+		if (minArityError !== null) {
+			throw new Error(minArityError)
+		}
+	}
+
+	private invokeNative(nativeFn: VmNative, args: Value[]): Value {
+		const implementation = this.natives.get(nativeFn.name as BuiltinGlobalName)
+		if (implementation === undefined) {
+			throw new Error(`Неизвестная встроенная функция: ${nativeFn.name}`)
+		}
+
+		return implementation(args)
+	}
+
+	private readStdin(): string | null {
+		if (this.options.read !== undefined) {
+			return this.options.read()
+		}
+		if (this.stdinCache === undefined) {
+			this.stdinCache = fs.readFileSync(0, 'utf-8')
+		}
+		if (this.stdinCache === null) {
+			return null
+		}
+		const value = this.stdinCache
+		this.stdinCache = null
+
+		return value
+	}
+
+	private requireStringArg(name: string, index: number, argc: number, args?: Value[]): string {
+		const values = args ?? []
+		const value = values[index]
+		if (typeof value !== 'string') {
+			throw new Error(`${name}: аргумент ${index + 1} из ${argc} должен быть строкой`)
+		}
+
+		return value
+	}
+
+	private write(text: string): void {
+		if (this.options.write !== undefined) {
+			this.options.write(text)
+
+			return
+		}
+		process.stdout.write(text)
 	}
 }
 

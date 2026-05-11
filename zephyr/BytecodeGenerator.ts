@@ -17,6 +17,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from './ast'
+import {isBuiltinGlobalName} from './builtins'
 
 interface ScopeInfo {
 	locals: Set<string>,
@@ -142,6 +143,39 @@ class FunctionCompiler {
 			return {
 				kind: 'upvalue',
 				index: uv,
+			}
+		}
+		throw new Error(`Неизвестная переменная: ${name}`)
+	}
+
+	private resolveExpressionBinding(name: string): {
+		kind: 'local',
+		slot: number,
+	} | {
+		kind: 'upvalue',
+		index: number,
+	} | {
+		kind: 'global',
+		name: string,
+	} {
+		const slot = this.resolveLocal(name)
+		if (slot !== -1) {
+			return {
+				kind: 'local',
+				slot,
+			}
+		}
+		const uv = this.resolveUpvalue(name)
+		if (uv !== -1) {
+			return {
+				kind: 'upvalue',
+				index: uv,
+			}
+		}
+		if (isBuiltinGlobalName(name)) {
+			return {
+				kind: 'global',
+				name,
 			}
 		}
 		throw new Error(`Неизвестная переменная: ${name}`)
@@ -323,12 +357,16 @@ class FunctionCompiler {
 				break
 			}
 			case 'IdentifierExpression': {
-				const resolved = this.resolve(expression.name)
+				const resolved = this.resolveExpressionBinding(expression.name)
 				if (resolved.kind === 'local') {
 					this.emitNumArg(Opcode.GetLocal, resolved.slot)
 				}
-				else {
+				else if (resolved.kind === 'upvalue') {
 					this.emitNumArg(Opcode.GetUpvalue, resolved.index)
+				}
+				else {
+					const nameConstant = this.addConstant(resolved.name)
+					this.emitNumArg(Opcode.GetGlobal, nameConstant)
 				}
 				break
 			}

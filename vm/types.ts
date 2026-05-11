@@ -18,7 +18,14 @@ interface VmClosure {
 	upvalues: LocalCell[],
 }
 
-type Value = null | number | boolean | string | VmArray | VmClosure
+interface VmNative {
+	kind: 'native',
+	name: string,
+	arity: number | null,
+	minArity: number,
+}
+
+type Value = null | number | boolean | string | VmArray | VmClosure | VmNative
 
 type ConstantPoolItem = Value | VmFunctionTemplate
 
@@ -117,6 +124,7 @@ export {
 	LocalCell,
 	VmFunctionTemplate,
 	VmClosure,
+	VmNative,
 	VmArray,
 	VmProgram,
 	Value,
