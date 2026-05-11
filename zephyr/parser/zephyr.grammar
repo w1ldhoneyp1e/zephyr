@@ -1,0 +1,56 @@
+%start Program
+%eof Eof
+
+Program -> StatementList
+StatementList -> StatementList Statement | ε
+
+Statement -> VariableDeclaration
+Statement -> FunctionDeclaration
+Statement -> IfStatement
+Statement -> WhileStatement
+Statement -> ForRangeStatement
+Statement -> ReturnStatement
+Statement -> BlockStatement
+Statement -> ExpressionStatement
+
+VariableDeclaration -> var Identifier VariableInitializerOpt ';'
+VariableDeclaration -> const Identifier VariableInitializerOpt ';'
+VariableInitializerOpt -> '=' Expression | ε
+
+FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
+ParameterListOpt -> ParameterList | ε
+ParameterList -> ParameterList ',' Identifier | Identifier
+
+IfStatement -> if '(' Expression ')' BlockStatement ElseBranchOpt
+ElseBranchOpt -> else BlockStatement | ε
+
+WhileStatement -> while '(' Expression ')' BlockStatement
+ForRangeStatement -> for '(' Identifier in Expression '..' Expression ')' BlockStatement
+ReturnStatement -> return ReturnValueOpt ';'
+ReturnValueOpt -> Expression | ε
+
+BlockStatement -> '{' StatementList '}'
+
+ExpressionStatement -> Expression ';'
+Expression -> AssignmentExpression
+AssignmentExpression -> PostfixExpression '=' AssignmentExpression | OrExpression
+OrExpression -> OrExpression '||' AndExpression | AndExpression
+AndExpression -> AndExpression '&&' EqualityExpression | EqualityExpression
+EqualityExpression -> EqualityExpression '==' ComparisonExpression | EqualityExpression '!=' ComparisonExpression | ComparisonExpression
+ComparisonExpression -> ComparisonExpression '<' TermExpression | ComparisonExpression '<=' TermExpression | ComparisonExpression '>' TermExpression | ComparisonExpression '>=' TermExpression | TermExpression
+TermExpression -> TermExpression '+' FactorExpression | TermExpression '-' FactorExpression | FactorExpression
+FactorExpression -> FactorExpression '*' UnaryExpression | FactorExpression '/' UnaryExpression | FactorExpression '%' UnaryExpression | UnaryExpression
+UnaryExpression -> '!' UnaryExpression | '-' UnaryExpression | PostfixExpression
+PostfixExpression -> PrimaryExpression | PostfixExpression '(' ArgumentListOpt ')' | PostfixExpression '[' Expression ']'
+ArgumentListOpt -> ArgumentList | ε
+ArgumentList -> ArgumentList ',' Expression | Expression
+
+PrimaryExpression -> false
+PrimaryExpression -> true
+PrimaryExpression -> Number
+PrimaryExpression -> String
+PrimaryExpression -> Identifier
+PrimaryExpression -> '(' Expression ')'
+PrimaryExpression -> '[' ArrayElementsOpt ']'
+ArrayElementsOpt -> ArrayElements | ε
+ArrayElements -> ArrayElements ',' Expression | Expression
