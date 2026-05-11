@@ -4,21 +4,18 @@ import {
 	type StatementNode,
 } from '../ast'
 import {type Token} from '../token'
-import {LalrGenerator} from './LalrGenerator'
-import {createSemanticActions} from './semanticActions'
+import {buildCurrentZephyrArtifacts} from './currentArtifacts'
 import {type ParseOptions, TableParser} from './TableParser'
-import {createCurrentZephyrGrammar} from './ZephyrGrammar'
 
 class LalrAstParser {
 	private readonly parser: TableParser<Token>
 	private readonly parseOptions: ParseOptions<Token>
 
 	constructor(private readonly tokens: Token[]) {
-		const grammar = createCurrentZephyrGrammar()
-		const tables = new LalrGenerator(grammar).buildParsingTables()
+		const {tables, semanticActions} = buildCurrentZephyrArtifacts()
 		this.parser = new TableParser<Token>(tables)
 		this.parseOptions = {
-			semanticActions: createSemanticActions(grammar),
+			semanticActions,
 			tokenToDebugName: token => token.type,
 		}
 	}

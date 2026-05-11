@@ -1,6 +1,6 @@
 import {Compiler as ZephyrCompiler} from '../zephyr/Compiler'
 import {Lexer as ZephyrLexer} from '../zephyr/Lexer'
-import {Parser as ZephyrParser} from '../zephyr/Parser'
+import {LalrAstParser as ZephyrParser} from '../zephyr/parser/LalrAstParser'
 import {Parser} from './Parser'
 import {
 	type ClosureInstruction,

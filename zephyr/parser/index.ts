@@ -1,4 +1,5 @@
 import {TokenType} from '../token'
+import {buildCurrentZephyrArtifacts} from './currentArtifacts'
 import {LalrGenerator} from './LalrGenerator'
 import {createGrammarFromText, parseGrammarText} from './TextGrammar'
 import {createCurrentZephyrGrammar} from './ZephyrGrammar'
@@ -45,6 +46,7 @@ function formatAction(action: {
 
 export {
 	TokenType,
+	buildCurrentZephyrArtifacts,
 	buildCurrentZephyrTables,
 	createGrammarFromText,
 	formatConflictSummary,
