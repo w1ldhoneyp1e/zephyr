@@ -12,11 +12,12 @@ function emitFunctionDeclaration(
 	generator: BytecodeGenerator,
 	node: FunctionDeclarationNode,
 ): void {
-	const slot = state.declareLocal(node.name, true)
+	const binding = state.getDeclarationBinding(node)
+	const slot = state.declareBinding(binding)
 	const nested = generator.createFunctionCompiler(state, node.name, node.params.length)
 	nested.enterScope()
-	for (const param of node.params) {
-		nested.getState().declareLocal(param, false)
+	for (const parameterBinding of state.getFunctionParameterBindings(node)) {
+		nested.getState().declareBinding(parameterBinding)
 	}
 	emitBlock(nested.getState(), generator, nested, node.body.statements)
 	nested.emitNilReturn()

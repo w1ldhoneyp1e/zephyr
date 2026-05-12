@@ -1,4 +1,5 @@
 import {
+	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
@@ -22,6 +23,13 @@ interface FunctionSemanticBinding {
 interface ParameterSemanticBinding {
 	kind: 'parameter',
 	functionDeclaration: FunctionDeclarationNode,
+	index: number,
+	name: string,
+}
+
+interface IteratorSemanticBinding {
+	kind: 'iterator',
+	statement: ForRangeStatementNode,
 	name: string,
 }
 
@@ -34,16 +42,48 @@ type SemanticBinding =
 	| VariableSemanticBinding
 	| FunctionSemanticBinding
 	| ParameterSemanticBinding
+	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
 
 interface SemanticModel {
 	identifierBindings: WeakMap<IdentifierExpressionNode, SemanticBinding>,
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
+	declarationBindings: WeakMap<VariableDeclarationNode | FunctionDeclarationNode, SemanticBinding>,
+	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
+	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
+}
+
+function getBindingName(binding: SemanticBinding): string {
+	switch (binding.kind) {
+		case 'variable':
+		case 'function':
+			return binding.declaration.name
+		case 'parameter':
+		case 'iterator':
+		case 'builtin':
+			return binding.name
+	}
+}
+
+function isBindingMutable(binding: SemanticBinding): boolean {
+	switch (binding.kind) {
+		case 'variable':
+			return binding.declaration.kind === 'var'
+		case 'parameter':
+		case 'iterator':
+			return true
+		case 'function':
+		case 'builtin':
+			return false
+	}
 }
 
 export {
 	type BuiltinSemanticBinding,
 	type FunctionSemanticBinding,
+	getBindingName,
+	isBindingMutable,
+	type IteratorSemanticBinding,
 	type ParameterSemanticBinding,
 	type SemanticBinding,
 	type SemanticModel,

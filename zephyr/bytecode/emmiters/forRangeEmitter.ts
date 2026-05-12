@@ -12,11 +12,12 @@ function emitForRange(
 	statement: ForRangeStatementNode,
 ): void {
 	state.enterScope()
-	const iteratorSlot = state.declareLocal(statement.iterator, false)
+	const iteratorBinding = state.getForRangeBinding(statement)
+	const iteratorSlot = state.declareBinding(iteratorBinding)
 	emitExpression(state, statement.start)
 	state.emitNumArg(Opcode.SetLocal, iteratorSlot)
 	const endName = `__for_end_${iteratorSlot}_${state.getInstructions().length}`
-	const endSlot = state.declareLocal(endName, true)
+	const endSlot = state.declareInternalLocal(endName)
 	emitExpression(state, statement.end)
 	state.emitNumArg(Opcode.SetLocal, endSlot)
 	const loopStart = state.getInstructions().length

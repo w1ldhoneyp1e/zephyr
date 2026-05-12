@@ -1,4 +1,16 @@
-import {isBuiltinGlobalName} from '../builtins'
+import {
+	type ForRangeStatementNode,
+	type FunctionDeclarationNode,
+	type IdentifierExpressionNode,
+	type IdentifierTargetNode,
+	type VariableDeclarationNode,
+} from '../ast'
+import {
+	type SemanticBinding,
+	type SemanticModel,
+	getBindingName,
+	isBindingMutable,
+} from '../semantics/context'
 import {
 	type ClosureInstruction,
 	type ConstantPoolItem,
@@ -7,7 +19,6 @@ import {
 	type NumArgOpcode,
 	type ResolvedBinding,
 	type ResolvedExpressionBinding,
-	type ScopeInfo,
 	type UpvalueDescriptor,
 	type Value,
 	type VmFunctionTemplate,
@@ -15,13 +26,23 @@ import {
 	Opcode,
 } from './context'
 
+interface CompilerScopeInfo {
+	locals: Set<CompilerBinding>,
+}
+
+interface InternalCompilerBinding {
+	kind: 'internal',
+	name: string,
+}
+
+type CompilerBinding = SemanticBinding | InternalCompilerBinding
+
 class CompilerState {
 	private constants: ConstantPoolItem[] = []
 	private instructions: Instruction[] = []
-	private localSlots = new Map<string, number>()
-	private constBindings = new Set<string>()
+	private localSlots = new Map<CompilerBinding, number>()
 	private localCount = 0
-	private scopes: ScopeInfo[] = []
+	private scopes: CompilerScopeInfo[] = []
 	private upvalues: UpvalueDescriptor[] = []
 	private upvalueDedup = new Map<string, number>()
 
@@ -29,6 +50,7 @@ class CompilerState {
 		private readonly parent: CompilerState | null,
 		private readonly fnName: string,
 		private readonly arity: number,
+		private readonly model: SemanticModel,
 	) {
 	}
 
@@ -61,71 +83,80 @@ class CompilerState {
 		}
 		for (const name of scope.locals) {
 			this.localSlots.delete(name)
-			this.constBindings.delete(name)
 		}
 	}
 
-	declareLocal(name: string, isConst: boolean): number {
-		if (this.localSlots.has(name)) {
-			throw new Error(`Повторное объявление переменной: ${name}`)
+	declareBinding(binding: SemanticBinding): number {
+		if (this.localSlots.has(binding)) {
+			throw new Error(`Повторное объявление переменной: ${getBindingName(binding)}`)
 		}
 		const slot = this.localCount
 		this.localCount++
-		this.localSlots.set(name, slot)
-		if (isConst) {
-			this.constBindings.add(name)
-		}
-		this.scopes[this.scopes.length - 1].locals.add(name)
+		this.localSlots.set(binding, slot)
+		this.getCurrentScope().locals.add(binding)
 
 		return slot
 	}
 
-	assertMutable(name: string): void {
-		if (this.constBindings.has(name)) {
-			throw new Error(`Нельзя присвоить const переменной: ${name}`)
+	declareInternalLocal(name: string): number {
+		const binding: InternalCompilerBinding = {
+			kind: 'internal',
+			name,
+		}
+		const slot = this.localCount
+		this.localCount++
+		this.localSlots.set(binding, slot)
+		this.getCurrentScope().locals.add(binding)
+
+		return slot
+	}
+
+	assertMutable(binding: SemanticBinding): void {
+		if (!isBindingMutable(binding)) {
+			throw new Error(`Нельзя присвоить значение имени: ${getBindingName(binding)}`)
 		}
 	}
 
-	resolve(name: string): ResolvedBinding {
-		const slot = this.resolveLocal(name)
+	resolve(binding: SemanticBinding): ResolvedBinding {
+		const slot = this.resolveLocal(binding)
 		if (slot !== -1) {
 			return {
 				kind: 'local',
 				slot,
 			}
 		}
-		const upvalue = this.resolveUpvalue(name)
+		const upvalue = this.resolveUpvalue(binding)
 		if (upvalue !== -1) {
 			return {
 				kind: 'upvalue',
 				index: upvalue,
 			}
 		}
-		throw new Error(`Неизвестная переменная: ${name}`)
+		throw new Error(`Неизвестная переменная: ${getBindingName(binding)}`)
 	}
 
-	resolveExpressionBinding(name: string): ResolvedExpressionBinding {
-		const slot = this.resolveLocal(name)
-		if (slot !== -1) {
-			return {
-				kind: 'local',
-				slot,
-			}
-		}
-		const upvalue = this.resolveUpvalue(name)
-		if (upvalue !== -1) {
-			return {
-				kind: 'upvalue',
-				index: upvalue,
-			}
-		}
-		if (isBuiltinGlobalName(name)) {
+	resolveExpressionBinding(binding: SemanticBinding): ResolvedExpressionBinding {
+		if (binding.kind === 'builtin') {
 			return {
 				kind: 'global',
-				name,
+				name: binding.name,
 			}
 		}
-		throw new Error(`Неизвестная переменная: ${name}`)
+		const slot = this.resolveLocal(binding)
+		if (slot !== -1) {
+			return {
+				kind: 'local',
+				slot,
+			}
+		}
+		const upvalue = this.resolveUpvalue(binding)
+		if (upvalue !== -1) {
+			return {
+				kind: 'upvalue',
+				index: upvalue,
+			}
+		}
+		throw new Error(`Неизвестная переменная: ${getBindingName(binding)}`)
 	}
 
 	addConstant(value: Value | VmFunctionTemplate): number {
@@ -169,12 +200,66 @@ class CompilerState {
 		instruction.arg = target
 	}
 
-	private resolveLocal(name: string): number {
-		const slot = this.localSlots.get(name)
+	getDeclarationBinding(name: VariableDeclarationNode | FunctionDeclarationNode): SemanticBinding {
+		const binding = this.model.declarationBindings.get(name)
+		if (binding === undefined) {
+			throw new Error('CompilerState: declaration binding not found')
+		}
+
+		return binding
+	}
+
+	getFunctionParameterBindings(name: FunctionDeclarationNode): SemanticBinding[] {
+		const bindings = this.model.functionParameterBindings.get(name)
+		if (bindings === undefined) {
+			throw new Error('CompilerState: function parameter bindings not found')
+		}
+
+		return bindings
+	}
+
+	getForRangeBinding(statement: ForRangeStatementNode): SemanticBinding {
+		const binding = this.model.forRangeBindings.get(statement)
+		if (binding === undefined) {
+			throw new Error('CompilerState: for-range binding not found')
+		}
+
+		return binding
+	}
+
+	getExpressionBinding(name: IdentifierExpressionNode): SemanticBinding {
+		const binding = this.model.identifierBindings.get(name)
+		if (binding === undefined) {
+			throw new Error('CompilerState: identifier binding not found')
+		}
+
+		return binding
+	}
+
+	getAssignmentTargetBinding(name: IdentifierTargetNode): SemanticBinding {
+		const binding = this.model.assignmentTargetBindings.get(name)
+		if (binding === undefined) {
+			throw new Error('CompilerState: assignment target binding not found')
+		}
+
+		return binding
+	}
+
+	private resolveLocal(binding: SemanticBinding): number {
+		const slot = this.localSlots.get(binding)
 
 		return slot === undefined
 			? -1
 			: slot
+	}
+
+	private getCurrentScope(): CompilerScopeInfo {
+		const scope = this.scopes[this.scopes.length - 1]
+		if (scope === undefined) {
+			throw new Error('CompilerState: отсутствует текущий scope')
+		}
+
+		return scope
 	}
 
 	private addUpvalue(desc: UpvalueDescriptor): number {
@@ -190,18 +275,18 @@ class CompilerState {
 		return idx
 	}
 
-	private resolveUpvalue(name: string): number {
+	private resolveUpvalue(binding: SemanticBinding): number {
 		if (this.parent === null) {
 			return -1
 		}
-		const localSlot = this.parent.resolveLocal(name)
+		const localSlot = this.parent.resolveLocal(binding)
 		if (localSlot !== -1) {
 			return this.addUpvalue({
 				isLocal: true,
 				index: localSlot,
 			})
 		}
-		const parentUv = this.parent.resolveUpvalue(name)
+		const parentUv = this.parent.resolveUpvalue(binding)
 		if (parentUv !== -1) {
 			return this.addUpvalue({
 				isLocal: false,

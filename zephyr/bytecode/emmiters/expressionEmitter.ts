@@ -25,7 +25,8 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 			break
 		}
 		case 'IdentifierExpression': {
-			const resolved = state.resolveExpressionBinding(expression.name)
+			const binding = state.getExpressionBinding(expression)
+			const resolved = state.resolveExpressionBinding(binding)
 			if (resolved.kind === 'local') {
 				state.emitNumArg(Opcode.GetLocal, resolved.slot)
 			}

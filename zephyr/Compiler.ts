@@ -16,7 +16,7 @@ class Compiler {
 		const validatedProgram = validator.validateProgram(resolvedProgram, model)
 		const generator = new BytecodeGenerator()
 
-		return generator.generate(validatedProgram)
+		return generator.generate(validatedProgram, model)
 	}
 }
 

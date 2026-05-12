@@ -3,7 +3,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type SemanticModel} from './context'
+import {type SemanticModel, isBindingMutable} from './context'
 
 class Validator {
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
@@ -66,8 +66,8 @@ class Validator {
 			case 'AssignmentStatement':
 				if (statement.target.type === 'IdentifierTarget') {
 					const binding = model.assignmentTargetBindings.get(statement.target)
-					if (binding?.kind === 'variable' && binding.declaration.kind === 'const') {
-						throw new Error(`Нельзя присвоить const переменной: ${statement.target.name}`)
+					if (binding !== undefined && !isBindingMutable(binding)) {
+						throw new Error(`Нельзя присвоить значение имени: ${statement.target.name}`)
 					}
 				}
 				else {

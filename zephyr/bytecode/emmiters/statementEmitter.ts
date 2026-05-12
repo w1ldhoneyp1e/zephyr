@@ -22,7 +22,8 @@ function emitStatement(
 ): void {
 	switch (statement.type) {
 		case 'VariableDeclaration': {
-			const slot = state.declareLocal(statement.name, statement.kind === 'const')
+			const binding = state.getDeclarationBinding(statement)
+			const slot = state.declareBinding(binding)
 			if (statement.initializer !== null) {
 				emitExpression(state, statement.initializer)
 			}

@@ -1,10 +1,12 @@
 import {
 	type ExpressionNode,
+	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
 	type ProgramNode,
 	type StatementNode,
+	type VariableDeclarationNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
 import {type SemanticBinding, type SemanticModel} from './context'
@@ -16,6 +18,9 @@ class Resolver {
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
+		declarationBindings: new WeakMap(),
+		functionParameterBindings: new WeakMap(),
+		forRangeBindings: new WeakMap(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -26,6 +31,9 @@ class Resolver {
 		this.model = {
 			identifierBindings: new WeakMap(),
 			assignmentTargetBindings: new WeakMap(),
+			declarationBindings: new WeakMap(),
+			functionParameterBindings: new WeakMap(),
+			forRangeBindings: new WeakMap(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -42,10 +50,7 @@ class Resolver {
 	private resolveStatement(statement: StatementNode): void {
 		switch (statement.type) {
 			case 'VariableDeclaration':
-				this.declare(statement.name, {
-					kind: 'variable',
-					declaration: statement,
-				})
+				this.declare(statement.name, this.createVariableBinding(statement))
 				if (statement.initializer !== null) {
 					this.resolveExpression(statement.initializer)
 				}
@@ -65,23 +70,7 @@ class Resolver {
 				this.resolveBlock(statement.body.statements)
 				return
 			case 'ForRangeStatement':
-				this.resolveExpression(statement.start)
-				this.resolveExpression(statement.end)
-				this.enterScope()
-				this.declare(statement.iterator, {
-					kind: 'parameter',
-					functionDeclaration: {
-						type: 'FunctionDeclaration',
-						name: '<for-range>',
-						params: [],
-						body: statement.body,
-					},
-					name: statement.iterator,
-				})
-				for (const bodyStatement of statement.body.statements) {
-					this.resolveStatement(bodyStatement)
-				}
-				this.leaveScope()
+				this.resolveForRangeStatement(statement)
 				return
 			case 'ReturnStatement':
 				if (statement.value !== null) {
@@ -110,18 +99,33 @@ class Resolver {
 	}
 
 	private resolveFunctionDeclaration(statement: FunctionDeclarationNode): void {
-		this.declare(statement.name, {
-			kind: 'function',
-			declaration: statement,
-		})
+		const binding = this.createFunctionBinding(statement)
+		this.declare(statement.name, binding)
 		this.enterScope()
-		for (const param of statement.params) {
-			this.declare(param, {
+		const parameterBindings = statement.params.map((param, index) => {
+			const parameterBinding: SemanticBinding = {
 				kind: 'parameter',
 				functionDeclaration: statement,
+				index,
 				name: param,
-			})
+			}
+			this.declare(param, parameterBinding)
+
+			return parameterBinding
+		})
+		this.model.functionParameterBindings.set(statement, parameterBindings)
+		for (const bodyStatement of statement.body.statements) {
+			this.resolveStatement(bodyStatement)
 		}
+		this.leaveScope()
+	}
+
+	private resolveForRangeStatement(statement: ForRangeStatementNode): void {
+		this.resolveExpression(statement.start)
+		this.resolveExpression(statement.end)
+		const binding = this.createIteratorBinding(statement)
+		this.enterScope()
+		this.declare(statement.iterator, binding)
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
 		}
@@ -178,6 +182,37 @@ class Resolver {
 	private resolveAssignmentTarget(target: IdentifierTargetNode): void {
 		const binding = this.resolveName(target.name)
 		this.model.assignmentTargetBindings.set(target, binding)
+	}
+
+	private createVariableBinding(statement: VariableDeclarationNode): SemanticBinding {
+		const binding: SemanticBinding = {
+			kind: 'variable',
+			declaration: statement,
+		}
+		this.model.declarationBindings.set(statement, binding)
+
+		return binding
+	}
+
+	private createFunctionBinding(statement: FunctionDeclarationNode): SemanticBinding {
+		const binding: SemanticBinding = {
+			kind: 'function',
+			declaration: statement,
+		}
+		this.model.declarationBindings.set(statement, binding)
+
+		return binding
+	}
+
+	private createIteratorBinding(statement: ForRangeStatementNode): SemanticBinding {
+		const binding: SemanticBinding = {
+			kind: 'iterator',
+			statement,
+			name: statement.iterator,
+		}
+		this.model.forRangeBindings.set(statement, binding)
+
+		return binding
 	}
 
 	private resolveName(name: string): SemanticBinding {

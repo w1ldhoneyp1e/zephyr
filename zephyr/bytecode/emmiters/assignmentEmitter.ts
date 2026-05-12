@@ -7,8 +7,9 @@ function emitAssignment(
 	statement: AssignmentStatementNode,
 ): void {
 	if (statement.target.type === 'IdentifierTarget') {
-		state.assertMutable(statement.target.name)
-		const resolved = state.resolve(statement.target.name)
+		const binding = state.getAssignmentTargetBinding(statement.target)
+		state.assertMutable(binding)
+		const resolved = state.resolve(binding)
 		emitExpression(state, statement.value)
 		if (resolved.kind === 'local') {
 			state.emitNumArg(Opcode.SetLocal, resolved.slot)
