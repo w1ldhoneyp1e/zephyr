@@ -57,11 +57,15 @@ function emitStatement(
 		}
 		case 'WhileStatement': {
 			const loopStart = state.getInstructions().length
+			compiler.beginLoop()
+			compiler.setContinueTarget(loopStart)
 			emitExpression(state, statement.condition)
 			const endJump = state.emitJump(Opcode.JumpIfFalse)
 			emitBlock(state, generator, compiler, statement.body.statements)
 			state.emitNumArg(Opcode.Jump, loopStart)
-			state.patchJump(endJump, state.getInstructions().length)
+			const loopEnd = state.getInstructions().length
+			state.patchJump(endJump, loopEnd)
+			compiler.endLoop(loopEnd)
 			break
 		}
 		case 'ForRangeStatement':
@@ -75,6 +79,12 @@ function emitStatement(
 				state.emitNoArg(Opcode.Nil)
 			}
 			state.emitNoArg(Opcode.Return)
+			break
+		case 'BreakStatement':
+			compiler.emitBreak()
+			break
+		case 'ContinueStatement':
+			compiler.emitContinue()
 			break
 		case 'BlockStatement':
 			emitBlock(state, generator, compiler, statement.statements)

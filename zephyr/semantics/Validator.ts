@@ -55,6 +55,16 @@ class Validator {
 					this.validateExpression(statement.value, model)
 				}
 				return
+			case 'BreakStatement':
+				if (model.statementLoopOwners.get(statement) === null) {
+					throw new Error('Нельзя использовать break вне цикла')
+				}
+				return
+			case 'ContinueStatement':
+				if (model.statementLoopOwners.get(statement) === null) {
+					throw new Error('Нельзя использовать continue вне цикла')
+				}
+				return
 			case 'BlockStatement':
 				for (const bodyStatement of statement.statements) {
 					this.validateStatement(bodyStatement, model)

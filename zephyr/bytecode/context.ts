@@ -11,6 +11,8 @@ import {
 } from '../../vm/types'
 import {
 	type AssignmentStatementNode,
+	type BreakStatementNode,
+	type ContinueStatementNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
@@ -47,6 +49,8 @@ interface UpvalueDescriptor {
 
 export {
 	type AssignmentStatementNode,
+	type BreakStatementNode,
+	type ContinueStatementNode,
 	type ClosureInstruction,
 	type ConstantPoolItem,
 	type ExpressionNode,

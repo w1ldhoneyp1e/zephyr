@@ -10,5 +10,7 @@ Statement -> IfStatement
 Statement -> WhileStatement
 Statement -> ForRangeStatement
 Statement -> ReturnStatement
+Statement -> BreakStatement
+Statement -> ContinueStatement
 Statement -> BlockStatement
 Statement -> ExpressionStatement

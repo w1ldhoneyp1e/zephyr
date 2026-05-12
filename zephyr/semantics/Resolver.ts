@@ -106,6 +106,9 @@ class Resolver {
 					this.resolveExpression(statement.value)
 				}
 				return
+			case 'BreakStatement':
+			case 'ContinueStatement':
+				return
 			case 'BlockStatement':
 				this.resolveBlock(statement.statements)
 				return

@@ -32,6 +32,14 @@ interface ReturnStatementNode {
 	value: ExpressionNode | null,
 }
 
+interface BreakStatementNode {
+	type: 'BreakStatement',
+}
+
+interface ContinueStatementNode {
+	type: 'ContinueStatement',
+}
+
 interface ExpressionStatementNode {
 	type: 'ExpressionStatement',
 	expression: ExpressionNode,
@@ -51,12 +59,16 @@ type StatementNode =
 	| WhileStatementNode
 	| ForRangeStatementNode
 	| ReturnStatementNode
+	| BreakStatementNode
+	| ContinueStatementNode
 	| ExpressionStatementNode
 	| AssignmentStatementNode
 
 export {
 	type AssignmentStatementNode,
 	type BlockStatementNode,
+	type BreakStatementNode,
+	type ContinueStatementNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,
 	type IfStatementNode,

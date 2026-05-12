@@ -25,6 +25,8 @@ function createSharedAction(production: Production): SemanticValueAction | null 
 		case 'Statement -> WhileStatement':
 		case 'Statement -> ForRangeStatement':
 		case 'Statement -> ReturnStatement':
+		case 'Statement -> BreakStatement':
+		case 'Statement -> ContinueStatement':
 		case 'Statement -> BlockStatement':
 		case 'Statement -> ExpressionStatement':
 			return values => values[0]

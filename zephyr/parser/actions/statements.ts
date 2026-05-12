@@ -2,6 +2,8 @@ import {type Production} from '../grammar'
 import {
 	type AssignmentStatementNode,
 	type BlockStatementNode,
+	type BreakStatementNode,
+	type ContinueStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,
@@ -52,6 +54,14 @@ function createStatementAction(production: Production): SemanticValueAction | nu
 				type: 'ReturnStatement',
 				value: values[1] as ExpressionNode | null,
 			} satisfies ReturnStatementNode)
+		case 'BreakStatement -> Break Semicolon':
+			return () => ({
+				type: 'BreakStatement',
+			} satisfies BreakStatementNode)
+		case 'ContinueStatement -> Continue Semicolon':
+			return () => ({
+				type: 'ContinueStatement',
+			} satisfies ContinueStatementNode)
 		case 'ReturnValueOpt -> Expression':
 			return values => ensureExpression(values[0], 'return value')
 		case 'ReturnValueOpt -> ε':

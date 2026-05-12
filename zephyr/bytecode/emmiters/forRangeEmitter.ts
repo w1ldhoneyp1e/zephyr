@@ -12,6 +12,7 @@ function emitForRange(
 	statement: ForRangeStatementNode,
 ): void {
 	state.enterScope()
+	compiler.beginLoop()
 	const iteratorBinding = state.getForRangeBinding(statement)
 	const iteratorSlot = state.declareBinding(iteratorBinding)
 	emitExpression(state, statement.start)
@@ -26,9 +27,12 @@ function emitForRange(
 	state.emitNoArg(Opcode.Lt)
 	const endJump = state.emitJump(Opcode.JumpIfFalse)
 	emitBlock(state, generator, compiler, statement.body.statements)
+	compiler.setContinueTarget(state.getInstructions().length)
 	state.emitNumArg(Opcode.IncLocal, iteratorSlot)
 	state.emitNumArg(Opcode.Jump, loopStart)
-	state.patchJump(endJump, state.getInstructions().length)
+	const loopEnd = state.getInstructions().length
+	state.patchJump(endJump, loopEnd)
+	compiler.endLoop(loopEnd)
 	state.leaveScope()
 }
 

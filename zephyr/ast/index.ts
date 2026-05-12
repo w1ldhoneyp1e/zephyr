@@ -15,6 +15,8 @@ export type {
 export type {
 	AssignmentStatementNode,
 	BlockStatementNode,
+	BreakStatementNode,
+	ContinueStatementNode,
 	ExpressionStatementNode,
 	ForRangeStatementNode,
 	IfStatementNode,

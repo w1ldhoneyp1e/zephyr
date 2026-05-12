@@ -4,6 +4,8 @@ ElseBranchOpt -> else BlockStatement | ε
 WhileStatement -> while '(' Expression ')' BlockStatement
 ForRangeStatement -> for '(' Identifier in Expression '..' Expression ')' BlockStatement
 ReturnStatement -> return ReturnValueOpt ';'
+BreakStatement -> break ';'
+ContinueStatement -> continue ';'
 ReturnValueOpt -> Expression | ε
 
 BlockStatement -> '{' StatementList '}'
