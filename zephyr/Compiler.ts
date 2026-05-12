@@ -11,9 +11,9 @@ class Compiler {
 		const parser = new LalrAstParser(tokens)
 		const program = parser.parseProgram()
 		const resolver = new Resolver()
-		const resolvedProgram = resolver.resolveProgram(program)
+		const {program: resolvedProgram, model} = resolver.resolveProgram(program)
 		const validator = new Validator()
-		const validatedProgram = validator.validateProgram(resolvedProgram)
+		const validatedProgram = validator.validateProgram(resolvedProgram, model)
 		const generator = new BytecodeGenerator()
 
 		return generator.generate(validatedProgram)

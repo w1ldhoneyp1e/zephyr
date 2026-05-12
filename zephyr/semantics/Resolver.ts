@@ -1,30 +1,51 @@
 import {
 	type ExpressionNode,
 	type FunctionDeclarationNode,
+	type IdentifierExpressionNode,
+	type IdentifierTargetNode,
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
-import {type SemanticScope} from './context'
+import {type SemanticBinding, type SemanticModel} from './context'
 
 class Resolver {
-	private scopes: SemanticScope[] = []
+	private scopes: {
+		bindings: Map<string, SemanticBinding>,
+	}[] = []
+	private model: SemanticModel = {
+		identifierBindings: new WeakMap(),
+		assignmentTargetBindings: new WeakMap(),
+	}
 
-	resolveProgram(program: ProgramNode): ProgramNode {
+	resolveProgram(program: ProgramNode): {
+		program: ProgramNode,
+		model: SemanticModel,
+	} {
 		this.scopes = []
+		this.model = {
+			identifierBindings: new WeakMap(),
+			assignmentTargetBindings: new WeakMap(),
+		}
 		this.enterScope()
 		for (const statement of program.body) {
 			this.resolveStatement(statement)
 		}
 		this.leaveScope()
 
-		return program
+		return {
+			program,
+			model: this.model,
+		}
 	}
 
 	private resolveStatement(statement: StatementNode): void {
 		switch (statement.type) {
 			case 'VariableDeclaration':
-				this.declare(statement.name)
+				this.declare(statement.name, {
+					kind: 'variable',
+					declaration: statement,
+				})
 				if (statement.initializer !== null) {
 					this.resolveExpression(statement.initializer)
 				}
@@ -47,7 +68,16 @@ class Resolver {
 				this.resolveExpression(statement.start)
 				this.resolveExpression(statement.end)
 				this.enterScope()
-				this.declare(statement.iterator)
+				this.declare(statement.iterator, {
+					kind: 'parameter',
+					functionDeclaration: {
+						type: 'FunctionDeclaration',
+						name: '<for-range>',
+						params: [],
+						body: statement.body,
+					},
+					name: statement.iterator,
+				})
 				for (const bodyStatement of statement.body.statements) {
 					this.resolveStatement(bodyStatement)
 				}
@@ -66,7 +96,7 @@ class Resolver {
 				return
 			case 'AssignmentStatement':
 				if (statement.target.type === 'IdentifierTarget') {
-					this.resolveName(statement.target.name)
+					this.resolveAssignmentTarget(statement.target)
 				}
 				else {
 					this.resolveExpression(statement.target.object)
@@ -80,10 +110,17 @@ class Resolver {
 	}
 
 	private resolveFunctionDeclaration(statement: FunctionDeclarationNode): void {
-		this.declare(statement.name)
+		this.declare(statement.name, {
+			kind: 'function',
+			declaration: statement,
+		})
 		this.enterScope()
 		for (const param of statement.params) {
-			this.declare(param)
+			this.declare(param, {
+				kind: 'parameter',
+				functionDeclaration: statement,
+				name: param,
+			})
 		}
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
@@ -96,7 +133,7 @@ class Resolver {
 			case 'LiteralExpression':
 				return
 			case 'IdentifierExpression':
-				this.resolveName(expression.name)
+				this.resolveIdentifierExpression(expression)
 				return
 			case 'UnaryExpression':
 				this.resolveExpression(expression.argument)
@@ -133,19 +170,33 @@ class Resolver {
 		this.leaveScope()
 	}
 
-	private resolveName(name: string): void {
+	private resolveIdentifierExpression(expression: IdentifierExpressionNode): void {
+		const binding = this.resolveName(expression.name)
+		this.model.identifierBindings.set(expression, binding)
+	}
+
+	private resolveAssignmentTarget(target: IdentifierTargetNode): void {
+		const binding = this.resolveName(target.name)
+		this.model.assignmentTargetBindings.set(target, binding)
+	}
+
+	private resolveName(name: string): SemanticBinding {
 		if (isBuiltinGlobalName(name)) {
-			return
+			return {
+				kind: 'builtin',
+				name,
+			}
 		}
 		for (let i = this.scopes.length - 1; i >= 0; i--) {
-			if (this.scopes[i].bindings.has(name)) {
-				return
+			const binding = this.scopes[i].bindings.get(name)
+			if (binding !== undefined) {
+				return binding
 			}
 		}
 		throw new Error(`Неизвестная переменная: ${name}`)
 	}
 
-	private declare(name: string): void {
+	private declare(name: string, binding: SemanticBinding): void {
 		const currentScope = this.scopes[this.scopes.length - 1]
 		if (currentScope === undefined) {
 			throw new Error('Resolver: отсутствует текущий scope')
@@ -153,11 +204,11 @@ class Resolver {
 		if (currentScope.bindings.has(name)) {
 			throw new Error(`Повторное объявление переменной: ${name}`)
 		}
-		currentScope.bindings.add(name)
+		currentScope.bindings.set(name, binding)
 	}
 
 	private enterScope(): void {
-		this.scopes.push({bindings: new Set()})
+		this.scopes.push({bindings: new Map()})
 	}
 
 	private leaveScope(): void {
