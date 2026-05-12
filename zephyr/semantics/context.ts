@@ -3,6 +3,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type ProgramNode,
 	type VariableDeclarationNode,
 } from '../ast'
 
@@ -45,12 +46,17 @@ type SemanticBinding =
 	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
 
+type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
+type SemanticFunctionOwner = ProgramNode | FunctionDeclarationNode
+
 interface SemanticModel {
 	identifierBindings: WeakMap<IdentifierExpressionNode, SemanticBinding>,
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
 	declarationBindings: WeakMap<VariableDeclarationNode | FunctionDeclarationNode, SemanticBinding>,
 	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
+	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
+	functionCaptures: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 }
 
 function getBindingName(binding: SemanticBinding): string {
@@ -84,8 +90,10 @@ export {
 	getBindingName,
 	isBindingMutable,
 	type IteratorSemanticBinding,
+	type OwnedSemanticBinding,
 	type ParameterSemanticBinding,
 	type SemanticBinding,
+	type SemanticFunctionOwner,
 	type SemanticModel,
 	type SemanticScope,
 	type VariableSemanticBinding,

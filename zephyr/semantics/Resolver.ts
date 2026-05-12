@@ -9,18 +9,27 @@ import {
 	type VariableDeclarationNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
-import {type SemanticBinding, type SemanticModel} from './context'
+import {
+	type OwnedSemanticBinding,
+	type SemanticBinding,
+	type SemanticFunctionOwner,
+	type SemanticModel,
+} from './context'
 
 class Resolver {
 	private scopes: {
 		bindings: Map<string, SemanticBinding>,
 	}[] = []
+	private functionOwners: SemanticFunctionOwner[] = []
+	private captures = new Map<FunctionDeclarationNode, Set<SemanticBinding>>()
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
 		declarationBindings: new WeakMap(),
 		functionParameterBindings: new WeakMap(),
 		forRangeBindings: new WeakMap(),
+		bindingFunctionOwners: new WeakMap(),
+		functionCaptures: new WeakMap(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -28,18 +37,25 @@ class Resolver {
 		model: SemanticModel,
 	} {
 		this.scopes = []
+		this.functionOwners = [program]
+		this.captures = new Map()
 		this.model = {
 			identifierBindings: new WeakMap(),
 			assignmentTargetBindings: new WeakMap(),
 			declarationBindings: new WeakMap(),
 			functionParameterBindings: new WeakMap(),
 			forRangeBindings: new WeakMap(),
+			bindingFunctionOwners: new WeakMap(),
+			functionCaptures: new WeakMap(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
 			this.resolveStatement(statement)
 		}
 		this.leaveScope()
+		for (const [fn, captures] of this.captures.entries()) {
+			this.model.functionCaptures.set(fn, [...captures])
+		}
 
 		return {
 			program,
@@ -101,6 +117,8 @@ class Resolver {
 	private resolveFunctionDeclaration(statement: FunctionDeclarationNode): void {
 		const binding = this.createFunctionBinding(statement)
 		this.declare(statement.name, binding)
+		this.captures.set(statement, new Set())
+		this.enterFunction(statement)
 		this.enterScope()
 		const parameterBindings = statement.params.map((param, index) => {
 			const parameterBinding: SemanticBinding = {
@@ -109,6 +127,7 @@ class Resolver {
 				index,
 				name: param,
 			}
+			this.recordBindingOwner(parameterBinding)
 			this.declare(param, parameterBinding)
 
 			return parameterBinding
@@ -118,6 +137,7 @@ class Resolver {
 			this.resolveStatement(bodyStatement)
 		}
 		this.leaveScope()
+		this.leaveFunction(statement)
 	}
 
 	private resolveForRangeStatement(statement: ForRangeStatementNode): void {
@@ -177,11 +197,13 @@ class Resolver {
 	private resolveIdentifierExpression(expression: IdentifierExpressionNode): void {
 		const binding = this.resolveName(expression.name)
 		this.model.identifierBindings.set(expression, binding)
+		this.recordCapture(binding)
 	}
 
 	private resolveAssignmentTarget(target: IdentifierTargetNode): void {
 		const binding = this.resolveName(target.name)
 		this.model.assignmentTargetBindings.set(target, binding)
+		this.recordCapture(binding)
 	}
 
 	private createVariableBinding(statement: VariableDeclarationNode): SemanticBinding {
@@ -190,6 +212,7 @@ class Resolver {
 			declaration: statement,
 		}
 		this.model.declarationBindings.set(statement, binding)
+		this.recordBindingOwner(binding)
 
 		return binding
 	}
@@ -200,6 +223,7 @@ class Resolver {
 			declaration: statement,
 		}
 		this.model.declarationBindings.set(statement, binding)
+		this.recordBindingOwner(binding)
 
 		return binding
 	}
@@ -211,8 +235,32 @@ class Resolver {
 			name: statement.iterator,
 		}
 		this.model.forRangeBindings.set(statement, binding)
+		this.recordBindingOwner(binding)
 
 		return binding
+	}
+
+	private recordBindingOwner(binding: OwnedSemanticBinding): void {
+		this.model.bindingFunctionOwners.set(binding, this.getCurrentFunctionOwner())
+	}
+
+	private recordCapture(binding: SemanticBinding): void {
+		if (binding.kind === 'builtin') {
+			return
+		}
+		const currentFunction = this.getCurrentFunction()
+		if (currentFunction === null) {
+			return
+		}
+		const bindingOwner = this.model.bindingFunctionOwners.get(binding)
+		if (bindingOwner === undefined || bindingOwner === currentFunction) {
+			return
+		}
+		const captures = this.captures.get(currentFunction)
+		if (captures === undefined) {
+			throw new Error('Resolver: capture set not initialized for function')
+		}
+		captures.add(binding)
 	}
 
 	private resolveName(name: string): SemanticBinding {
@@ -240,6 +288,34 @@ class Resolver {
 			throw new Error(`Повторное объявление переменной: ${name}`)
 		}
 		currentScope.bindings.set(name, binding)
+	}
+
+	private enterFunction(statement: FunctionDeclarationNode): void {
+		this.functionOwners.push(statement)
+	}
+
+	private leaveFunction(statement: FunctionDeclarationNode): void {
+		const owner = this.functionOwners.pop()
+		if (owner !== statement) {
+			throw new Error('Resolver: неожиданный выход из функции')
+		}
+	}
+
+	private getCurrentFunction(): FunctionDeclarationNode | null {
+		const owner = this.getCurrentFunctionOwner()
+
+		return owner.type === 'Program'
+			? null
+			: owner
+	}
+
+	private getCurrentFunctionOwner(): SemanticFunctionOwner {
+		const owner = this.functionOwners[this.functionOwners.length - 1]
+		if (owner === undefined) {
+			throw new Error('Resolver: отсутствует текущий function owner')
+		}
+
+		return owner
 	}
 
 	private enterScope(): void {
