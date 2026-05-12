@@ -4,6 +4,7 @@ import {
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
 	type ProgramNode,
+	type ReturnStatementNode,
 	type VariableDeclarationNode,
 } from '../ast'
 
@@ -55,6 +56,7 @@ interface SemanticModel {
 	declarationBindings: WeakMap<VariableDeclarationNode | FunctionDeclarationNode, SemanticBinding>,
 	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
+	returnOwners: WeakMap<ReturnStatementNode, FunctionDeclarationNode | null>,
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	functionCaptures: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 }

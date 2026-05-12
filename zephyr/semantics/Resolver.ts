@@ -28,6 +28,7 @@ class Resolver {
 		declarationBindings: new WeakMap(),
 		functionParameterBindings: new WeakMap(),
 		forRangeBindings: new WeakMap(),
+		returnOwners: new WeakMap(),
 		bindingFunctionOwners: new WeakMap(),
 		functionCaptures: new WeakMap(),
 	}
@@ -45,6 +46,7 @@ class Resolver {
 			declarationBindings: new WeakMap(),
 			functionParameterBindings: new WeakMap(),
 			forRangeBindings: new WeakMap(),
+			returnOwners: new WeakMap(),
 			bindingFunctionOwners: new WeakMap(),
 			functionCaptures: new WeakMap(),
 		}
@@ -89,6 +91,7 @@ class Resolver {
 				this.resolveForRangeStatement(statement)
 				return
 			case 'ReturnStatement':
+				this.model.returnOwners.set(statement, this.getCurrentFunction())
 				if (statement.value !== null) {
 					this.resolveExpression(statement.value)
 				}
