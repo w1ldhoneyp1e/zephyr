@@ -1,6 +1,7 @@
 import {Compiler as ZephyrCompiler} from '../zephyr/Compiler'
 import {Lexer as ZephyrLexer} from '../zephyr/Lexer'
 import {LalrAstParser as ZephyrParser} from '../zephyr/parser/LalrAstParser'
+import {formatValue} from './formatValue'
 import {Parser} from './Parser'
 import {
 	type ClosureInstruction,
@@ -18,7 +19,7 @@ import {
 	type VmProgram,
 	Opcode,
 } from './types'
-import {formatValue, Vm} from './Vm'
+import {Vm} from './Vm'
 
 export {
 	ClosureInstruction,

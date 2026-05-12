@@ -1,0 +1,22 @@
+import {type Value} from './types'
+
+function formatValue(v: Value): string {
+	if (v === null) {
+		return 'null'
+	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
+		return `[closure fn#${v.template.programIndex}]`
+	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'native') {
+		return `[native ${v.name}]`
+	}
+	if (Array.isArray(v)) {
+		return `[${v.map(formatValue).join(', ')}]`
+	}
+
+	return String(v)
+}
+
+export {
+	formatValue,
+}

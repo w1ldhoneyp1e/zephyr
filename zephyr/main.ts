@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import {formatValue, Vm} from '../vm'
 import {
 	type ConstantPoolItem,
 	type Instruction,
@@ -7,7 +8,6 @@ import {
 	type VmFunctionTemplate,
 	type VmProgram,
 } from '../vm/types'
-import {formatValue, Vm} from '../vm/Vm'
 import {Compiler} from './Compiler'
 
 interface CliOptions {

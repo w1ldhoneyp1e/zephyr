@@ -1,7 +1,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import {formatValue} from './formatValue'
 import {Parser} from './Parser'
-import {formatValue, Vm} from './Vm'
+import {Vm} from './Vm'
 
 function main(): void {
 	const args = process.argv.slice(2)
