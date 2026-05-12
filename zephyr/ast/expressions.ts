@@ -21,7 +21,7 @@ interface UnaryExpressionNode {
 
 interface BinaryExpressionNode {
 	type: 'BinaryExpression',
-	operator: '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '&&' | '||',
+	operator: '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '&&' | '||' | '??',
 	left: ExpressionNode,
 	right: ExpressionNode,
 }

@@ -42,6 +42,7 @@ enum Opcode {
 	True = 'true',
 	False = 'false',
 	Nil = 'nil',
+	Dup = 'dup',
 	Pop = 'pop',
 
 	Add = 'add',
@@ -85,7 +86,7 @@ enum Opcode {
 }
 
 type NoArgOpcode =
-	| Opcode.True | Opcode.False | Opcode.Nil | Opcode.Pop
+	| Opcode.True | Opcode.False | Opcode.Nil | Opcode.Dup | Opcode.Pop
 	| Opcode.Add | Opcode.Sub | Opcode.Mul | Opcode.Div | Opcode.Mod | Opcode.Neg
 	| Opcode.Eq | Opcode.Ne | Opcode.Lt | Opcode.Lte | Opcode.Gt | Opcode.Gte
 	| Opcode.And | Opcode.Or | Opcode.Not

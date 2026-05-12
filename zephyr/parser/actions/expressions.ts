@@ -19,7 +19,8 @@ import {
 function createExpressionAction(production: Production): SemanticValueAction | null {
 	switch (productionKey(production)) {
 		case 'Expression -> AssignmentExpression':
-		case 'AssignmentExpression -> OrExpression':
+		case 'AssignmentExpression -> CoalesceExpression':
+		case 'CoalesceExpression -> OrExpression':
 		case 'OrExpression -> AndExpression':
 		case 'AndExpression -> EqualityExpression':
 		case 'EqualityExpression -> ComparisonExpression':
@@ -39,6 +40,8 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				value: ensureExpression(values[2], 'assignment value'),
 			} satisfies PendingAssignmentNode)
 
+		case 'CoalesceExpression -> CoalesceExpression QuestionQuestion OrExpression':
+			return values => createBinary('??', values[0], values[2])
 		case 'OrExpression -> OrExpression OrOr AndExpression':
 			return values => createBinary('||', values[0], values[2])
 		case 'AndExpression -> AndExpression AndAnd EqualityExpression':
@@ -99,6 +102,11 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 			return () => ({
 				type: 'LiteralExpression',
 				value: true,
+			} satisfies LiteralExpressionNode)
+		case 'PrimaryExpression -> Null':
+			return () => ({
+				type: 'LiteralExpression',
+				value: null,
 			} satisfies LiteralExpressionNode)
 		case 'PrimaryExpression -> Number':
 			return values => ({

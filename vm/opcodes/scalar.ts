@@ -38,6 +38,12 @@ function execScalarOpcode(
 		case Opcode.Nil:
 			push(null)
 			return undefined
+		case Opcode.Dup: {
+			const value = pop()
+			push(value)
+			push(value)
+			return undefined
+		}
 		case Opcode.Pop:
 			pop()
 			return undefined

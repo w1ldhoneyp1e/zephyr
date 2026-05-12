@@ -53,6 +53,17 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 			break
 		}
 		case 'BinaryExpression': {
+			if (expression.operator === '??') {
+				emitExpression(state, expression.left)
+				state.emitNoArg(Opcode.Dup)
+				state.emitNoArg(Opcode.Nil)
+				state.emitNoArg(Opcode.Eq)
+				const rightJump = state.emitJump(Opcode.JumpIfFalse)
+				state.emitNoArg(Opcode.Pop)
+				emitExpression(state, expression.right)
+				state.patchJump(rightJump, state.getInstructions().length)
+				break
+			}
 			emitExpression(state, expression.left)
 			emitExpression(state, expression.right)
 			const opMap: Record<string, NoArgOpcode> = {
