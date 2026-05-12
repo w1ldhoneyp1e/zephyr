@@ -1,5 +1,5 @@
 import {type VmProgram} from '../vm/types'
-import {BytecodeGenerator} from './BytecodeGenerator'
+import {BytecodeGenerator} from './bytecode/BytecodeGenerator'
 import {Lexer} from './Lexer'
 import {LalrAstParser} from './parser/LalrAstParser'
 

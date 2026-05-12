@@ -1,0 +1,40 @@
+import {type BytecodeGenerator} from '../BytecodeGenerator'
+import {type CompilerState} from '../CompilerState'
+import {
+	type FunctionDeclarationNode,
+	type VmFunctionTemplate,
+	Opcode,
+} from '../context'
+import {emitBlock} from './blockEmitter'
+
+function emitFunctionDeclaration(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	node: FunctionDeclarationNode,
+): void {
+	const slot = state.declareLocal(node.name, true)
+	const nested = generator.createFunctionCompiler(state, node.name, node.params.length)
+	nested.enterScope()
+	for (const param of node.params) {
+		nested.getState().declareLocal(param, false)
+	}
+	emitBlock(nested.getState(), generator, nested, node.body.statements)
+	nested.emitNilReturn()
+	nested.leaveScope()
+	const prog = nested.buildVmProgram()
+	generator.functionPrograms.push(prog)
+	const programIndex = generator.functionPrograms.length
+	const tmpl: VmFunctionTemplate = {
+		kind: 'function',
+		programIndex,
+		arity: node.params.length,
+		upvalueCount: nested.getState().getUpvalues().length,
+	}
+	const constIdx = state.addConstant(tmpl)
+	state.emitClosureInstr(constIdx, nested.getState().getUpvalues())
+	state.emitNumArg(Opcode.SetLocal, slot)
+}
+
+export {
+	emitFunctionDeclaration,
+}
