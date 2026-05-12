@@ -2,6 +2,7 @@ import {type VmProgram} from '../vm/types'
 import {BytecodeGenerator} from './bytecode/BytecodeGenerator'
 import {Lexer} from './Lexer'
 import {LalrAstParser} from './parser/LalrAstParser'
+import {Resolver, Validator} from './semantics'
 
 class Compiler {
 	compile(source: string): VmProgram[] {
@@ -9,9 +10,13 @@ class Compiler {
 		const tokens = lexer.scanTokens()
 		const parser = new LalrAstParser(tokens)
 		const program = parser.parseProgram()
+		const resolver = new Resolver()
+		const resolvedProgram = resolver.resolveProgram(program)
+		const validator = new Validator()
+		const validatedProgram = validator.validateProgram(resolvedProgram)
 		const generator = new BytecodeGenerator()
 
-		return generator.generate(program)
+		return generator.generate(validatedProgram)
 	}
 }
 
