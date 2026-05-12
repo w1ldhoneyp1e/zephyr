@@ -5,7 +5,9 @@ import {
 	type IdentifierTargetNode,
 	type ProgramNode,
 	type ReturnStatementNode,
+	type StatementNode,
 	type VariableDeclarationNode,
+	type WhileStatementNode,
 } from '../ast'
 
 interface SemanticScope {
@@ -49,10 +51,12 @@ type SemanticBinding =
 
 type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
 type SemanticFunctionOwner = ProgramNode | FunctionDeclarationNode
+type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode
 
 interface SemanticModel {
 	identifierBindings: WeakMap<IdentifierExpressionNode, SemanticBinding>,
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
+	statementLoopOwners: WeakMap<StatementNode, SemanticLoopOwner | null>,
 	declarationBindings: WeakMap<VariableDeclarationNode | FunctionDeclarationNode, SemanticBinding>,
 	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
@@ -96,6 +100,7 @@ export {
 	type ParameterSemanticBinding,
 	type SemanticBinding,
 	type SemanticFunctionOwner,
+	type SemanticLoopOwner,
 	type SemanticModel,
 	type SemanticScope,
 	type VariableSemanticBinding,

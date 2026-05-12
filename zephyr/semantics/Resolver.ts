@@ -13,6 +13,7 @@ import {
 	type OwnedSemanticBinding,
 	type SemanticBinding,
 	type SemanticFunctionOwner,
+	type SemanticLoopOwner,
 	type SemanticModel,
 } from './context'
 
@@ -21,10 +22,13 @@ class Resolver {
 		bindings: Map<string, SemanticBinding>,
 	}[] = []
 	private functionOwners: SemanticFunctionOwner[] = []
+	private loopOwners: SemanticLoopOwner[] = []
+	private functionLoopSnapshots: SemanticLoopOwner[][] = []
 	private captures = new Map<FunctionDeclarationNode, Set<SemanticBinding>>()
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
+		statementLoopOwners: new WeakMap(),
 		declarationBindings: new WeakMap(),
 		functionParameterBindings: new WeakMap(),
 		forRangeBindings: new WeakMap(),
@@ -39,10 +43,13 @@ class Resolver {
 	} {
 		this.scopes = []
 		this.functionOwners = [program]
+		this.loopOwners = []
+		this.functionLoopSnapshots = []
 		this.captures = new Map()
 		this.model = {
 			identifierBindings: new WeakMap(),
 			assignmentTargetBindings: new WeakMap(),
+			statementLoopOwners: new WeakMap(),
 			declarationBindings: new WeakMap(),
 			functionParameterBindings: new WeakMap(),
 			forRangeBindings: new WeakMap(),
@@ -66,6 +73,7 @@ class Resolver {
 	}
 
 	private resolveStatement(statement: StatementNode): void {
+		this.model.statementLoopOwners.set(statement, this.getCurrentLoop())
 		switch (statement.type) {
 			case 'VariableDeclaration':
 				this.declare(statement.name, this.createVariableBinding(statement))
@@ -85,7 +93,9 @@ class Resolver {
 				return
 			case 'WhileStatement':
 				this.resolveExpression(statement.condition)
+				this.enterLoop(statement)
 				this.resolveBlock(statement.body.statements)
+				this.leaveLoop(statement)
 				return
 			case 'ForRangeStatement':
 				this.resolveForRangeStatement(statement)
@@ -147,12 +157,14 @@ class Resolver {
 		this.resolveExpression(statement.start)
 		this.resolveExpression(statement.end)
 		const binding = this.createIteratorBinding(statement)
+		this.enterLoop(statement)
 		this.enterScope()
 		this.declare(statement.iterator, binding)
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
 		}
 		this.leaveScope()
+		this.leaveLoop(statement)
 	}
 
 	private resolveExpression(expression: ExpressionNode): void {
@@ -294,6 +306,8 @@ class Resolver {
 	}
 
 	private enterFunction(statement: FunctionDeclarationNode): void {
+		this.functionLoopSnapshots.push([...this.loopOwners])
+		this.loopOwners = []
 		this.functionOwners.push(statement)
 	}
 
@@ -302,6 +316,11 @@ class Resolver {
 		if (owner !== statement) {
 			throw new Error('Resolver: неожиданный выход из функции')
 		}
+		const loopSnapshot = this.functionLoopSnapshots.pop()
+		if (loopSnapshot === undefined) {
+			throw new Error('Resolver: отсутствует snapshot loop-контекста функции')
+		}
+		this.loopOwners = loopSnapshot
 	}
 
 	private getCurrentFunction(): FunctionDeclarationNode | null {
@@ -319,6 +338,23 @@ class Resolver {
 		}
 
 		return owner
+	}
+
+	private enterLoop(statement: SemanticLoopOwner): void {
+		this.loopOwners.push(statement)
+	}
+
+	private leaveLoop(statement: SemanticLoopOwner): void {
+		const owner = this.loopOwners.pop()
+		if (owner !== statement) {
+			throw new Error('Resolver: неожиданный выход из loop-контекста')
+		}
+	}
+
+	private getCurrentLoop(): SemanticLoopOwner | null {
+		const currentLoop = this.loopOwners[this.loopOwners.length - 1]
+
+		return currentLoop ?? null
 	}
 
 	private enterScope(): void {

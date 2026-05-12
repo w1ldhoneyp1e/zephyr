@@ -51,9 +51,6 @@ class Validator {
 				}
 				return
 			case 'ReturnStatement':
-				if (model.returnOwners.get(statement) === null) {
-					throw new Error('Нельзя использовать return вне функции')
-				}
 				if (statement.value !== null) {
 					this.validateExpression(statement.value, model)
 				}
