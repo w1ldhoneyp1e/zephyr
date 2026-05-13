@@ -49,6 +49,7 @@ const NUM_ARG_OPCODES = new Map<string, NumArgOpcode>([
 	['get_global', Opcode.GetGlobal],
 	['create_arr', Opcode.CreateArr],
 	['get_prop', Opcode.GetProp],
+	['set_prop', Opcode.SetProp],
 	['call', Opcode.Call],
 ])
 
@@ -103,6 +104,7 @@ function parseConstantLine(line: string): ConstantPoolItem {
 			kind: 'struct',
 			name,
 			fields,
+			methods: {},
 		}
 	}
 

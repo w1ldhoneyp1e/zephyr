@@ -27,6 +27,11 @@ class Validator {
 				}
 				return
 			case 'StructDeclaration':
+				for (const method of statement.methods) {
+					for (const bodyStatement of method.body.statements) {
+						this.validateStatement(bodyStatement, model)
+					}
+				}
 				return
 			case 'IfStatement':
 				this.validateExpression(statement.condition, model)

@@ -1,7 +1,9 @@
+import {type SemanticBinding} from '../../semantics/context'
 import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
 	type FunctionDeclarationNode,
+	type MethodDeclarationNode,
 	type VmFunctionTemplate,
 	Opcode,
 } from '../context'
@@ -14,9 +16,35 @@ function emitFunctionDeclaration(
 ): void {
 	const binding = state.getDeclarationBinding(node)
 	const slot = state.declareBinding(binding)
-	const nested = generator.createFunctionCompiler(state, node.name, node.params.length)
+	emitCallableClosure(state, generator, node)
+	state.emitNumArg(Opcode.SetLocal, slot)
+}
+
+function emitMethodDeclaration(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	node: MethodDeclarationNode,
+): void {
+	const receiverBinding = state.getMethodReceiverBinding(node)
+	emitCallableClosure(state, generator, node, receiverBinding.declaration.name)
+	emitBindingLoad(state, receiverBinding)
+	const propertyNameIndex = state.addConstant(node.name)
+	state.emitNumArg(Opcode.SetProp, propertyNameIndex)
+}
+
+function emitCallableClosure(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	node: FunctionDeclarationNode | MethodDeclarationNode,
+	receiverTypeName?: string,
+): void {
+	const functionName = node.type === 'FunctionDeclaration'
+		? node.name
+		: `${receiverTypeName ?? 'Struct'}.${node.name}`
+	const parameterBindings = state.getFunctionParameterBindings(node)
+	const nested = generator.createFunctionCompiler(state, functionName, parameterBindings.length)
 	nested.enterScope()
-	for (const parameterBinding of state.getFunctionParameterBindings(node)) {
+	for (const parameterBinding of parameterBindings) {
 		nested.getState().declareBinding(parameterBinding)
 	}
 	emitBlock(nested.getState(), generator, nested, node.body.statements)
@@ -28,14 +56,28 @@ function emitFunctionDeclaration(
 	const tmpl: VmFunctionTemplate = {
 		kind: 'function',
 		programIndex,
-		arity: node.params.length,
+		arity: parameterBindings.length,
 		upvalueCount: nested.getState().getUpvalues().length,
 	}
 	const constIdx = state.addConstant(tmpl)
 	state.emitClosureInstr(constIdx, nested.getState().getUpvalues())
-	state.emitNumArg(Opcode.SetLocal, slot)
+}
+
+function emitBindingLoad(state: CompilerState, binding: SemanticBinding): void {
+	const resolved = state.resolveExpressionBinding(binding)
+	if (resolved.kind === 'local') {
+		state.emitNumArg(Opcode.GetLocal, resolved.slot)
+		return
+	}
+	if (resolved.kind === 'upvalue') {
+		state.emitNumArg(Opcode.GetUpvalue, resolved.index)
+		return
+	}
+	const nameConstant = state.addConstant(resolved.name)
+	state.emitNumArg(Opcode.GetGlobal, nameConstant)
 }
 
 export {
 	emitFunctionDeclaration,
+	emitMethodDeclaration,
 }

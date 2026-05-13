@@ -3,6 +3,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type MethodDeclarationNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
@@ -32,7 +33,7 @@ interface StructSemanticBinding {
 
 interface ParameterSemanticBinding {
 	kind: 'parameter',
-	functionDeclaration: FunctionDeclarationNode,
+	callableDeclaration: CallableDeclarationNode,
 	index: number,
 	name: string,
 }
@@ -57,7 +58,8 @@ type SemanticBinding =
 	| BuiltinSemanticBinding
 
 type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
-type SemanticFunctionOwner = ProgramNode | FunctionDeclarationNode
+type CallableDeclarationNode = FunctionDeclarationNode | MethodDeclarationNode
+type SemanticFunctionOwner = ProgramNode | CallableDeclarationNode
 type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode
 
 interface SemanticModel {
@@ -68,11 +70,12 @@ interface SemanticModel {
 		VariableDeclarationNode | FunctionDeclarationNode | StructDeclarationNode,
 		SemanticBinding
 	>,
-	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
+	functionParameterBindings: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
 	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
-	returnOwners: WeakMap<ReturnStatementNode, FunctionDeclarationNode | null>,
+	returnOwners: WeakMap<ReturnStatementNode, CallableDeclarationNode | null>,
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
-	functionCaptures: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
+	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
+	methodReceiverBindings: WeakMap<MethodDeclarationNode, StructSemanticBinding>,
 }
 
 function getBindingName(binding: SemanticBinding): string {
@@ -104,6 +107,7 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 
 export {
 	type BuiltinSemanticBinding,
+	type CallableDeclarationNode,
 	type FunctionSemanticBinding,
 	getBindingName,
 	isBindingMutable,

@@ -3,9 +3,12 @@ VariableDeclaration -> const Identifier VariableInitializerOpt ';'
 VariableInitializerOpt -> '=' Expression | ε
 
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
+MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
 ParameterListOpt -> ParameterList | ε
 ParameterList -> ParameterList ',' Identifier | Identifier
 
-StructDeclaration -> struct Identifier '{' StructFieldListOpt '}'
-StructFieldListOpt -> StructFieldList | ε
-StructFieldList -> StructFieldList ',' Identifier | Identifier
+StructDeclaration -> struct Identifier '{' StructMemberListOpt '}'
+StructMemberListOpt -> StructMemberList | ε
+StructMemberList -> StructMemberList StructMember | StructMember
+StructMember -> Identifier StructFieldSeparatorOpt | MethodDeclaration
+StructFieldSeparatorOpt -> ',' | ε

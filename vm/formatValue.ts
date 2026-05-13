@@ -17,6 +17,9 @@ function formatValue(v: Value): string {
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'struct') {
 		return `[struct ${v.name}]`
 	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'bound_method') {
+		return '[bound method]'
+	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
 		return `[closure fn#${v.template.programIndex}]`
 	}

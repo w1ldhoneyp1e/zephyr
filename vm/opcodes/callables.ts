@@ -8,6 +8,7 @@ import {
 import {
 	type ClosureInstruction,
 	type LocalCell,
+	type VmBoundMethod,
 	type VmClosure,
 	type VmFunctionTemplate,
 	type VmStructTemplate,
@@ -41,9 +42,6 @@ function execCallableOpcode(
 	} = runtime
 	const {
 		natives,
-		programs,
-		makeLocals,
-		pushFrame,
 	} = environment
 	switch (instr.op) {
 		case Opcode.Call: {
@@ -53,60 +51,28 @@ function execCallableOpcode(
 			for (let i = 0; i < argc; i++) {
 				args.unshift(pop())
 			}
+			if (isBoundMethod(callee)) {
+				const methodArgs = [callee.receiver, ...args]
+				if (isNative(callee.method)) {
+					assertNativeArity(callee.method, methodArgs.length)
+					push(invokeNative(natives, callee.method, methodArgs))
+					return true
+				}
+				return callClosure(callee.method, methodArgs, environment)
+			}
 			if (isNative(callee)) {
 				assertNativeArity(callee, argc)
 				push(invokeNative(natives, callee, args))
 				return true
 			}
-			if (
-				typeof callee === 'object'
-				&& callee !== null
-				&& 'kind' in callee
-				&& callee.kind === 'struct'
-			) {
-				const structTemplate = callee as VmStructTemplate
-				if (argc !== structTemplate.fields.length) {
-					throw new Error(`call ${structTemplate.name}: ожидалось ${structTemplate.fields.length} аргументов, получено ${argc}`)
-				}
-				const properties: Record<string, Value> = {}
-				for (let i = 0; i < structTemplate.fields.length; i++) {
-					properties[structTemplate.fields[i]] = args[i] ?? null
-				}
-				push({
-					kind: 'object',
-					typeName: structTemplate.name,
-					properties,
-				})
+			if (isStructTemplate(callee)) {
+				push(instantiateStruct(callee, args))
 				return true
 			}
-			if (
-				typeof callee !== 'object'
-				|| callee === null
-				|| !('kind' in callee)
-				|| callee.kind !== 'closure'
-			) {
+			if (!isClosure(callee)) {
 				throw new Error('call: ожидалось замыкание')
 			}
-			const closure = callee as VmClosure
-			const {template} = closure
-			if (argc !== template.arity) {
-				throw new Error(`call: ожидалось ${template.arity} аргументов, получено ${argc}`)
-			}
-			const program = programs[template.programIndex]
-			if (program === undefined) {
-				throw new Error(`call: нет программы #${template.programIndex}`)
-			}
-			const locals = makeLocals(program.localsCount)
-			for (let i = 0; i < argc; i++) {
-				locals[i].value = args[i]
-			}
-			pushFrame({
-				program,
-				ip: 0,
-				locals,
-				closure,
-			})
-			return true
+			return callClosure(callee, args, environment)
 		}
 		case Opcode.Closure: {
 			const closureInstruction = instr as ClosureInstruction
@@ -153,6 +119,75 @@ function execCallableOpcode(
 		default:
 			return false
 	}
+}
+
+function callClosure(
+	closure: VmClosure,
+	args: Value[],
+	environment: CallableEnvironment,
+): boolean {
+	const {
+		programs,
+		makeLocals,
+		pushFrame,
+	} = environment
+	const {template} = closure
+	if (args.length !== template.arity) {
+		throw new Error(`call: ожидалось ${template.arity} аргументов, получено ${args.length}`)
+	}
+	const program = programs[template.programIndex]
+	if (program === undefined) {
+		throw new Error(`call: нет программы #${template.programIndex}`)
+	}
+	const locals = makeLocals(program.localsCount)
+	for (let i = 0; i < args.length; i++) {
+		locals[i].value = args[i]
+	}
+	pushFrame({
+		program,
+		ip: 0,
+		locals,
+		closure,
+	})
+	return true
+}
+
+function instantiateStruct(structTemplate: VmStructTemplate, args: Value[]): Value {
+	if (args.length !== structTemplate.fields.length) {
+		throw new Error(`call ${structTemplate.name}: ожидалось ${structTemplate.fields.length} аргументов, получено ${args.length}`)
+	}
+	const properties: Record<string, Value> = {}
+	for (let i = 0; i < structTemplate.fields.length; i++) {
+		properties[structTemplate.fields[i]] = args[i] ?? null
+	}
+
+	return {
+		kind: 'object',
+		typeName: structTemplate.name,
+		structTemplate,
+		properties,
+	}
+}
+
+function isBoundMethod(value: Value): value is VmBoundMethod {
+	return typeof value === 'object'
+		&& value !== null
+		&& 'kind' in value
+		&& value.kind === 'bound_method'
+}
+
+function isClosure(value: Value): value is VmClosure {
+	return typeof value === 'object'
+		&& value !== null
+		&& 'kind' in value
+		&& value.kind === 'closure'
+}
+
+function isStructTemplate(value: Value): value is VmStructTemplate {
+	return typeof value === 'object'
+		&& value !== null
+		&& 'kind' in value
+		&& value.kind === 'struct'
 }
 
 export {

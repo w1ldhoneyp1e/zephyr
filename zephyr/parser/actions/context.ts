@@ -18,6 +18,7 @@ import {
 	type IndexTargetNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
+	type MethodDeclarationNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type ProgramNode,
@@ -36,8 +37,10 @@ type SemanticValue =
 	| string
 	| string[]
 	| ExpressionNode[]
+	| StructMemberListValue
 	| ProgramNode
 	| ExpressionNode
+	| MethodDeclarationNode
 	| StatementNode
 	| StatementNode[]
 	| PendingAssignmentNode
@@ -46,6 +49,11 @@ interface PendingAssignmentNode {
 	type: 'PendingAssignment',
 	target: ExpressionNode,
 	value: ExpressionNode,
+}
+
+interface StructMemberListValue {
+	fields: string[],
+	methods: MethodDeclarationNode[],
 }
 
 type SemanticValueAction = (values: SemanticValue[]) => SemanticValue
@@ -169,6 +177,7 @@ export {
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
+	type MethodDeclarationNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,
@@ -177,6 +186,7 @@ export {
 	type SemanticValue,
 	type SemanticValueAction,
 	type StatementNode,
+	type StructMemberListValue,
 	type StructDeclarationNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,

@@ -30,6 +30,7 @@ export type {
 
 export type {
 	FunctionDeclarationNode,
+	MethodDeclarationNode,
 	ProgramNode,
 	StructDeclarationNode,
 	VariableDeclarationNode,

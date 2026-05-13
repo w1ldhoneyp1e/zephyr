@@ -3,12 +3,14 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type MethodDeclarationNode,
 	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {
 	type SemanticBinding,
 	type SemanticModel,
+	type StructSemanticBinding,
 	getBindingName,
 	isBindingMutable,
 } from '../semantics/context'
@@ -212,7 +214,7 @@ class CompilerState {
 		return binding
 	}
 
-	getFunctionParameterBindings(name: FunctionDeclarationNode): SemanticBinding[] {
+	getFunctionParameterBindings(name: FunctionDeclarationNode | MethodDeclarationNode): SemanticBinding[] {
 		const bindings = this.model.functionParameterBindings.get(name)
 		if (bindings === undefined) {
 			throw new Error('CompilerState: function parameter bindings not found')
@@ -243,6 +245,15 @@ class CompilerState {
 		const binding = this.model.assignmentTargetBindings.get(name)
 		if (binding === undefined) {
 			throw new Error('CompilerState: assignment target binding not found')
+		}
+
+		return binding
+	}
+
+	getMethodReceiverBinding(name: MethodDeclarationNode): StructSemanticBinding {
+		const binding = this.model.methodReceiverBindings.get(name)
+		if (binding === undefined) {
+			throw new Error('CompilerState: method receiver binding not found')
 		}
 
 		return binding

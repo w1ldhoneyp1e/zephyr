@@ -1,10 +1,9 @@
-import {type VmFunctionTemplate, Opcode} from '../../../vm/types'
+import {Opcode} from '../../../vm/types'
 import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
 	type AssignmentStatementNode,
 	type ForRangeStatementNode,
-	type FunctionDeclarationNode,
 	type StatementNode,
 	type StructDeclarationNode,
 	type VmStructTemplate,
@@ -14,7 +13,7 @@ import {emitAssignment} from './assignmentEmitter'
 import {emitBlock} from './blockEmitter'
 import {emitExpression} from './expressionEmitter'
 import {emitForRange} from './forRangeEmitter'
-import {emitFunctionDeclaration} from './functionEmitter'
+import {emitFunctionDeclaration, emitMethodDeclaration} from './functionEmitter'
 
 function emitStatement(
 	state: CompilerState,
@@ -95,7 +94,7 @@ function emitStatement(
 			emitFunctionDeclaration(state, generator, statement)
 			break
 		case 'StructDeclaration':
-			emitStructDeclaration(state, statement)
+			emitStructDeclaration(state, generator, statement)
 			break
 		default:
 			throw new Error(`Неподдерживаемый statement: ${(statement as {type: string}).type}`)
@@ -104,6 +103,7 @@ function emitStatement(
 
 function emitStructDeclaration(
 	state: CompilerState,
+	generator: BytecodeGenerator,
 	statement: StructDeclarationNode,
 ): void {
 	const binding = state.getDeclarationBinding(statement)
@@ -112,10 +112,14 @@ function emitStructDeclaration(
 		kind: 'struct',
 		name: statement.name,
 		fields: statement.fields,
+		methods: {},
 	}
 	const constIdx = state.addConstant(template)
 	state.emitNumArg(Opcode.Const, constIdx)
 	state.emitNumArg(Opcode.SetLocal, slot)
+	for (const method of statement.methods) {
+		emitMethodDeclaration(state, generator, method)
+	}
 }
 
 export {

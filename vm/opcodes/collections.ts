@@ -1,4 +1,4 @@
-import {getProperty} from '../properties'
+import {getProperty, setProperty} from '../properties'
 import {type VmArray, Opcode} from '../types'
 import {
 	type Instruction,
@@ -54,6 +54,16 @@ function execCollectionOpcode(
 				throw new Error('get_prop: ожидалось строковое имя свойства')
 			}
 			push(getProperty(pop(), propertyNameRaw))
+			return true
+		}
+		case Opcode.SetProp: {
+			const propertyNameRaw = constants[instr.arg!]
+			if (typeof propertyNameRaw !== 'string') {
+				throw new Error('set_prop: ожидалось строковое имя свойства')
+			}
+			const target = pop()
+			const value = pop()
+			setProperty(target, propertyNameRaw, value)
 			return true
 		}
 		default:

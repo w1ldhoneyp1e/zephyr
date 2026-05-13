@@ -16,6 +16,7 @@ interface VmStructTemplate {
 	kind: 'struct',
 	name: string,
 	fields: string[],
+	methods: Record<string, VmMethodValue>,
 }
 
 interface VmClosure {
@@ -31,13 +32,32 @@ interface VmNative {
 	minArity: number,
 }
 
+type VmMethodValue = VmClosure | VmNative
+
 interface VmObject {
 	kind: 'object',
 	typeName: string | null,
+	structTemplate: VmStructTemplate | null,
 	properties: Record<string, Value>,
 }
 
-type Value = null | number | boolean | string | VmArray | VmClosure | VmNative | VmObject | VmStructTemplate
+interface VmBoundMethod {
+	kind: 'bound_method',
+	receiver: VmObject,
+	method: VmMethodValue,
+}
+
+type Value =
+	| null
+	| number
+	| boolean
+	| string
+	| VmArray
+	| VmClosure
+	| VmNative
+	| VmObject
+	| VmStructTemplate
+	| VmBoundMethod
 
 type ConstantPoolItem = Value | VmFunctionTemplate | VmStructTemplate
 
@@ -93,6 +113,7 @@ enum Opcode {
 	GetEl = 'get_el',
 	SetEl = 'set_el',
 	GetProp = 'get_prop',
+	SetProp = 'set_prop',
 
 	Call = 'call',
 	Closure = 'closure',
@@ -111,7 +132,7 @@ type NumArgOpcode =
 	| Opcode.GetLocal | Opcode.SetLocal | Opcode.IncLocal | Opcode.DecLocal
 	| Opcode.GetUpvalue | Opcode.SetUpvalue
 	| Opcode.DefGlobal | Opcode.SetGlobal | Opcode.GetGlobal
-	| Opcode.CreateArr | Opcode.GetProp
+	| Opcode.CreateArr | Opcode.GetProp | Opcode.SetProp
 	| Opcode.Call
 
 interface NoArgInstruction {
@@ -136,9 +157,11 @@ type Instruction = NoArgInstruction | NumArgInstruction | ClosureInstruction
 
 export {
 	LocalCell,
+	VmBoundMethod,
 	VmFunctionTemplate,
 	VmStructTemplate,
 	VmClosure,
+	VmMethodValue,
 	VmNative,
 	VmObject,
 	VmArray,

@@ -20,14 +20,23 @@ interface FunctionDeclarationNode {
 	body: BlockStatementNode,
 }
 
+interface MethodDeclarationNode {
+	type: 'MethodDeclaration',
+	name: string,
+	params: string[],
+	body: BlockStatementNode,
+}
+
 interface StructDeclarationNode {
 	type: 'StructDeclaration',
 	name: string,
 	fields: string[],
+	methods: MethodDeclarationNode[],
 }
 
 export {
 	type FunctionDeclarationNode,
+	type MethodDeclarationNode,
 	type ProgramNode,
 	type StructDeclarationNode,
 	type VariableDeclarationNode,

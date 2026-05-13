@@ -4,6 +4,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type MethodDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
 	type StructDeclarationNode,
@@ -11,6 +12,7 @@ import {
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
 import {
+	type CallableDeclarationNode,
 	type OwnedSemanticBinding,
 	type SemanticBinding,
 	type SemanticFunctionOwner,
@@ -25,7 +27,7 @@ class Resolver {
 	private functionOwners: SemanticFunctionOwner[] = []
 	private loopOwners: SemanticLoopOwner[] = []
 	private functionLoopSnapshots: SemanticLoopOwner[][] = []
-	private captures = new Map<FunctionDeclarationNode, Set<SemanticBinding>>()
+	private captures = new Map<CallableDeclarationNode, Set<SemanticBinding>>()
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
@@ -35,7 +37,8 @@ class Resolver {
 		forRangeBindings: new WeakMap(),
 		returnOwners: new WeakMap(),
 		bindingFunctionOwners: new WeakMap(),
-		functionCaptures: new WeakMap(),
+		callableCaptures: new WeakMap(),
+		methodReceiverBindings: new WeakMap(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -56,7 +59,8 @@ class Resolver {
 			forRangeBindings: new WeakMap(),
 			returnOwners: new WeakMap(),
 			bindingFunctionOwners: new WeakMap(),
-			functionCaptures: new WeakMap(),
+			callableCaptures: new WeakMap(),
+			methodReceiverBindings: new WeakMap(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -64,7 +68,7 @@ class Resolver {
 		}
 		this.leaveScope()
 		for (const [fn, captures] of this.captures.entries()) {
-			this.model.functionCaptures.set(fn, [...captures])
+			this.model.callableCaptures.set(fn, [...captures])
 		}
 
 		return {
@@ -86,7 +90,7 @@ class Resolver {
 				this.resolveFunctionDeclaration(statement)
 				return
 			case 'StructDeclaration':
-				this.declare(statement.name, this.createStructBinding(statement))
+				this.resolveStructDeclaration(statement)
 				return
 			case 'IfStatement':
 				this.resolveExpression(statement.condition)
@@ -137,21 +141,58 @@ class Resolver {
 	private resolveFunctionDeclaration(statement: FunctionDeclarationNode): void {
 		const binding = this.createFunctionBinding(statement)
 		this.declare(statement.name, binding)
+		this.resolveCallableDeclaration(statement)
+	}
+
+	private resolveStructDeclaration(statement: StructDeclarationNode): void {
+		const binding = this.createStructBinding(statement)
+		this.declare(statement.name, binding)
+		for (const method of statement.methods) {
+			this.resolveMethodDeclaration(method, binding)
+		}
+	}
+
+	private resolveMethodDeclaration(
+		statement: MethodDeclarationNode,
+		receiverBinding: SemanticBinding,
+	): void {
+		if (receiverBinding.kind !== 'struct') {
+			throw new Error(`Метод ${statement.name} должен принадлежать структуре`)
+		}
+		this.model.methodReceiverBindings.set(statement, receiverBinding)
+		this.resolveCallableDeclaration(statement, receiverBinding.declaration.name)
+	}
+
+	private resolveCallableDeclaration(
+		statement: CallableDeclarationNode,
+		selfName?: string,
+	): void {
 		this.captures.set(statement, new Set())
 		this.enterFunction(statement)
 		this.enterScope()
-		const parameterBindings = statement.params.map((param, index) => {
+		const parameterBindings: SemanticBinding[] = []
+		if (selfName !== undefined) {
+			const selfBinding: SemanticBinding = {
+				kind: 'parameter',
+				callableDeclaration: statement,
+				index: 0,
+				name: 'self',
+			}
+			this.recordBindingOwner(selfBinding)
+			this.declare('self', selfBinding)
+			parameterBindings.push(selfBinding)
+		}
+		for (const [index, param] of statement.params.entries()) {
 			const parameterBinding: SemanticBinding = {
 				kind: 'parameter',
-				functionDeclaration: statement,
-				index,
+				callableDeclaration: statement,
+				index: index + parameterBindings.length,
 				name: param,
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param, parameterBinding)
-
-			return parameterBinding
-		})
+			parameterBindings.push(parameterBinding)
+		}
 		this.model.functionParameterBindings.set(statement, parameterBindings)
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
@@ -328,13 +369,13 @@ class Resolver {
 		currentScope.bindings.set(name, binding)
 	}
 
-	private enterFunction(statement: FunctionDeclarationNode): void {
+	private enterFunction(statement: CallableDeclarationNode): void {
 		this.functionLoopSnapshots.push([...this.loopOwners])
 		this.loopOwners = []
 		this.functionOwners.push(statement)
 	}
 
-	private leaveFunction(statement: FunctionDeclarationNode): void {
+	private leaveFunction(statement: CallableDeclarationNode): void {
 		const owner = this.functionOwners.pop()
 		if (owner !== statement) {
 			throw new Error('Resolver: неожиданный выход из функции')
@@ -346,7 +387,7 @@ class Resolver {
 		this.loopOwners = loopSnapshot
 	}
 
-	private getCurrentFunction(): FunctionDeclarationNode | null {
+	private getCurrentFunction(): CallableDeclarationNode | null {
 		const owner = this.getCurrentFunctionOwner()
 
 		return owner.type === 'Program'
