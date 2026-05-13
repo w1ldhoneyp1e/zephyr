@@ -101,6 +101,19 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 			state.emitNoArg(Opcode.GetEl)
 			break
 		}
+		case 'OptionalIndexExpression': {
+			emitExpression(state, expression.object)
+			state.emitNoArg(Opcode.Dup)
+			state.emitNoArg(Opcode.Nil)
+			state.emitNoArg(Opcode.Eq)
+			const nonNullJump = state.emitJump(Opcode.JumpIfFalse)
+			const endJump = state.emitJump(Opcode.Jump)
+			state.patchJump(nonNullJump, state.getInstructions().length)
+			emitExpression(state, expression.index)
+			state.emitNoArg(Opcode.GetEl)
+			state.patchJump(endJump, state.getInstructions().length)
+			break
+		}
 		case 'CallExpression': {
 			const argc = expression.args.length
 			for (const arg of expression.args) {

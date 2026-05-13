@@ -37,6 +37,12 @@ interface IndexExpressionNode {
 	index: ExpressionNode,
 }
 
+interface OptionalIndexExpressionNode {
+	type: 'OptionalIndexExpression',
+	object: ExpressionNode,
+	index: ExpressionNode,
+}
+
 interface IndexTargetNode {
 	type: 'IndexTarget',
 	object: ExpressionNode,
@@ -58,6 +64,7 @@ type ExpressionNode =
 	| BinaryExpressionNode
 	| ArrayExpressionNode
 	| IndexExpressionNode
+	| OptionalIndexExpressionNode
 	| CallExpressionNode
 
 export {
@@ -71,5 +78,6 @@ export {
 	type IndexExpressionNode,
 	type IndexTargetNode,
 	type LiteralExpressionNode,
+	type OptionalIndexExpressionNode,
 	type UnaryExpressionNode,
 }

@@ -17,6 +17,7 @@ import {
 	type IndexExpressionNode,
 	type IndexTargetNode,
 	type LiteralExpressionNode,
+	type OptionalIndexExpressionNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
@@ -137,6 +138,7 @@ function isExpressionNodeType(type: string): boolean {
 		|| type === 'BinaryExpression'
 		|| type === 'ArrayExpression'
 		|| type === 'IndexExpression'
+		|| type === 'OptionalIndexExpression'
 		|| type === 'CallExpression'
 }
 
@@ -161,6 +163,7 @@ export {
 	type IfStatementNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
+	type OptionalIndexExpressionNode,
 	type PendingAssignmentNode,
 	type ProgramNode,
 	type ReturnStatementNode,

@@ -109,6 +109,7 @@ class Validator {
 				}
 				return
 			case 'IndexExpression':
+			case 'OptionalIndexExpression':
 				this.validateExpression(expression.object, model)
 				this.validateExpression(expression.index, model)
 				return

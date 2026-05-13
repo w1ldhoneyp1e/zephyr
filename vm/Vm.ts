@@ -135,8 +135,8 @@ class Vm {
 				popFrame: () => this.frames.pop(),
 			},
 		)
-		if (controlResult !== null) {
-			return controlResult
+		if (controlResult.handled) {
+			return controlResult.value
 		}
 
 		if (execScopeOpcode(instr, frame, runtime, this.globals)) {

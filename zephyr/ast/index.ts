@@ -9,6 +9,7 @@ export type {
 	IndexExpressionNode,
 	IndexTargetNode,
 	LiteralExpressionNode,
+	OptionalIndexExpressionNode,
 	UnaryExpressionNode,
 } from './expressions'
 

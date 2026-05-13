@@ -6,6 +6,7 @@ import {
 	type IdentifierExpressionNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
+	type OptionalIndexExpressionNode,
 	type PendingAssignmentNode,
 	type SemanticValueAction,
 	createBinary,
@@ -86,6 +87,12 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				object: ensureExpression(values[0], 'index object'),
 				index: ensureExpression(values[2], 'index expression'),
 			} satisfies IndexExpressionNode)
+		case 'PostfixExpression -> PostfixExpression QuestionLeftBracket Expression RightBracket':
+			return values => ({
+				type: 'OptionalIndexExpression',
+				object: ensureExpression(values[0], 'optional index object'),
+				index: ensureExpression(values[2], 'optional index expression'),
+			} satisfies OptionalIndexExpressionNode)
 		case 'ArgumentListOpt -> ε':
 			return () => []
 		case 'ArgumentList -> ArgumentList Comma Expression':

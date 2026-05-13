@@ -11,12 +11,21 @@ interface ControlFlowEnvironment {
 	popFrame: () => void,
 }
 
+type ControlFlowResult =
+	| {
+		handled: false,
+	}
+	| {
+		handled: true,
+		value: Value | undefined,
+	}
+
 function execControlFlowOpcode(
 	instr: Instruction,
 	frame: CallFrame,
 	runtime: VmRuntimeContext,
 	environment: ControlFlowEnvironment,
-): Value | undefined | null {
+): ControlFlowResult {
 	const {push, pop} = runtime
 	const {frameCount, popFrame} = environment
 	switch (instr.op) {
@@ -26,23 +35,37 @@ function execControlFlowOpcode(
 				: null
 			popFrame()
 			if (frameCount === 1) {
-				return returnValue
+				return {
+					handled: true,
+					value: returnValue,
+				}
 			}
 			push(returnValue)
-			return undefined
+			return {
+				handled: true,
+				value: undefined,
+			}
 		}
 		case Opcode.Jump:
 			frame.ip = instr.arg!
-			return undefined
+			return {
+				handled: true,
+				value: undefined,
+			}
 		case Opcode.JumpIfFalse: {
 			const condition = pop()
 			if (condition !== true) {
 				frame.ip = instr.arg!
 			}
-			return undefined
+			return {
+				handled: true,
+				value: undefined,
+			}
 		}
 		default:
-			return null
+			return {
+				handled: false,
+			}
 	}
 }
 

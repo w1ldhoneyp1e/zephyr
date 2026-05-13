@@ -190,6 +190,7 @@ class Resolver {
 				}
 				return
 			case 'IndexExpression':
+			case 'OptionalIndexExpression':
 				this.resolveExpression(expression.object)
 				this.resolveExpression(expression.index)
 				return
