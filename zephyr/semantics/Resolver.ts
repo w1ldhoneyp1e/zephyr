@@ -1,4 +1,5 @@
 import {
+	type ClassDeclarationNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
@@ -7,7 +8,6 @@ import {
 	type MethodDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
-	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
@@ -89,8 +89,8 @@ class Resolver {
 			case 'FunctionDeclaration':
 				this.resolveFunctionDeclaration(statement)
 				return
-			case 'StructDeclaration':
-				this.resolveStructDeclaration(statement)
+			case 'ClassDeclaration':
+				this.resolveClassDeclaration(statement)
 				return
 			case 'IfStatement':
 				this.resolveExpression(statement.condition)
@@ -144,8 +144,8 @@ class Resolver {
 		this.resolveCallableDeclaration(statement)
 	}
 
-	private resolveStructDeclaration(statement: StructDeclarationNode): void {
-		const binding = this.createStructBinding(statement)
+	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
+		const binding = this.createClassBinding(statement)
 		this.declare(statement.name, binding)
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)
@@ -156,8 +156,8 @@ class Resolver {
 		statement: MethodDeclarationNode,
 		receiverBinding: SemanticBinding,
 	): void {
-		if (receiverBinding.kind !== 'struct') {
-			throw new Error(`Метод ${statement.name} должен принадлежать структуре`)
+		if (receiverBinding.kind !== 'class') {
+			throw new Error(`Метод ${statement.name} должен принадлежать классу`)
 		}
 		this.model.methodReceiverBindings.set(statement, receiverBinding)
 		this.resolveCallableDeclaration(statement, receiverBinding.declaration.name)
@@ -296,9 +296,9 @@ class Resolver {
 		return binding
 	}
 
-	private createStructBinding(statement: StructDeclarationNode): SemanticBinding {
+	private createClassBinding(statement: ClassDeclarationNode): SemanticBinding {
 		const binding: SemanticBinding = {
-			kind: 'struct',
+			kind: 'class',
 			declaration: statement,
 		}
 		this.model.declarationBindings.set(statement, binding)

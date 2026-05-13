@@ -6,7 +6,7 @@ StatementList -> StatementList Statement | ε
 
 Statement -> VariableDeclaration
 Statement -> FunctionDeclaration
-Statement -> StructDeclaration
+Statement -> ClassDeclaration
 Statement -> IfStatement
 Statement -> WhileStatement
 Statement -> ForRangeStatement

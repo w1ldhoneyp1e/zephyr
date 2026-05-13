@@ -29,9 +29,9 @@ export type {
 } from './statements'
 
 export type {
+	ClassDeclarationNode,
 	FunctionDeclarationNode,
 	MethodDeclarationNode,
 	ProgramNode,
-	StructDeclarationNode,
 	VariableDeclarationNode,
 } from './declarations'

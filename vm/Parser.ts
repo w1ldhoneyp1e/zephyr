@@ -92,11 +92,11 @@ function parseConstantLine(line: string): ConstantPoolItem {
 			upvalueCount: parseInt(parts[2], 10),
 		} satisfies VmFunctionTemplate
 	}
-	if (line.startsWith('struct ')) {
-		const parts = line.slice(7).trim()
+	if (line.startsWith('class ')) {
+		const parts = line.slice(6).trim()
 			.split(/\s+/)
 		if (parts.length < 2) {
-			throw new Error(`Неверная константа struct: ${line}`)
+			throw new Error(`Неверная константа class: ${line}`)
 		}
 		const [name, ...fields] = parts
 

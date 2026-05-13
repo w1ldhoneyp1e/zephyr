@@ -15,7 +15,7 @@ function formatValue(v: Value): string {
 		return `${typePrefix}{${entries}}`
 	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'struct') {
-		return `[struct ${v.name}]`
+		return `[class ${v.name}]`
 	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'bound_method') {
 		return '[bound method]'

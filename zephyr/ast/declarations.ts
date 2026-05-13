@@ -27,17 +27,17 @@ interface MethodDeclarationNode {
 	body: BlockStatementNode,
 }
 
-interface StructDeclarationNode {
-	type: 'StructDeclaration',
+interface ClassDeclarationNode {
+	type: 'ClassDeclaration',
 	name: string,
 	fields: string[],
 	methods: MethodDeclarationNode[],
 }
 
 export {
+	type ClassDeclarationNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
 	type ProgramNode,
-	type StructDeclarationNode,
 	type VariableDeclarationNode,
 }

@@ -1,16 +1,16 @@
 import {
+	type ClassDeclarationNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
 	type MethodDeclarationNode,
-	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {
+	type ClassSemanticBinding,
 	type SemanticBinding,
 	type SemanticModel,
-	type StructSemanticBinding,
 	getBindingName,
 	isBindingMutable,
 } from '../semantics/context'
@@ -204,7 +204,7 @@ class CompilerState {
 	}
 
 	getDeclarationBinding(
-		name: VariableDeclarationNode | FunctionDeclarationNode | StructDeclarationNode,
+		name: VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
 	): SemanticBinding {
 		const binding = this.model.declarationBindings.get(name)
 		if (binding === undefined) {
@@ -250,7 +250,7 @@ class CompilerState {
 		return binding
 	}
 
-	getMethodReceiverBinding(name: MethodDeclarationNode): StructSemanticBinding {
+	getMethodReceiverBinding(name: MethodDeclarationNode): ClassSemanticBinding {
 		const binding = this.model.methodReceiverBindings.get(name)
 		if (binding === undefined) {
 			throw new Error('CompilerState: method receiver binding not found')

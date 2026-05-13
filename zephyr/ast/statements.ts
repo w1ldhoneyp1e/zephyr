@@ -1,6 +1,6 @@
 import {
+	type ClassDeclarationNode,
 	type FunctionDeclarationNode,
-	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from './declarations'
 import {type AssignmentTargetNode, type ExpressionNode} from './expressions'
@@ -59,7 +59,7 @@ type StatementNode =
 	| BlockStatementNode
 	| VariableDeclarationNode
 	| FunctionDeclarationNode
-	| StructDeclarationNode
+	| ClassDeclarationNode
 	| IfStatementNode
 	| WhileStatementNode
 	| ForRangeStatementNode

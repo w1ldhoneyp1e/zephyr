@@ -1,4 +1,5 @@
 import {
+	type ClassDeclarationNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -7,7 +8,6 @@ import {
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
-	type StructDeclarationNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 } from '../ast'
@@ -26,9 +26,9 @@ interface FunctionSemanticBinding {
 	declaration: FunctionDeclarationNode,
 }
 
-interface StructSemanticBinding {
-	kind: 'struct',
-	declaration: StructDeclarationNode,
+interface ClassSemanticBinding {
+	kind: 'class',
+	declaration: ClassDeclarationNode,
 }
 
 interface ParameterSemanticBinding {
@@ -52,7 +52,7 @@ interface BuiltinSemanticBinding {
 type SemanticBinding =
 	| VariableSemanticBinding
 	| FunctionSemanticBinding
-	| StructSemanticBinding
+	| ClassSemanticBinding
 	| ParameterSemanticBinding
 	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
@@ -67,7 +67,7 @@ interface SemanticModel {
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
 	statementLoopOwners: WeakMap<StatementNode, SemanticLoopOwner | null>,
 	declarationBindings: WeakMap<
-		VariableDeclarationNode | FunctionDeclarationNode | StructDeclarationNode,
+		VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
 		SemanticBinding
 	>,
 	functionParameterBindings: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
@@ -75,14 +75,14 @@ interface SemanticModel {
 	returnOwners: WeakMap<ReturnStatementNode, CallableDeclarationNode | null>,
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
-	methodReceiverBindings: WeakMap<MethodDeclarationNode, StructSemanticBinding>,
+	methodReceiverBindings: WeakMap<MethodDeclarationNode, ClassSemanticBinding>,
 }
 
 function getBindingName(binding: SemanticBinding): string {
 	switch (binding.kind) {
 		case 'variable':
 		case 'function':
-		case 'struct':
+		case 'class':
 			return binding.declaration.name
 		case 'parameter':
 		case 'iterator':
@@ -99,7 +99,7 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 		case 'iterator':
 			return true
 		case 'function':
-		case 'struct':
+		case 'class':
 		case 'builtin':
 			return false
 	}
@@ -108,6 +108,7 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 export {
 	type BuiltinSemanticBinding,
 	type CallableDeclarationNode,
+	type ClassSemanticBinding,
 	type FunctionSemanticBinding,
 	getBindingName,
 	isBindingMutable,
@@ -119,6 +120,5 @@ export {
 	type SemanticLoopOwner,
 	type SemanticModel,
 	type SemanticScope,
-	type StructSemanticBinding,
 	type VariableSemanticBinding,
 }

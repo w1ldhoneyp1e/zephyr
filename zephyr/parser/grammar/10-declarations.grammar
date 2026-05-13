@@ -7,7 +7,7 @@ MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
 ParameterListOpt -> ParameterList | ε
 ParameterList -> ParameterList ',' Identifier | Identifier
 
-StructDeclaration -> struct Identifier '{' StructMemberListOpt '}'
+ClassDeclaration -> class Identifier '{' StructMemberListOpt '}'
 StructMemberListOpt -> StructMemberList | ε
 StructMemberList -> StructMemberList StructMember | StructMember
 StructMember -> Identifier StructFieldSeparatorOpt | MethodDeclaration

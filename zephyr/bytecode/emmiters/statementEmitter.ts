@@ -3,9 +3,9 @@ import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
 	type AssignmentStatementNode,
+	type ClassDeclarationNode,
 	type ForRangeStatementNode,
 	type StatementNode,
-	type StructDeclarationNode,
 	type VmStructTemplate,
 } from '../context'
 import {type FunctionCompiler} from '../FunctionCompiler'
@@ -93,18 +93,18 @@ function emitStatement(
 		case 'FunctionDeclaration':
 			emitFunctionDeclaration(state, generator, statement)
 			break
-		case 'StructDeclaration':
-			emitStructDeclaration(state, generator, statement)
+		case 'ClassDeclaration':
+			emitClassDeclaration(state, generator, statement)
 			break
 		default:
 			throw new Error(`Неподдерживаемый statement: ${(statement as {type: string}).type}`)
 	}
 }
 
-function emitStructDeclaration(
+function emitClassDeclaration(
 	state: CompilerState,
 	generator: BytecodeGenerator,
-	statement: StructDeclarationNode,
+	statement: ClassDeclarationNode,
 ): void {
 	const binding = state.getDeclarationBinding(statement)
 	const slot = state.declareBinding(binding)

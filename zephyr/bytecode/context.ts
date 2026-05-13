@@ -13,6 +13,7 @@ import {
 import {
 	type AssignmentStatementNode,
 	type BreakStatementNode,
+	type ClassDeclarationNode,
 	type ContinueStatementNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
@@ -20,7 +21,6 @@ import {
 	type MethodDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
-	type StructDeclarationNode,
 } from '../ast'
 
 interface ScopeInfo {
@@ -53,6 +53,7 @@ interface UpvalueDescriptor {
 export {
 	type AssignmentStatementNode,
 	type BreakStatementNode,
+	type ClassDeclarationNode,
 	type ContinueStatementNode,
 	type ClosureInstruction,
 	type ConstantPoolItem,
@@ -69,7 +70,6 @@ export {
 	type ResolvedExpressionBinding,
 	type ScopeInfo,
 	type StatementNode,
-	type StructDeclarationNode,
 	type UpvalueDescriptor,
 	type Value,
 	type VmFunctionTemplate,

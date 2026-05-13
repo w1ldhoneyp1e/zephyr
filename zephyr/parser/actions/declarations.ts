@@ -1,11 +1,11 @@
 import {type Production} from '../grammar'
 import {
 	type BlockStatementNode,
+	type ClassDeclarationNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
 	type SemanticValueAction,
-	type StructDeclarationNode,
 	type StructMemberListValue,
 	createVariableDeclaration,
 	ensureExpression,
@@ -47,13 +47,13 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ParameterList -> Identifier':
 			return values => [tokenLexeme(values[0])]
 
-		case 'StructDeclaration -> Struct Identifier LeftBrace StructMemberListOpt RightBrace':
+		case 'ClassDeclaration -> Class Identifier LeftBrace StructMemberListOpt RightBrace':
 			return values => ({
-				type: 'StructDeclaration',
+				type: 'ClassDeclaration',
 				name: tokenLexeme(values[1]),
 				fields: (values[3] as StructMemberListValue).fields,
 				methods: (values[3] as StructMemberListValue).methods,
-			} satisfies StructDeclarationNode)
+			} satisfies ClassDeclarationNode)
 		case 'StructMemberListOpt -> StructMemberList':
 			return values => values[0]
 		case 'StructMemberListOpt -> ε':
