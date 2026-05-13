@@ -80,6 +80,7 @@ enum Opcode {
 	CreateArr = 'create_arr',
 	GetEl = 'get_el',
 	SetEl = 'set_el',
+	GetProp = 'get_prop',
 
 	Call = 'call',
 	Closure = 'closure',
@@ -98,7 +99,7 @@ type NumArgOpcode =
 	| Opcode.GetLocal | Opcode.SetLocal | Opcode.IncLocal | Opcode.DecLocal
 	| Opcode.GetUpvalue | Opcode.SetUpvalue
 	| Opcode.DefGlobal | Opcode.SetGlobal | Opcode.GetGlobal
-	| Opcode.CreateArr
+	| Opcode.CreateArr | Opcode.GetProp
 	| Opcode.Call
 
 interface NoArgInstruction {

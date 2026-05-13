@@ -191,8 +191,12 @@ class Resolver {
 				return
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
+			case 'MemberExpression':
+			case 'OptionalMemberExpression':
 				this.resolveExpression(expression.object)
-				this.resolveExpression(expression.index)
+				if ('index' in expression) {
+					this.resolveExpression(expression.index)
+				}
 				return
 			case 'CallExpression':
 				this.resolveExpression(expression.callee)

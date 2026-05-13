@@ -17,7 +17,9 @@ import {
 	type IndexExpressionNode,
 	type IndexTargetNode,
 	type LiteralExpressionNode,
+	type MemberExpressionNode,
 	type OptionalIndexExpressionNode,
+	type OptionalMemberExpressionNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
@@ -139,6 +141,8 @@ function isExpressionNodeType(type: string): boolean {
 		|| type === 'ArrayExpression'
 		|| type === 'IndexExpression'
 		|| type === 'OptionalIndexExpression'
+		|| type === 'MemberExpression'
+		|| type === 'OptionalMemberExpression'
 		|| type === 'CallExpression'
 }
 
@@ -163,7 +167,9 @@ export {
 	type IfStatementNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
+	type MemberExpressionNode,
 	type OptionalIndexExpressionNode,
+	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,
 	type ProgramNode,
 	type ReturnStatementNode,

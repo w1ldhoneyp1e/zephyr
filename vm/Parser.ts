@@ -48,6 +48,7 @@ const NUM_ARG_OPCODES = new Map<string, NumArgOpcode>([
 	['set_global', Opcode.SetGlobal],
 	['get_global', Opcode.GetGlobal],
 	['create_arr', Opcode.CreateArr],
+	['get_prop', Opcode.GetProp],
 	['call', Opcode.Call],
 ])
 

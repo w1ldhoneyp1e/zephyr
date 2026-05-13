@@ -114,6 +114,25 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 			state.patchJump(endJump, state.getInstructions().length)
 			break
 		}
+		case 'MemberExpression': {
+			emitExpression(state, expression.object)
+			const propertyNameIndex = state.addConstant(expression.property)
+			state.emitNumArg(Opcode.GetProp, propertyNameIndex)
+			break
+		}
+		case 'OptionalMemberExpression': {
+			emitExpression(state, expression.object)
+			state.emitNoArg(Opcode.Dup)
+			state.emitNoArg(Opcode.Nil)
+			state.emitNoArg(Opcode.Eq)
+			const nonNullJump = state.emitJump(Opcode.JumpIfFalse)
+			const endJump = state.emitJump(Opcode.Jump)
+			state.patchJump(nonNullJump, state.getInstructions().length)
+			const propertyNameIndex = state.addConstant(expression.property)
+			state.emitNumArg(Opcode.GetProp, propertyNameIndex)
+			state.patchJump(endJump, state.getInstructions().length)
+			break
+		}
 		case 'CallExpression': {
 			const argc = expression.args.length
 			for (const arg of expression.args) {

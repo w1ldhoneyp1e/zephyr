@@ -9,7 +9,11 @@ function execCollectionOpcode(
 	instr: Instruction,
 	runtime: VmRuntimeContext,
 ): boolean {
-	const {push, pop} = runtime
+	const {
+		constants,
+		push,
+		pop,
+	} = runtime
 	switch (instr.op) {
 		case Opcode.CreateArr: {
 			const count = instr.arg!
@@ -42,6 +46,20 @@ function execCollectionOpcode(
 			}
 			(array as VmArray)[index as number] = value
 			return true
+		}
+		case Opcode.GetProp: {
+			const propertyNameRaw = constants[instr.arg!]
+			if (typeof propertyNameRaw !== 'string') {
+				throw new Error('get_prop: ожидалось строковое имя свойства')
+			}
+			const target = pop()
+			if (propertyNameRaw === 'length') {
+				if (Array.isArray(target) || typeof target === 'string') {
+					push(target.length)
+					return true
+				}
+			}
+			throw new Error(`get_prop: неподдерживаемое свойство ${propertyNameRaw}`)
 		}
 		default:
 			return false

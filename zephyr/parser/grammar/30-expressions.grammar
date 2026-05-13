@@ -10,7 +10,7 @@ ComparisonExpression -> ComparisonExpression '<' TermExpression | ComparisonExpr
 TermExpression -> TermExpression '+' FactorExpression | TermExpression '-' FactorExpression | FactorExpression
 FactorExpression -> FactorExpression '*' UnaryExpression | FactorExpression '/' UnaryExpression | FactorExpression '%' UnaryExpression | UnaryExpression
 UnaryExpression -> '!' UnaryExpression | '-' UnaryExpression | PostfixExpression
-PostfixExpression -> PrimaryExpression | PostfixExpression '(' ArgumentListOpt ')' | PostfixExpression '[' Expression ']' | PostfixExpression '?[' Expression ']'
+PostfixExpression -> PrimaryExpression | PostfixExpression '(' ArgumentListOpt ')' | PostfixExpression '[' Expression ']' | PostfixExpression '?[' Expression ']' | PostfixExpression '.' Identifier | PostfixExpression '?.' Identifier
 ArgumentListOpt -> ArgumentList | ε
 ArgumentList -> ArgumentList ',' Expression | Expression
 

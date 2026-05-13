@@ -110,8 +110,12 @@ class Validator {
 				return
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
+			case 'MemberExpression':
+			case 'OptionalMemberExpression':
 				this.validateExpression(expression.object, model)
-				this.validateExpression(expression.index, model)
+				if ('index' in expression) {
+					this.validateExpression(expression.index, model)
+				}
 				return
 			case 'CallExpression':
 				this.validateExpression(expression.callee, model)
