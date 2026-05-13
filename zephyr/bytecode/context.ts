@@ -7,6 +7,7 @@ import {
 	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
+	type VmStructTemplate,
 	Opcode,
 } from '../../vm/types'
 import {
@@ -18,6 +19,7 @@ import {
 	type FunctionDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
+	type StructDeclarationNode,
 } from '../ast'
 
 interface ScopeInfo {
@@ -65,8 +67,10 @@ export {
 	type ResolvedExpressionBinding,
 	type ScopeInfo,
 	type StatementNode,
+	type StructDeclarationNode,
 	type UpvalueDescriptor,
 	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
+	type VmStructTemplate,
 }

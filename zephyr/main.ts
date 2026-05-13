@@ -103,6 +103,9 @@ function serializeConstant(value: ConstantPoolItem): string {
 
 		return `function ${fn.programIndex} ${fn.arity} ${fn.upvalueCount}`
 	}
+	if (typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'struct') {
+		return `struct ${value.name} ${value.fields.join(' ')}`
+	}
 
 	return `string ${JSON.stringify(value)}`
 }

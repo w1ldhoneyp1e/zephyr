@@ -6,6 +6,7 @@ import {
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type StructDeclarationNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 } from '../ast'
@@ -22,6 +23,11 @@ interface VariableSemanticBinding {
 interface FunctionSemanticBinding {
 	kind: 'function',
 	declaration: FunctionDeclarationNode,
+}
+
+interface StructSemanticBinding {
+	kind: 'struct',
+	declaration: StructDeclarationNode,
 }
 
 interface ParameterSemanticBinding {
@@ -45,6 +51,7 @@ interface BuiltinSemanticBinding {
 type SemanticBinding =
 	| VariableSemanticBinding
 	| FunctionSemanticBinding
+	| StructSemanticBinding
 	| ParameterSemanticBinding
 	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
@@ -57,7 +64,10 @@ interface SemanticModel {
 	identifierBindings: WeakMap<IdentifierExpressionNode, SemanticBinding>,
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
 	statementLoopOwners: WeakMap<StatementNode, SemanticLoopOwner | null>,
-	declarationBindings: WeakMap<VariableDeclarationNode | FunctionDeclarationNode, SemanticBinding>,
+	declarationBindings: WeakMap<
+		VariableDeclarationNode | FunctionDeclarationNode | StructDeclarationNode,
+		SemanticBinding
+	>,
 	functionParameterBindings: WeakMap<FunctionDeclarationNode, SemanticBinding[]>,
 	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
 	returnOwners: WeakMap<ReturnStatementNode, FunctionDeclarationNode | null>,
@@ -69,6 +79,7 @@ function getBindingName(binding: SemanticBinding): string {
 	switch (binding.kind) {
 		case 'variable':
 		case 'function':
+		case 'struct':
 			return binding.declaration.name
 		case 'parameter':
 		case 'iterator':
@@ -85,6 +96,7 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 		case 'iterator':
 			return true
 		case 'function':
+		case 'struct':
 		case 'builtin':
 			return false
 	}
@@ -103,5 +115,6 @@ export {
 	type SemanticLoopOwner,
 	type SemanticModel,
 	type SemanticScope,
+	type StructSemanticBinding,
 	type VariableSemanticBinding,
 }

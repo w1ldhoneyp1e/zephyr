@@ -5,3 +5,7 @@ VariableInitializerOpt -> '=' Expression | ε
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
 ParameterListOpt -> ParameterList | ε
 ParameterList -> ParameterList ',' Identifier | Identifier
+
+StructDeclaration -> struct Identifier '{' StructFieldListOpt '}'
+StructFieldListOpt -> StructFieldList | ε
+StructFieldList -> StructFieldList ',' Identifier | Identifier

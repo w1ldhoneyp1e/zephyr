@@ -12,6 +12,12 @@ interface VmFunctionTemplate {
 	upvalueCount: number,
 }
 
+interface VmStructTemplate {
+	kind: 'struct',
+	name: string,
+	fields: string[],
+}
+
 interface VmClosure {
 	kind: 'closure',
 	template: VmFunctionTemplate,
@@ -31,9 +37,9 @@ interface VmObject {
 	properties: Record<string, Value>,
 }
 
-type Value = null | number | boolean | string | VmArray | VmClosure | VmNative | VmObject
+type Value = null | number | boolean | string | VmArray | VmClosure | VmNative | VmObject | VmStructTemplate
 
-type ConstantPoolItem = Value | VmFunctionTemplate
+type ConstantPoolItem = Value | VmFunctionTemplate | VmStructTemplate
 
 interface VmProgram {
 	name: string,
@@ -131,6 +137,7 @@ type Instruction = NoArgInstruction | NumArgInstruction | ClosureInstruction
 export {
 	LocalCell,
 	VmFunctionTemplate,
+	VmStructTemplate,
 	VmClosure,
 	VmNative,
 	VmObject,

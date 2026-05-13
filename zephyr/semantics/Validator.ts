@@ -26,6 +26,8 @@ class Validator {
 					this.validateStatement(bodyStatement, model)
 				}
 				return
+			case 'StructDeclaration':
+				return
 			case 'IfStatement':
 				this.validateExpression(statement.condition, model)
 				for (const bodyStatement of statement.thenBranch.statements) {

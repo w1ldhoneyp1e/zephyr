@@ -6,6 +6,7 @@ import {
 	type IdentifierTargetNode,
 	type ProgramNode,
 	type StatementNode,
+	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
@@ -83,6 +84,9 @@ class Resolver {
 				return
 			case 'FunctionDeclaration':
 				this.resolveFunctionDeclaration(statement)
+				return
+			case 'StructDeclaration':
+				this.declare(statement.name, this.createStructBinding(statement))
 				return
 			case 'IfStatement':
 				this.resolveExpression(statement.condition)
@@ -243,6 +247,17 @@ class Resolver {
 	private createFunctionBinding(statement: FunctionDeclarationNode): SemanticBinding {
 		const binding: SemanticBinding = {
 			kind: 'function',
+			declaration: statement,
+		}
+		this.model.declarationBindings.set(statement, binding)
+		this.recordBindingOwner(binding)
+
+		return binding
+	}
+
+	private createStructBinding(statement: StructDeclarationNode): SemanticBinding {
+		const binding: SemanticBinding = {
+			kind: 'struct',
 			declaration: statement,
 		}
 		this.model.declarationBindings.set(statement, binding)

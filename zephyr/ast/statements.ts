@@ -1,4 +1,8 @@
-import {type FunctionDeclarationNode, type VariableDeclarationNode} from './declarations'
+import {
+	type FunctionDeclarationNode,
+	type StructDeclarationNode,
+	type VariableDeclarationNode,
+} from './declarations'
 import {type AssignmentTargetNode, type ExpressionNode} from './expressions'
 
 interface BlockStatementNode {
@@ -55,6 +59,7 @@ type StatementNode =
 	| BlockStatementNode
 	| VariableDeclarationNode
 	| FunctionDeclarationNode
+	| StructDeclarationNode
 	| IfStatementNode
 	| WhileStatementNode
 	| ForRangeStatementNode

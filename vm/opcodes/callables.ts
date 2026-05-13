@@ -10,6 +10,7 @@ import {
 	type LocalCell,
 	type VmClosure,
 	type VmFunctionTemplate,
+	type VmStructTemplate,
 	Opcode,
 } from '../types'
 import {
@@ -55,6 +56,27 @@ function execCallableOpcode(
 			if (isNative(callee)) {
 				assertNativeArity(callee, argc)
 				push(invokeNative(natives, callee, args))
+				return true
+			}
+			if (
+				typeof callee === 'object'
+				&& callee !== null
+				&& 'kind' in callee
+				&& callee.kind === 'struct'
+			) {
+				const structTemplate = callee as VmStructTemplate
+				if (argc !== structTemplate.fields.length) {
+					throw new Error(`call ${structTemplate.name}: ожидалось ${structTemplate.fields.length} аргументов, получено ${argc}`)
+				}
+				const properties: Record<string, Value> = {}
+				for (let i = 0; i < structTemplate.fields.length; i++) {
+					properties[structTemplate.fields[i]] = args[i] ?? null
+				}
+				push({
+					kind: 'object',
+					typeName: structTemplate.name,
+					properties,
+				})
 				return true
 			}
 			if (

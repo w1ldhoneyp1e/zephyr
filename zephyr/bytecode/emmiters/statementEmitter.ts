@@ -6,6 +6,8 @@ import {
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type StatementNode,
+	type StructDeclarationNode,
+	type VmStructTemplate,
 } from '../context'
 import {type FunctionCompiler} from '../FunctionCompiler'
 import {emitAssignment} from './assignmentEmitter'
@@ -92,9 +94,28 @@ function emitStatement(
 		case 'FunctionDeclaration':
 			emitFunctionDeclaration(state, generator, statement)
 			break
+		case 'StructDeclaration':
+			emitStructDeclaration(state, statement)
+			break
 		default:
 			throw new Error(`Неподдерживаемый statement: ${(statement as {type: string}).type}`)
 	}
+}
+
+function emitStructDeclaration(
+	state: CompilerState,
+	statement: StructDeclarationNode,
+): void {
+	const binding = state.getDeclarationBinding(statement)
+	const slot = state.declareBinding(binding)
+	const template: VmStructTemplate = {
+		kind: 'struct',
+		name: statement.name,
+		fields: statement.fields,
+	}
+	const constIdx = state.addConstant(template)
+	state.emitNumArg(Opcode.Const, constIdx)
+	state.emitNumArg(Opcode.SetLocal, slot)
 }
 
 export {

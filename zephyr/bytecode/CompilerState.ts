@@ -3,6 +3,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type StructDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {
@@ -200,7 +201,9 @@ class CompilerState {
 		instruction.arg = target
 	}
 
-	getDeclarationBinding(name: VariableDeclarationNode | FunctionDeclarationNode): SemanticBinding {
+	getDeclarationBinding(
+		name: VariableDeclarationNode | FunctionDeclarationNode | StructDeclarationNode,
+	): SemanticBinding {
 		const binding = this.model.declarationBindings.get(name)
 		if (binding === undefined) {
 			throw new Error('CompilerState: declaration binding not found')

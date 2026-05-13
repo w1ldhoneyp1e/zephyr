@@ -4,6 +4,7 @@ import {
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type SemanticValueAction,
+	type StructDeclarationNode,
 	createVariableDeclaration,
 	ensureExpression,
 	productionKey,
@@ -35,6 +36,21 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ParameterList -> ParameterList Comma Identifier':
 			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
 		case 'ParameterList -> Identifier':
+			return values => [tokenLexeme(values[0])]
+
+		case 'StructDeclaration -> Struct Identifier LeftBrace StructFieldListOpt RightBrace':
+			return values => ({
+				type: 'StructDeclaration',
+				name: tokenLexeme(values[1]),
+				fields: values[3] as string[],
+			} satisfies StructDeclarationNode)
+		case 'StructFieldListOpt -> StructFieldList':
+			return values => values[0]
+		case 'StructFieldListOpt -> ε':
+			return () => []
+		case 'StructFieldList -> StructFieldList Comma Identifier':
+			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
+		case 'StructFieldList -> Identifier':
 			return values => [tokenLexeme(values[0])]
 
 		default:

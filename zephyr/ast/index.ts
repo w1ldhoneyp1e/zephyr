@@ -31,5 +31,6 @@ export type {
 export type {
 	FunctionDeclarationNode,
 	ProgramNode,
+	StructDeclarationNode,
 	VariableDeclarationNode,
 } from './declarations'

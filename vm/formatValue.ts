@@ -14,6 +14,9 @@ function formatValue(v: Value): string {
 
 		return `${typePrefix}{${entries}}`
 	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'struct') {
+		return `[struct ${v.name}]`
+	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
 		return `[closure fn#${v.template.programIndex}]`
 	}
