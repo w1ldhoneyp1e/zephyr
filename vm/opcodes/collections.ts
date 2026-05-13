@@ -1,3 +1,4 @@
+import {getProperty} from '../properties'
 import {type VmArray, Opcode} from '../types'
 import {
 	type Instruction,
@@ -52,14 +53,8 @@ function execCollectionOpcode(
 			if (typeof propertyNameRaw !== 'string') {
 				throw new Error('get_prop: ожидалось строковое имя свойства')
 			}
-			const target = pop()
-			if (propertyNameRaw === 'length') {
-				if (Array.isArray(target) || typeof target === 'string') {
-					push(target.length)
-					return true
-				}
-			}
-			throw new Error(`get_prop: неподдерживаемое свойство ${propertyNameRaw}`)
+			push(getProperty(pop(), propertyNameRaw))
+			return true
 		}
 		default:
 			return false

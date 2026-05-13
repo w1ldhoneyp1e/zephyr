@@ -25,7 +25,13 @@ interface VmNative {
 	minArity: number,
 }
 
-type Value = null | number | boolean | string | VmArray | VmClosure | VmNative
+interface VmObject {
+	kind: 'object',
+	typeName: string | null,
+	properties: Record<string, Value>,
+}
+
+type Value = null | number | boolean | string | VmArray | VmClosure | VmNative | VmObject
 
 type ConstantPoolItem = Value | VmFunctionTemplate
 
@@ -127,6 +133,7 @@ export {
 	VmFunctionTemplate,
 	VmClosure,
 	VmNative,
+	VmObject,
 	VmArray,
 	VmProgram,
 	Value,

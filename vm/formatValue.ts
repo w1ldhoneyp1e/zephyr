@@ -4,6 +4,16 @@ function formatValue(v: Value): string {
 	if (v === null) {
 		return 'null'
 	}
+	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'object') {
+		const entries = Object.entries(v.properties)
+			.map(([name, value]) => `${name}: ${formatValue(value)}`)
+			.join(', ')
+		const typePrefix = v.typeName === null
+			? ''
+			: `${v.typeName} `
+
+		return `${typePrefix}{${entries}}`
+	}
 	if (typeof v === 'object' && v !== null && 'kind' in v && v.kind === 'closure') {
 		return `[closure fn#${v.template.programIndex}]`
 	}
