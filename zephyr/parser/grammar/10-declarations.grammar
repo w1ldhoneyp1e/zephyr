@@ -1,5 +1,6 @@
-VariableDeclaration -> var Identifier VariableInitializerOpt ';'
-VariableDeclaration -> const Identifier VariableInitializerOpt ';'
+VariableDeclaration -> var Identifier TypeAnnotationOpt VariableInitializerOpt ';'
+VariableDeclaration -> const Identifier TypeAnnotationOpt VariableInitializerOpt ';'
+TypeAnnotationOpt -> ':' Identifier | ε
 VariableInitializerOpt -> '=' Expression | ε
 
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
@@ -10,5 +11,5 @@ ParameterList -> ParameterList ',' Identifier | Identifier
 ClassDeclaration -> class Identifier '{' StructMemberListOpt '}'
 StructMemberListOpt -> StructMemberList | ε
 StructMemberList -> StructMemberList StructMember | StructMember
-StructMember -> Identifier StructFieldSeparatorOpt | MethodDeclaration
-StructFieldSeparatorOpt -> ',' | ε
+StructMember -> FieldDeclaration | MethodDeclaration
+FieldDeclaration -> Identifier TypeAnnotationOpt ';'

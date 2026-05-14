@@ -1,9 +1,9 @@
 class Box {
-	items,
+	items: any;
 	fn size() {
 		return self.items?.length ?? 0;
 	}
 }
 
-var box = Box([1, 2, 3]);
+var box: Box = Box([1, 2, 3]);
 return box.size();

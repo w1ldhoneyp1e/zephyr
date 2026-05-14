@@ -1,9 +1,14 @@
 import {
+	type ClassFieldNode,
 	type ExpressionNode,
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type SemanticModel, isBindingMutable} from './context'
+import {
+	type SemanticBinding,
+	type SemanticModel,
+	isBindingMutable,
+} from './context'
 
 class Validator {
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
@@ -19,6 +24,11 @@ class Validator {
 			case 'VariableDeclaration':
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer, model)
+					this.assertTypeAssignable(
+						statement.typeName,
+						this.inferExpressionType(statement.initializer, model),
+						`инициализатор переменной ${statement.name}`,
+					)
 				}
 				return
 			case 'FunctionDeclaration':
@@ -27,6 +37,7 @@ class Validator {
 				}
 				return
 			case 'ClassDeclaration':
+				this.assertUniqueFieldNames(statement.fields)
 				for (const method of statement.methods) {
 					for (const bodyStatement of method.body.statements) {
 						this.validateStatement(bodyStatement, model)
@@ -86,6 +97,13 @@ class Validator {
 					if (binding !== undefined && !isBindingMutable(binding)) {
 						throw new Error(`Нельзя присвоить значение имени: ${statement.target.name}`)
 					}
+					if (binding !== undefined) {
+						this.assertTypeAssignable(
+							this.getBindingType(binding),
+							this.inferExpressionType(statement.value, model),
+							`присваивание ${statement.target.name}`,
+						)
+					}
 				}
 				else if (statement.target.type === 'IndexTarget') {
 					this.validateExpression(statement.target.object, model)
@@ -93,6 +111,13 @@ class Validator {
 				}
 				else {
 					this.validateExpression(statement.target.object, model)
+					const objectType = this.inferExpressionType(statement.target.object, model)
+					const memberType = this.findClassFieldType(model, objectType, statement.target.property)
+					this.assertTypeAssignable(
+						memberType,
+						this.inferExpressionType(statement.value, model),
+						`присваивание свойства ${statement.target.property}`,
+					)
 				}
 				this.validateExpression(statement.value, model)
 				return
@@ -135,6 +160,107 @@ class Validator {
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
+		}
+	}
+
+	private inferExpressionType(expression: ExpressionNode, model: SemanticModel): string {
+		switch (expression.type) {
+			case 'LiteralExpression':
+				if (expression.value === null) {
+					return 'null'
+				}
+				return typeof expression.value
+			case 'IdentifierExpression': {
+				const binding = model.identifierBindings.get(expression)
+				return binding === undefined
+					? 'any'
+					: this.getBindingType(binding)
+			}
+			case 'UnaryExpression':
+				return expression.operator === '!'
+					? 'boolean'
+					: 'number'
+			case 'BinaryExpression':
+				if (['==', '!=', '<', '<=', '>', '>=', '&&', '||'].includes(expression.operator)) {
+					return 'boolean'
+				}
+				if (expression.operator === '??') {
+					const leftType = this.inferExpressionType(expression.left, model)
+					const rightType = this.inferExpressionType(expression.right, model)
+					return leftType === 'null'
+						? rightType
+						: leftType
+				}
+				if (expression.operator === '+') {
+					const leftType = this.inferExpressionType(expression.left, model)
+					const rightType = this.inferExpressionType(expression.right, model)
+					return leftType === 'string' || rightType === 'string'
+						? 'string'
+						: 'number'
+				}
+				return 'number'
+			case 'ArrayExpression':
+				return 'array'
+			case 'IndexExpression':
+			case 'OptionalIndexExpression':
+				return 'any'
+			case 'MemberExpression': {
+				const objectType = this.inferExpressionType(expression.object, model)
+				return this.findClassFieldType(model, objectType, expression.property)
+			}
+			case 'OptionalMemberExpression': {
+				const objectType = this.inferExpressionType(expression.object, model)
+				return this.findClassFieldType(model, objectType, expression.property)
+			}
+			case 'CallExpression':
+				if (expression.callee.type === 'IdentifierExpression') {
+					const binding = model.identifierBindings.get(expression.callee)
+					if (binding?.kind === 'class') {
+						return binding.declaration.name
+					}
+				}
+				return 'any'
+			default:
+				return 'any'
+		}
+	}
+
+	private getBindingType(binding: SemanticBinding): string {
+		switch (binding.kind) {
+			case 'variable':
+				return binding.declaration.typeName
+			case 'class':
+				return binding.declaration.name
+			case 'function':
+			case 'parameter':
+			case 'iterator':
+			case 'builtin':
+				return 'any'
+		}
+	}
+
+	private findClassFieldType(model: SemanticModel, className: string, property: string): string {
+		if (className === 'any') {
+			return 'any'
+		}
+		const fields = model.classFieldTypes.get(className)
+		return fields?.get(property) ?? 'any'
+	}
+
+	private assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
+		if (targetType === 'any' || sourceType === 'any' || targetType === sourceType) {
+			return
+		}
+		throw new Error(`Несовместимые типы в ${context}: ожидалось ${targetType}, получено ${sourceType}`)
+	}
+
+	private assertUniqueFieldNames(fields: ClassFieldNode[]): void {
+		const seen = new Set<string>()
+		for (const field of fields) {
+			if (seen.has(field.name)) {
+				throw new Error(`Повторное объявление поля класса: ${field.name}`)
+			}
+			seen.add(field.name)
 		}
 	}
 }

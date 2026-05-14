@@ -30,9 +30,11 @@ export type {
 } from './statements'
 
 export type {
+	ClassFieldNode,
 	ClassDeclarationNode,
 	FunctionDeclarationNode,
 	MethodDeclarationNode,
 	ProgramNode,
+	TypeName,
 	VariableDeclarationNode,
 } from './declarations'

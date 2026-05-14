@@ -111,7 +111,7 @@ function emitClassDeclaration(
 	const template: VmStructTemplate = {
 		kind: 'struct',
 		name: statement.name,
-		fields: statement.fields,
+		fields: statement.fields.map(field => field.name),
 		methods: {},
 	}
 	const constIdx = state.addConstant(template)

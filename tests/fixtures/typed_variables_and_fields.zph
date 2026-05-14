@@ -1,0 +1,11 @@
+var a: number = 10;
+
+class Box {
+	value: number;
+	fn get() {
+		return self.value;
+	}
+}
+
+var box: Box = Box(7);
+return a + box.get();

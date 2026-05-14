@@ -76,6 +76,7 @@ interface SemanticModel {
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
 	methodReceiverBindings: WeakMap<MethodDeclarationNode, ClassSemanticBinding>,
+	classFieldTypes: Map<string, Map<string, string>>,
 }
 
 function getBindingName(binding: SemanticBinding): string {

@@ -1,10 +1,10 @@
 class Point {
-	x,
-	y,
+	x: number;
+	y: number;
 	fn sum() {
 		return self.x + self.y;
 	}
 }
 
-var p = Point(2, 3);
+var p: Point = Point(2, 3);
 return p.sum();

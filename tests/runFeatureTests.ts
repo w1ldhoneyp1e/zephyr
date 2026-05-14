@@ -61,6 +61,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		stdin: '5',
 	},
 	{
+		name: 'typed_variables_and_fields',
+		file: 'typed_variables_and_fields.zph',
+		expectedReturn: '17',
+	},
+	{
+		name: 'type_mismatch_error',
+		file: 'type_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной a: ожидалось number, получено string',
+	},
+	{
 		name: 'break_outside_loop_error',
 		file: 'break_outside_loop_error.zph',
 		expectedError: 'Нельзя использовать break вне цикла',

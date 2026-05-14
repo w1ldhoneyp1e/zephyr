@@ -39,6 +39,7 @@ class Resolver {
 		bindingFunctionOwners: new WeakMap(),
 		callableCaptures: new WeakMap(),
 		methodReceiverBindings: new WeakMap(),
+		classFieldTypes: new Map(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -61,6 +62,7 @@ class Resolver {
 			bindingFunctionOwners: new WeakMap(),
 			callableCaptures: new WeakMap(),
 			methodReceiverBindings: new WeakMap(),
+			classFieldTypes: new Map(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -150,6 +152,10 @@ class Resolver {
 	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
 		const binding = this.createClassBinding(statement)
 		this.declare(statement.name, binding)
+		this.model.classFieldTypes.set(
+			statement.name,
+			new Map(statement.fields.map(field => [field.name, field.typeName])),
+		)
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)
 		}

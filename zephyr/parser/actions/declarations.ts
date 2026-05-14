@@ -2,11 +2,14 @@ import {type Production} from '../grammar'
 import {
 	type BlockStatementNode,
 	type ClassDeclarationNode,
+	type ClassFieldNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
 	type SemanticValueAction,
 	type StructMemberListValue,
+	type TypeName,
+	createTypeName,
 	createVariableDeclaration,
 	ensureExpression,
 	productionKey,
@@ -15,10 +18,24 @@ import {
 
 function createDeclarationAction(production: Production): SemanticValueAction | null {
 	switch (productionKey(production)) {
-		case 'VariableDeclaration -> Var Identifier VariableInitializerOpt Semicolon':
-			return values => createVariableDeclaration('var', tokenLexeme(values[1]), values[2] as ExpressionNode | null)
-		case 'VariableDeclaration -> Const Identifier VariableInitializerOpt Semicolon':
-			return values => createVariableDeclaration('const', tokenLexeme(values[1]), values[2] as ExpressionNode | null)
+		case 'VariableDeclaration -> Var Identifier TypeAnnotationOpt VariableInitializerOpt Semicolon':
+			return values => createVariableDeclaration(
+				'var',
+				tokenLexeme(values[1]),
+				createTypeName(values[2]),
+				values[3] as ExpressionNode | null,
+			)
+		case 'VariableDeclaration -> Const Identifier TypeAnnotationOpt VariableInitializerOpt Semicolon':
+			return values => createVariableDeclaration(
+				'const',
+				tokenLexeme(values[1]),
+				createTypeName(values[2]),
+				values[3] as ExpressionNode | null,
+			)
+		case 'TypeAnnotationOpt -> Colon Identifier':
+			return values => tokenLexeme(values[1]) as TypeName
+		case 'TypeAnnotationOpt -> ε':
+			return () => 'any'
 		case 'VariableInitializerOpt -> Equal Expression':
 			return values => ensureExpression(values[1], 'initializer')
 		case 'VariableInitializerOpt -> ε':
@@ -73,19 +90,21 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			}
 		case 'StructMemberList -> StructMember':
 			return values => values[0]
-		case 'StructMember -> Identifier StructFieldSeparatorOpt':
+		case 'StructMember -> FieldDeclaration':
 			return values => ({
-				fields: [tokenLexeme(values[0])],
+				fields: [values[0] as ClassFieldNode],
 				methods: [],
 			} satisfies StructMemberListValue)
+		case 'FieldDeclaration -> Identifier TypeAnnotationOpt Semicolon':
+			return values => ({
+				name: tokenLexeme(values[0]),
+				typeName: createTypeName(values[1]),
+			} satisfies ClassFieldNode)
 		case 'StructMember -> MethodDeclaration':
 			return values => ({
 				fields: [],
 				methods: [values[0] as MethodDeclarationNode],
 			} satisfies StructMemberListValue)
-		case 'StructFieldSeparatorOpt -> Comma':
-		case 'StructFieldSeparatorOpt -> ε':
-			return () => null
 
 		default:
 			return null

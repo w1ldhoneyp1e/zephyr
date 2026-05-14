@@ -7,6 +7,7 @@ import {
 	type BreakStatementNode,
 	type CallExpressionNode,
 	type ClassDeclarationNode,
+	type ClassFieldNode,
 	type ContinueStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
@@ -26,6 +27,7 @@ import {
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type TypeName,
 	type UnaryExpressionNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
@@ -37,6 +39,7 @@ type SemanticValue =
 	| null
 	| string
 	| string[]
+	| ClassFieldNode
 	| ExpressionNode[]
 	| StructMemberListValue
 	| ProgramNode
@@ -53,7 +56,7 @@ interface PendingAssignmentNode {
 }
 
 interface StructMemberListValue {
-	fields: string[],
+	fields: ClassFieldNode[],
 	methods: MethodDeclarationNode[],
 }
 
@@ -62,14 +65,22 @@ type SemanticValueAction = (values: SemanticValue[]) => SemanticValue
 function createVariableDeclaration(
 	kind: 'var' | 'const',
 	name: string,
+	typeName: TypeName,
 	initializer: ExpressionNode | null,
 ): VariableDeclarationNode {
 	return {
 		type: 'VariableDeclaration',
 		kind,
 		name,
+		typeName,
 		initializer,
 	}
+}
+
+function createTypeName(value: SemanticValue): TypeName {
+	return typeof value === 'string'
+		? value
+		: 'any'
 }
 
 function createBinary(
@@ -175,6 +186,7 @@ export {
 	type BlockStatementNode,
 	type BreakStatementNode,
 	type CallExpressionNode,
+	type ClassFieldNode,
 	type ClassDeclarationNode,
 	type ContinueStatementNode,
 	type ExpressionNode,
@@ -196,8 +208,10 @@ export {
 	type SemanticValueAction,
 	type StatementNode,
 	type StructMemberListValue,
+	type TypeName,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
+	createTypeName,
 	createBinary,
 	createUnary,
 	createVariableDeclaration,
