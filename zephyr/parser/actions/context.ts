@@ -19,6 +19,7 @@ import {
 	type IndexTargetNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
+	type MemberTargetNode,
 	type MethodDeclarationNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
@@ -120,6 +121,13 @@ function expressionToAssignmentTarget(expression: ExpressionNode): AssignmentTar
 			object: expression.object,
 			index: expression.index,
 		} satisfies IndexTargetNode
+	}
+	if (expression.type === 'MemberExpression') {
+		return {
+			type: 'MemberTarget',
+			object: expression.object,
+			property: expression.property,
+		} satisfies MemberTargetNode
 	}
 	throw new Error(`Недопустимая цель присваивания: ${expression.type}`)
 }

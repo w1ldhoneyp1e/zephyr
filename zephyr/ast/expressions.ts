@@ -61,13 +61,19 @@ interface IndexTargetNode {
 	index: ExpressionNode,
 }
 
+interface MemberTargetNode {
+	type: 'MemberTarget',
+	object: ExpressionNode,
+	property: string,
+}
+
 interface CallExpressionNode {
 	type: 'CallExpression',
 	callee: ExpressionNode,
 	args: ExpressionNode[],
 }
 
-type AssignmentTargetNode = IdentifierTargetNode | IndexTargetNode
+type AssignmentTargetNode = IdentifierTargetNode | IndexTargetNode | MemberTargetNode
 
 type ExpressionNode =
 	| LiteralExpressionNode
@@ -93,6 +99,7 @@ export {
 	type IndexTargetNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
+	type MemberTargetNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type UnaryExpressionNode,

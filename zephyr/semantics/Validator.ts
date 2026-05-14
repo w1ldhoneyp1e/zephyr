@@ -87,9 +87,12 @@ class Validator {
 						throw new Error(`Нельзя присвоить значение имени: ${statement.target.name}`)
 					}
 				}
-				else {
+				else if (statement.target.type === 'IndexTarget') {
 					this.validateExpression(statement.target.object, model)
 					this.validateExpression(statement.target.index, model)
+				}
+				else {
+					this.validateExpression(statement.target.object, model)
 				}
 				this.validateExpression(statement.value, model)
 				return

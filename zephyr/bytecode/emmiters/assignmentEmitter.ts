@@ -28,6 +28,14 @@ function emitAssignment(
 
 		return
 	}
+	if (statement.target.type === 'MemberTarget') {
+		emitExpression(state, statement.value)
+		emitExpression(state, statement.target.object)
+		const propertyNameIndex = state.addConstant(statement.target.property)
+		state.emitNumArg(Opcode.SetProp, propertyNameIndex)
+
+		return
+	}
 	throw new Error('Неподдерживаемая цель присваивания')
 }
 

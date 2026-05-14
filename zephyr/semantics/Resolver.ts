@@ -127,9 +127,12 @@ class Resolver {
 				if (statement.target.type === 'IdentifierTarget') {
 					this.resolveAssignmentTarget(statement.target)
 				}
-				else {
+				else if (statement.target.type === 'IndexTarget') {
 					this.resolveExpression(statement.target.object)
 					this.resolveExpression(statement.target.index)
+				}
+				else {
+					this.resolveExpression(statement.target.object)
 				}
 				this.resolveExpression(statement.value)
 				return

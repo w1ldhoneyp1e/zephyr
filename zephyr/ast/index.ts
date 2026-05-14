@@ -10,6 +10,7 @@ export type {
 	IndexTargetNode,
 	LiteralExpressionNode,
 	MemberExpressionNode,
+	MemberTargetNode,
 	OptionalIndexExpressionNode,
 	OptionalMemberExpressionNode,
 	UnaryExpressionNode,
