@@ -1,0 +1,19 @@
+var matrix = [
+	[1, 2, 3],
+	[4, 5, 6]
+];
+
+matrix[1][0] = 9;
+
+class Accumulator {
+	base,
+	fn sum2x2() {
+		return self.base[0][0]
+			+ self.base[0][1]
+			+ self.base[1][0]
+			+ self.base[1][1];
+	}
+}
+
+var acc = Accumulator(matrix);
+return acc.sum2x2();
