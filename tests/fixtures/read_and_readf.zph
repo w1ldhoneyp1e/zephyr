@@ -1,0 +1,4 @@
+printf("/tmp/zephyr_readf_fixture.txt", "10");
+var stdinValue = read();
+var fileValue = readf("/tmp/zephyr_readf_fixture.txt");
+return fileValue + stdinValue;

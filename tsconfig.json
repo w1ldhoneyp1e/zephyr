@@ -18,7 +18,8 @@
   "include": [
     "vm/**/*.ts",
     "zephyr",
-    "zephyr/**/*.ts"
+    "zephyr/**/*.ts",
+    "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",

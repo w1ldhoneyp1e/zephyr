@@ -12,7 +12,8 @@
     "dev:zephyr": "ts-node --project tsconfig.json zephyr/main.ts",
     "build": "tsup",
     "build:tsc": "tsc --project tsconfig.json",
-    "lint": "eslint vm zephyr --ext .ts --fix"
+    "lint": "eslint vm zephyr --ext .ts --fix",
+    "test:features": "ts-node --project tsconfig.json tests/runFeatureTests.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

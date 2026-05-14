@@ -1,0 +1,2 @@
+print("line");
+return 0;

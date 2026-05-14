@@ -1,0 +1,12 @@
+class Point {
+	x,
+	y,
+	fn moveX(dx) {
+		self.x = self.x + dx;
+		return self.x;
+	}
+}
+
+var p = Point(2, 3);
+p.x = 10;
+return p.moveX(5);
