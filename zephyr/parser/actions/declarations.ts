@@ -6,6 +6,7 @@ import {
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
+	type ParameterNode,
 	type SemanticValueAction,
 	type StructMemberListValue,
 	type TypeName,
@@ -41,28 +42,39 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'VariableInitializerOpt -> ε':
 			return () => null
 
-		case 'FunctionDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen BlockStatement':
+		case 'FunctionDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
 			return values => ({
 				type: 'FunctionDeclaration',
 				name: tokenLexeme(values[1]),
-				params: values[3] as string[],
-				body: values[5] as BlockStatementNode,
+				params: values[3] as ParameterNode[],
+				returnTypeName: createTypeName(values[5]),
+				body: values[6] as BlockStatementNode,
 			} satisfies FunctionDeclarationNode)
-		case 'MethodDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen BlockStatement':
+		case 'MethodDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
 			return values => ({
 				type: 'MethodDeclaration',
 				name: tokenLexeme(values[1]),
-				params: values[3] as string[],
-				body: values[5] as BlockStatementNode,
+				params: values[3] as ParameterNode[],
+				returnTypeName: createTypeName(values[5]),
+				body: values[6] as BlockStatementNode,
 			} satisfies MethodDeclarationNode)
+		case 'ReturnTypeOpt -> Colon Identifier':
+			return values => tokenLexeme(values[1]) as TypeName
+		case 'ReturnTypeOpt -> ε':
+			return () => 'any'
 		case 'ParameterListOpt -> ParameterList':
 			return values => values[0]
 		case 'ParameterListOpt -> ε':
 			return () => []
-		case 'ParameterList -> ParameterList Comma Identifier':
-			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
-		case 'ParameterList -> Identifier':
-			return values => [tokenLexeme(values[0])]
+		case 'ParameterList -> ParameterList Comma Parameter':
+			return values => [...(values[0] as ParameterNode[]), values[2] as ParameterNode]
+		case 'ParameterList -> Parameter':
+			return values => [values[0] as ParameterNode]
+		case 'Parameter -> Identifier TypeAnnotationOpt':
+			return values => ({
+				name: tokenLexeme(values[0]),
+				typeName: createTypeName(values[1]),
+			} satisfies ParameterNode)
 
 		case 'ClassDeclaration -> Class Identifier LeftBrace StructMemberListOpt RightBrace':
 			return values => ({

@@ -1,0 +1,5 @@
+fn bad(): number {
+	return "oops";
+}
+
+return bad();

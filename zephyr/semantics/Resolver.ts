@@ -40,6 +40,7 @@ class Resolver {
 		callableCaptures: new WeakMap(),
 		methodReceiverBindings: new WeakMap(),
 		classFieldTypes: new Map(),
+		classMethodReturnTypes: new Map(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -63,6 +64,7 @@ class Resolver {
 			callableCaptures: new WeakMap(),
 			methodReceiverBindings: new WeakMap(),
 			classFieldTypes: new Map(),
+			classMethodReturnTypes: new Map(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -156,6 +158,10 @@ class Resolver {
 			statement.name,
 			new Map(statement.fields.map(field => [field.name, field.typeName])),
 		)
+		this.model.classMethodReturnTypes.set(
+			statement.name,
+			new Map(statement.methods.map(method => [method.name, method.returnTypeName])),
+		)
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)
 		}
@@ -186,6 +192,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: 0,
 				name: 'self',
+				typeName: selfName,
 			}
 			this.recordBindingOwner(selfBinding)
 			this.declare('self', selfBinding)
@@ -196,10 +203,11 @@ class Resolver {
 				kind: 'parameter',
 				callableDeclaration: statement,
 				index: index + parameterBindings.length,
-				name: param,
+				name: param.name,
+				typeName: param.typeName,
 			}
 			this.recordBindingOwner(parameterBinding)
-			this.declare(param, parameterBinding)
+			this.declare(param.name, parameterBinding)
 			parameterBindings.push(parameterBinding)
 		}
 		this.model.functionParameterBindings.set(statement, parameterBindings)

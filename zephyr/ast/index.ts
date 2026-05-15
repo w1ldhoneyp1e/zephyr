@@ -34,6 +34,7 @@ export type {
 	ClassDeclarationNode,
 	FunctionDeclarationNode,
 	MethodDeclarationNode,
+	ParameterNode,
 	ProgramNode,
 	TypeName,
 	VariableDeclarationNode,

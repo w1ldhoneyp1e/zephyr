@@ -66,9 +66,19 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '17',
 	},
 	{
+		name: 'typed_parameters_and_returns',
+		file: 'typed_parameters_and_returns.zph',
+		expectedReturn: '17',
+	},
+	{
 		name: 'type_mismatch_error',
 		file: 'type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной a: ожидалось number, получено string',
+	},
+	{
+		name: 'return_type_mismatch_error',
+		file: 'return_type_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в return в функции bad: ожидалось number, получено string',
 	},
 	{
 		name: 'break_outside_loop_error',

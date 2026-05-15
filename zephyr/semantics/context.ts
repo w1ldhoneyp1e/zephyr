@@ -36,6 +36,7 @@ interface ParameterSemanticBinding {
 	callableDeclaration: CallableDeclarationNode,
 	index: number,
 	name: string,
+	typeName: string,
 }
 
 interface IteratorSemanticBinding {
@@ -77,6 +78,7 @@ interface SemanticModel {
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
 	methodReceiverBindings: WeakMap<MethodDeclarationNode, ClassSemanticBinding>,
 	classFieldTypes: Map<string, Map<string, string>>,
+	classMethodReturnTypes: Map<string, Map<string, string>>,
 }
 
 function getBindingName(binding: SemanticBinding): string {

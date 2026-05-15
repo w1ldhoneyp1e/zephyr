@@ -3,6 +3,11 @@ import {type BlockStatementNode, type StatementNode} from './statements'
 
 type TypeName = string
 
+interface ParameterNode {
+	name: string,
+	typeName: TypeName,
+}
+
 interface ProgramNode {
 	type: 'Program',
 	body: StatementNode[],
@@ -24,14 +29,16 @@ interface ClassFieldNode {
 interface FunctionDeclarationNode {
 	type: 'FunctionDeclaration',
 	name: string,
-	params: string[],
+	params: ParameterNode[],
+	returnTypeName: TypeName,
 	body: BlockStatementNode,
 }
 
 interface MethodDeclarationNode {
 	type: 'MethodDeclaration',
 	name: string,
-	params: string[],
+	params: ParameterNode[],
+	returnTypeName: TypeName,
 	body: BlockStatementNode,
 }
 
@@ -47,6 +54,7 @@ export {
 	type ClassDeclarationNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
+	type ParameterNode,
 	type ProgramNode,
 	type TypeName,
 	type VariableDeclarationNode,

@@ -3,10 +3,12 @@ VariableDeclaration -> const Identifier TypeAnnotationOpt VariableInitializerOpt
 TypeAnnotationOpt -> ':' Identifier | ε
 VariableInitializerOpt -> '=' Expression | ε
 
-FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
-MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' BlockStatement
+FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+ReturnTypeOpt -> ':' Identifier | ε
 ParameterListOpt -> ParameterList | ε
-ParameterList -> ParameterList ',' Identifier | Identifier
+ParameterList -> ParameterList ',' Parameter | Parameter
+Parameter -> Identifier TypeAnnotationOpt
 
 ClassDeclaration -> class Identifier '{' StructMemberListOpt '}'
 StructMemberListOpt -> StructMemberList | ε

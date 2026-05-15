@@ -24,6 +24,7 @@ import {
 	type MethodDeclarationNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
+	type ParameterNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
@@ -38,8 +39,9 @@ import {type Production} from '../grammar'
 type SemanticValue =
 	| null
 	| string
-	| string[]
+	| ParameterNode[]
 	| ClassFieldNode
+	| ParameterNode
 	| ExpressionNode[]
 	| StructMemberListValue
 	| ProgramNode
@@ -202,6 +204,7 @@ export {
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,
+	type ParameterNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type SemanticValue,

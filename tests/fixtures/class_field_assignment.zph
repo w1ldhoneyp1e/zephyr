@@ -1,7 +1,7 @@
 class Point {
 	x: number;
 	y: number;
-	fn moveX(dx) {
+	fn moveX(dx: number): number {
 		self.x = self.x + dx;
 		return self.x;
 	}

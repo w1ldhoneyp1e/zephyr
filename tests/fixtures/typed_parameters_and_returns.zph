@@ -1,0 +1,14 @@
+fn add(a: number, b: number): number {
+	return a + b;
+}
+
+class Counter {
+	value: number;
+	fn inc(step: number): number {
+		self.value = self.value + step;
+		return self.value;
+	}
+}
+
+var counter: Counter = Counter(10);
+return add(counter.inc(5), 2);

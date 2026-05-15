@@ -5,6 +5,7 @@ import {
 	type StatementNode,
 } from '../ast'
 import {
+	type CallableDeclarationNode,
 	type SemanticBinding,
 	type SemanticModel,
 	isBindingMutable,
@@ -32,16 +33,12 @@ class Validator {
 				}
 				return
 			case 'FunctionDeclaration':
-				for (const bodyStatement of statement.body.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
+				this.validateCallableBody(statement, model)
 				return
 			case 'ClassDeclaration':
 				this.assertUniqueFieldNames(statement.fields)
 				for (const method of statement.methods) {
-					for (const bodyStatement of method.body.statements) {
-						this.validateStatement(bodyStatement, model)
-					}
+					this.validateCallableBody(method, model)
 				}
 				return
 			case 'IfStatement':
@@ -71,6 +68,14 @@ class Validator {
 			case 'ReturnStatement':
 				if (statement.value !== null) {
 					this.validateExpression(statement.value, model)
+					const owner = model.returnOwners.get(statement)
+					if (owner !== undefined && owner !== null) {
+						this.assertTypeAssignable(
+							owner.returnTypeName,
+							this.inferExpressionType(statement.value, model),
+							`return в ${this.describeCallable(owner)}`,
+						)
+					}
 				}
 				return
 			case 'BreakStatement':
@@ -123,6 +128,12 @@ class Validator {
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемый statement: ${(statement as {type: string}).type}`)
+		}
+	}
+
+	private validateCallableBody(callable: CallableDeclarationNode, model: SemanticModel): void {
+		for (const bodyStatement of callable.body.statements) {
+			this.validateStatement(bodyStatement, model)
 		}
 	}
 
@@ -218,6 +229,17 @@ class Validator {
 					if (binding?.kind === 'class') {
 						return binding.declaration.name
 					}
+					if (binding?.kind === 'function') {
+						return binding.declaration.returnTypeName
+					}
+				}
+				if (expression.callee.type === 'MemberExpression') {
+					const objectType = this.inferExpressionType(expression.callee.object, model)
+					return this.findClassMethodReturnType(model, objectType, expression.callee.property)
+				}
+				if (expression.callee.type === 'OptionalMemberExpression') {
+					const objectType = this.inferExpressionType(expression.callee.object, model)
+					return this.findClassMethodReturnType(model, objectType, expression.callee.property)
 				}
 				return 'any'
 			default:
@@ -232,7 +254,9 @@ class Validator {
 			case 'class':
 				return binding.declaration.name
 			case 'function':
+				return binding.declaration.returnTypeName
 			case 'parameter':
+				return binding.typeName
 			case 'iterator':
 			case 'builtin':
 				return 'any'
@@ -245,6 +269,14 @@ class Validator {
 		}
 		const fields = model.classFieldTypes.get(className)
 		return fields?.get(property) ?? 'any'
+	}
+
+	private findClassMethodReturnType(model: SemanticModel, className: string, methodName: string): string {
+		if (className === 'any') {
+			return 'any'
+		}
+		const methods = model.classMethodReturnTypes.get(className)
+		return methods?.get(methodName) ?? 'any'
 	}
 
 	private assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
@@ -262,6 +294,12 @@ class Validator {
 			}
 			seen.add(field.name)
 		}
+	}
+
+	private describeCallable(callable: CallableDeclarationNode): string {
+		return callable.type === 'FunctionDeclaration'
+			? `функции ${callable.name}`
+			: `методе ${callable.name}`
 	}
 }
 
