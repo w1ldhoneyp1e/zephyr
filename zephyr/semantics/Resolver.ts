@@ -40,7 +40,9 @@ class Resolver {
 		callableCaptures: new WeakMap(),
 		methodReceiverBindings: new WeakMap(),
 		classFieldTypes: new Map(),
+		classConstructorParameterTypes: new Map(),
 		classMethodReturnTypes: new Map(),
+		classMethodParameterTypes: new Map(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -64,7 +66,9 @@ class Resolver {
 			callableCaptures: new WeakMap(),
 			methodReceiverBindings: new WeakMap(),
 			classFieldTypes: new Map(),
+			classConstructorParameterTypes: new Map(),
 			classMethodReturnTypes: new Map(),
+			classMethodParameterTypes: new Map(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -158,9 +162,20 @@ class Resolver {
 			statement.name,
 			new Map(statement.fields.map(field => [field.name, field.typeName])),
 		)
+		this.model.classConstructorParameterTypes.set(
+			statement.name,
+			statement.fields.map(field => field.typeName),
+		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
 			new Map(statement.methods.map(method => [method.name, method.returnTypeName])),
+		)
+		this.model.classMethodParameterTypes.set(
+			statement.name,
+			new Map(statement.methods.map(method => [
+				method.name,
+				method.params.map(param => param.typeName),
+			])),
 		)
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)

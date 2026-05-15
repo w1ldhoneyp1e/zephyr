@@ -81,6 +81,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Несовместимые типы в return в функции bad: ожидалось number, получено string',
 	},
 	{
+		name: 'call_argument_type_mismatch_error',
+		file: 'call_argument_type_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в вызов функции add, аргумент 2: ожидалось number, получено string',
+	},
+	{
+		name: 'call_arity_mismatch_error',
+		file: 'call_arity_mismatch_error.zph',
+		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
+	},
+	{
 		name: 'break_outside_loop_error',
 		file: 'break_outside_loop_error.zph',
 		expectedError: 'Нельзя использовать break вне цикла',

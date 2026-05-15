@@ -168,9 +168,63 @@ class Validator {
 				for (const arg of expression.args) {
 					this.validateExpression(arg, model)
 				}
+				this.validateCallExpression(expression, model)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
+		}
+	}
+
+	private validateCallExpression(expression: Extract<ExpressionNode, {type: 'CallExpression'}>, model: SemanticModel): void {
+		if (expression.callee.type === 'IdentifierExpression') {
+			const binding = model.identifierBindings.get(expression.callee)
+			if (binding?.kind === 'function') {
+				this.validateCallArguments(
+					expression.args,
+					binding.declaration.params.map(param => param.typeName),
+					model,
+					`вызов функции ${binding.declaration.name}`,
+				)
+				return
+			}
+			if (binding?.kind === 'class') {
+				this.validateCallArguments(
+					expression.args,
+					model.classConstructorParameterTypes.get(binding.declaration.name) ?? [],
+					model,
+					`создание класса ${binding.declaration.name}`,
+				)
+			}
+			return
+		}
+
+		if (expression.callee.type === 'MemberExpression' || expression.callee.type === 'OptionalMemberExpression') {
+			const objectType = this.inferExpressionType(expression.callee.object, model)
+			this.validateCallArguments(
+				expression.args,
+				this.findClassMethodParameterTypes(model, objectType, expression.callee.property),
+				model,
+				`вызов метода ${expression.callee.property}`,
+			)
+		}
+	}
+
+	private validateCallArguments(
+		args: ExpressionNode[],
+		expectedTypes: string[],
+		model: SemanticModel,
+		context: string,
+	): void {
+		if (args.length !== expectedTypes.length) {
+			throw new Error(`Неверное число аргументов в ${context}: ожидалось ${expectedTypes.length}, получено ${args.length}`)
+		}
+
+		for (const [index, arg] of args.entries()) {
+			this.assertTypeAssignable(
+				expectedTypes[index],
+				this.inferExpressionType(arg, model),
+				`${context}, аргумент ${index + 1}`,
+			)
 		}
 	}
 
@@ -277,6 +331,14 @@ class Validator {
 		}
 		const methods = model.classMethodReturnTypes.get(className)
 		return methods?.get(methodName) ?? 'any'
+	}
+
+	private findClassMethodParameterTypes(model: SemanticModel, className: string, methodName: string): string[] {
+		if (className === 'any') {
+			return []
+		}
+		const methods = model.classMethodParameterTypes.get(className)
+		return methods?.get(methodName) ?? []
 	}
 
 	private assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
