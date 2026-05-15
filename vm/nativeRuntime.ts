@@ -25,7 +25,7 @@ function createNativeRegistry(environment: NativeEnvironment): NativeRegistry {
 			return fs.readFileSync(pathValue, 'utf-8')
 		}],
 		['print', args => {
-			environment.write(formatValue(args[0] ?? null))
+			environment.write(`${formatValue(args[0] ?? null)}\n`)
 
 			return null
 		}],

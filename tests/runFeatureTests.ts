@@ -62,7 +62,7 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'print_stdout',
 		file: 'print_stdout.zph',
 		expectedReturn: '0',
-		expectedStdout: 'line',
+		expectedStdout: 'line\n',
 	},
 	{
 		name: 'read_and_readf',
@@ -78,7 +78,8 @@ const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'typed_parameters_and_returns',
 		file: 'typed_parameters_and_returns.zph',
-		expectedReturn: '17',
+		expectedReturn: null,
+		expectedStdout: '17\n',
 	},
 	{
 		name: 'type_mismatch_error',

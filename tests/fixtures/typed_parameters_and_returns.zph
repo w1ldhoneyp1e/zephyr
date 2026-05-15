@@ -11,4 +11,4 @@ class Counter {
 }
 
 var counter: Counter = Counter(10);
-return add(counter.inc(5), 2);
+print(add(counter.inc(5), 2));
