@@ -33,10 +33,22 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				createTypeName(values[2]),
 				values[3] as ExpressionNode | null,
 			)
-		case 'TypeAnnotationOpt -> Colon Identifier':
-			return values => tokenLexeme(values[1]) as TypeName
+		case 'TypeAnnotationOpt -> Colon TypeExpression':
+			return values => createTypeName(values[1])
 		case 'TypeAnnotationOpt -> ε':
 			return () => 'any'
+		case 'TypeExpression -> Identifier TypeSuffixListOpt':
+			return values => `${tokenLexeme(values[0])}${values[1] as string}`
+		case 'TypeSuffixListOpt -> TypeSuffixList':
+			return values => values[0]
+		case 'TypeSuffixListOpt -> ε':
+			return () => ''
+		case 'TypeSuffixList -> TypeSuffixList TypeSuffix':
+			return values => `${values[0] as string}${values[1] as string}`
+		case 'TypeSuffixList -> TypeSuffix':
+			return values => values[0]
+		case 'TypeSuffix -> LeftBracket RightBracket':
+			return () => '[]'
 		case 'VariableInitializerOpt -> Equal Expression':
 			return values => ensureExpression(values[1], 'initializer')
 		case 'VariableInitializerOpt -> ε':
@@ -58,8 +70,8 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				returnTypeName: createTypeName(values[5]),
 				body: values[6] as BlockStatementNode,
 			} satisfies MethodDeclarationNode)
-		case 'ReturnTypeOpt -> Colon Identifier':
-			return values => tokenLexeme(values[1]) as TypeName
+		case 'ReturnTypeOpt -> Colon TypeExpression':
+			return values => createTypeName(values[1])
 		case 'ReturnTypeOpt -> ε':
 			return () => 'any'
 		case 'ParameterListOpt -> ParameterList':

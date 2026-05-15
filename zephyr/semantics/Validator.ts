@@ -113,6 +113,16 @@ class Validator {
 				else if (statement.target.type === 'IndexTarget') {
 					this.validateExpression(statement.target.object, model)
 					this.validateExpression(statement.target.index, model)
+					this.assertTypeAssignable(
+						'number',
+						this.inferExpressionType(statement.target.index, model),
+						'индекс массива',
+					)
+					this.assertTypeAssignable(
+						this.getIndexedElementType(this.inferExpressionType(statement.target.object, model)),
+						this.inferExpressionType(statement.value, model),
+						'присваивание элемента массива',
+					)
 				}
 				else {
 					this.validateExpression(statement.target.object, model)
@@ -161,6 +171,11 @@ class Validator {
 				this.validateExpression(expression.object, model)
 				if ('index' in expression) {
 					this.validateExpression(expression.index, model)
+					this.assertTypeAssignable(
+						'number',
+						this.inferExpressionType(expression.index, model),
+						'индекс массива',
+					)
 				}
 				return
 			case 'CallExpression':
@@ -265,10 +280,10 @@ class Validator {
 				}
 				return 'number'
 			case 'ArrayExpression':
-				return 'array'
+				return this.inferArrayExpressionType(expression, model)
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
-				return 'any'
+				return this.getIndexedElementType(this.inferExpressionType(expression.object, model))
 			case 'MemberExpression': {
 				const objectType = this.inferExpressionType(expression.object, model)
 				return this.findClassFieldType(model, objectType, expression.property)
@@ -323,6 +338,32 @@ class Validator {
 		}
 		const fields = model.classFieldTypes.get(className)
 		return fields?.get(property) ?? 'any'
+	}
+
+	private inferArrayExpressionType(
+		expression: Extract<ExpressionNode, {type: 'ArrayExpression'}>,
+		model: SemanticModel,
+	): string {
+		if (expression.elements.length === 0) {
+			return 'any[]'
+		}
+
+		const elementTypes = expression.elements.map(element => this.inferExpressionType(element, model))
+		const firstType = elementTypes[0]
+		for (const elementType of elementTypes) {
+			if (elementType !== firstType) {
+				return 'any[]'
+			}
+		}
+
+		return `${firstType}[]`
+	}
+
+	private getIndexedElementType(containerType: string): string {
+		if (!containerType.endsWith('[]')) {
+			return 'any'
+		}
+		return containerType.slice(0, -2)
 	}
 
 	private findClassMethodReturnType(model: SemanticModel, className: string, methodName: string): string {

@@ -34,6 +34,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '9',
 	},
 	{
+		name: 'typed_arrays',
+		file: 'typed_arrays.zph',
+		expectedReturn: '11',
+	},
+	{
 		name: 'nullish_coalescing',
 		file: 'nullish_coalescing.zph',
 		expectedReturn: '7',
@@ -89,6 +94,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'call_arity_mismatch_error',
 		file: 'call_arity_mismatch_error.zph',
 		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
+	},
+	{
+		name: 'typed_array_element_mismatch_error',
+		file: 'typed_array_element_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
 	},
 	{
 		name: 'break_outside_loop_error',

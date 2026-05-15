@@ -85,6 +85,10 @@ function createTypeName(value: SemanticValue): TypeName {
 		: 'any'
 }
 
+function appendArrayTypeSuffix(baseTypeName: TypeName): TypeName {
+	return `${baseTypeName}[]`
+}
+
 function createBinary(
 	operator: BinaryExpressionNode['operator'],
 	left: SemanticValue,
@@ -215,6 +219,7 @@ export {
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 	createTypeName,
+	appendArrayTypeSuffix,
 	createBinary,
 	createUnary,
 	createVariableDeclaration,

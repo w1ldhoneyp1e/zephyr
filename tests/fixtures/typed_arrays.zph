@@ -1,0 +1,10 @@
+var matrix: number[][] = [
+	[1, 2],
+	[3, 4]
+];
+
+matrix[1][0] = 9;
+
+var row: number[] = matrix[1];
+var value: number = row[0];
+return value + matrix[0][1];
