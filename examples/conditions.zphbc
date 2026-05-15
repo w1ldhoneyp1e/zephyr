@@ -1,0 +1,41 @@
+.def
+.name __main__
+.argc 0
+.locals 3
+.constants
+number 10
+number 0
+number 5
+number 1
+number 2
+.code
+const 0
+set_local 0
+const 1
+set_local 1
+get_local 0
+set_local 2
+get_local 1
+get_local 2
+lt
+jump_if_false 25
+get_local 0
+const 2
+gt
+jump_if_false 19
+get_local 0
+const 3
+sub
+set_local 0
+jump 23
+get_local 0
+const 4
+add
+set_local 0
+inc_local 1
+jump 6
+get_local 0
+return
+nil
+return
+.end_def

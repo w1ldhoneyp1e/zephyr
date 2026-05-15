@@ -1,4 +1,4 @@
-var matrix = [
+var matrix: array = [
 	[1, 2, 3],
 	[4, 5, 6]
 ];
@@ -6,7 +6,7 @@ var matrix = [
 matrix[1][0] = 9;
 
 class Accumulator {
-	base,
+	base: array;
 	fn sum2x2() {
 		return self.base[0][0]
 			+ self.base[0][1]
@@ -15,5 +15,5 @@ class Accumulator {
 	}
 }
 
-var acc = Accumulator(matrix);
+var acc: Accumulator = Accumulator(matrix);
 return acc.sum2x2();
