@@ -11,7 +11,8 @@ TermExpression -> TermExpression '+' FactorExpression | TermExpression '-' Facto
 FactorExpression -> FactorExpression '*' UnaryExpression | FactorExpression '/' UnaryExpression | FactorExpression '%' UnaryExpression | UnaryExpression
 UnaryExpression -> '!' UnaryExpression | '-' UnaryExpression | PostfixExpression
 PostfixExpression -> PrimaryExpression | PostfixExpression '(' ArgumentListOpt ')' | PostfixExpression '[' Expression ']' | PostfixExpression '?[' Expression ']' | PostfixExpression '.' Identifier | PostfixExpression '?.' Identifier
-ArgumentListOpt -> ArgumentList | ε
+ArgumentListOpt -> ArgumentList ArgumentTrailingCommaOpt | ε
+ArgumentTrailingCommaOpt -> ',' | ε
 ArgumentList -> ArgumentList ',' Expression | Expression
 
 PrimaryExpression -> false
@@ -22,5 +23,6 @@ PrimaryExpression -> String
 PrimaryExpression -> Identifier
 PrimaryExpression -> '(' Expression ')'
 PrimaryExpression -> '[' ArrayElementsOpt ']'
-ArrayElementsOpt -> ArrayElements | ε
+ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt | ε
+ArrayTrailingCommaOpt -> ',' | ε
 ArrayElements -> ArrayElements ',' Expression | Expression

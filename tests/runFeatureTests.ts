@@ -39,6 +39,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '11',
 	},
 	{
+		name: 'trailing_comma',
+		file: 'trailing_comma.zph',
+		expectedReturn: '4',
+	},
+	{
 		name: 'nullish_coalescing',
 		file: 'nullish_coalescing.zph',
 		expectedReturn: '7',

@@ -74,10 +74,13 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => createTypeName(values[1])
 		case 'ReturnTypeOpt -> ε':
 			return () => 'any'
-		case 'ParameterListOpt -> ParameterList':
+		case 'ParameterListOpt -> ParameterList ParameterTrailingCommaOpt':
 			return values => values[0]
 		case 'ParameterListOpt -> ε':
 			return () => []
+		case 'ParameterTrailingCommaOpt -> Comma':
+		case 'ParameterTrailingCommaOpt -> ε':
+			return () => null
 		case 'ParameterList -> ParameterList Comma Parameter':
 			return values => [...(values[0] as ParameterNode[]), values[2] as ParameterNode]
 		case 'ParameterList -> Parameter':

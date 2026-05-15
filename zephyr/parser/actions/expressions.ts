@@ -32,8 +32,8 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 		case 'FactorExpression -> UnaryExpression':
 		case 'UnaryExpression -> PostfixExpression':
 		case 'PostfixExpression -> PrimaryExpression':
-		case 'ArgumentListOpt -> ArgumentList':
-		case 'ArrayElementsOpt -> ArrayElements':
+		case 'ArgumentListOpt -> ArgumentList ArgumentTrailingCommaOpt':
+		case 'ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt':
 			return values => values[0]
 
 		case 'AssignmentExpression -> PostfixExpression Equal AssignmentExpression':
@@ -109,6 +109,9 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 			} satisfies OptionalMemberExpressionNode)
 		case 'ArgumentListOpt -> ε':
 			return () => []
+		case 'ArgumentTrailingCommaOpt -> Comma':
+		case 'ArgumentTrailingCommaOpt -> ε':
+			return () => null
 		case 'ArgumentList -> ArgumentList Comma Expression':
 			return values => [...(values[0] as ExpressionNode[]), ensureExpression(values[2], 'argument')]
 		case 'ArgumentList -> Expression':
@@ -153,6 +156,9 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 			} satisfies ArrayExpressionNode)
 		case 'ArrayElementsOpt -> ε':
 			return () => []
+		case 'ArrayTrailingCommaOpt -> Comma':
+		case 'ArrayTrailingCommaOpt -> ε':
+			return () => null
 		case 'ArrayElements -> ArrayElements Comma Expression':
 			return values => [...(values[0] as ExpressionNode[]), ensureExpression(values[2], 'array element')]
 		case 'ArrayElements -> Expression':

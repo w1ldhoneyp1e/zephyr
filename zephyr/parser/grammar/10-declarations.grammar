@@ -10,7 +10,8 @@ VariableInitializerOpt -> '=' Expression | ε
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
 MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
 ReturnTypeOpt -> ':' TypeExpression | ε
-ParameterListOpt -> ParameterList | ε
+ParameterListOpt -> ParameterList ParameterTrailingCommaOpt | ε
+ParameterTrailingCommaOpt -> ',' | ε
 ParameterList -> ParameterList ',' Parameter | Parameter
 Parameter -> Identifier TypeAnnotationOpt
 

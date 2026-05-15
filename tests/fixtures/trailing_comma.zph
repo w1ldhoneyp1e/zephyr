@@ -1,0 +1,17 @@
+fn add(
+	a: number,
+	b: number,
+): number {
+	return a + b;
+}
+
+var values: number[] = [
+	1,
+	2,
+	3,
+];
+
+return add(
+	values[0],
+	values[2],
+);
