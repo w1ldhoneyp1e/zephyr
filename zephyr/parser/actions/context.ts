@@ -25,6 +25,7 @@ import {
 	type MemberExpressionNode,
 	type MemberTargetNode,
 	type MethodDeclarationNode,
+	type NamedExportStatementNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type ParameterNode,
@@ -57,6 +58,7 @@ type SemanticValue =
 	| PendingAssignmentNode
 	| ImportStatementNode
 	| ExportStatementNode
+	| NamedExportStatementNode
 
 interface PendingAssignmentNode {
 	type: 'PendingAssignment',
@@ -220,6 +222,7 @@ export {
 	type LambdaExpressionNode,
 	type MemberExpressionNode,
 	type MethodDeclarationNode,
+	type NamedExportStatementNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,

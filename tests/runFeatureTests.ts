@@ -107,9 +107,19 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '8',
 	},
 	{
+		name: 'modules_reexport',
+		file: 'modules_reexport/main.zph',
+		expectedReturn: '7',
+	},
+	{
 		name: 'type_mismatch_error',
 		file: 'type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной a: ожидалось number, получено string',
+	},
+	{
+		name: 'modules_missing_export_error',
+		file: 'modules_missing_export/main.zph',
+		expectedError: 'Модуль tests/fixtures/modules_missing_export/main.zph импортирует sub из tests/fixtures/modules_missing_export/math.zph, но этот модуль его не экспортирует',
 	},
 	{
 		name: 'return_type_mismatch_error',

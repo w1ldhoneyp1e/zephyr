@@ -7,13 +7,16 @@ import {Lexer} from './Lexer'
 import {LalrAstParser} from './parser/LalrAstParser'
 import {Resolver, Validator} from './semantics'
 
+interface ModuleDependency {
+	names: string[],
+	resolvedPath: string,
+	kind: 'import' | 'reexport',
+}
+
 interface LoadedModule {
 	filePath: string,
 	program: ProgramNode,
-	imports: {
-		names: string[],
-		resolvedPath: string,
-	}[],
+	dependencies: ModuleDependency[],
 	exports: Set<string>,
 }
 
@@ -25,7 +28,7 @@ class Compiler {
 	compilePath(filePath: string): VmProgram[] {
 		const moduleCache = new Map<string, LoadedModule>()
 		const emitted = new Set<string>()
-		const active = new Set<string>()
+		const active: string[] = []
 		const entryPath = path.resolve(filePath)
 		const program = this.buildModuleProgram(entryPath, moduleCache, emitted, active)
 
@@ -55,7 +58,7 @@ class Compiler {
 		entryPath: string,
 		moduleCache: Map<string, LoadedModule>,
 		emitted: Set<string>,
-		active: Set<string>,
+		active: string[],
 	): ProgramNode {
 		const statements = this.flattenModule(entryPath, moduleCache, emitted, active)
 
@@ -69,31 +72,40 @@ class Compiler {
 		filePath: string,
 		moduleCache: Map<string, LoadedModule>,
 		emitted: Set<string>,
-		active: Set<string>,
+		active: string[],
 	): StatementNode[] {
 		if (emitted.has(filePath)) {
 			return []
 		}
-		if (active.has(filePath)) {
-			throw new Error(`Циклический импорт: ${filePath}`)
+		const cycleStart = active.indexOf(filePath)
+		if (cycleStart !== -1) {
+			const cycle = [...active.slice(cycleStart), filePath]
+				.map(currentPath => path.relative(process.cwd(), currentPath))
+				.join(' -> ')
+			throw new Error(`Циклический импорт: ${cycle}`)
 		}
 
-		active.add(filePath)
+		active.push(filePath)
 		const loaded = this.loadModule(filePath, moduleCache)
 		const statements: StatementNode[] = []
 
-		for (const imported of loaded.imports) {
-			const importedModule = this.loadModule(imported.resolvedPath, moduleCache)
-			for (const name of imported.names) {
-				if (!importedModule.exports.has(name)) {
-					throw new Error(`Модуль ${imported.resolvedPath} не экспортирует ${name}`)
+		for (const dependency of loaded.dependencies) {
+			const dependencyModule = this.loadModule(dependency.resolvedPath, moduleCache)
+			for (const name of dependency.names) {
+				if (!dependencyModule.exports.has(name)) {
+					throw new Error(this.createMissingExportError(
+						loaded.filePath,
+						dependency.resolvedPath,
+						name,
+						dependency.kind,
+					))
 				}
 			}
-			statements.push(...this.flattenModule(imported.resolvedPath, moduleCache, emitted, active))
+			statements.push(...this.flattenModule(dependency.resolvedPath, moduleCache, emitted, active))
 		}
 
 		statements.push(...this.normalizeStatements(loaded.program.body))
-		active.delete(filePath)
+		active.pop()
 		emitted.add(filePath)
 
 		return statements
@@ -107,24 +119,56 @@ class Compiler {
 
 		const source = fs.readFileSync(filePath, 'utf-8')
 		const program = this.parseSource(source)
-		const imports = program.body
-			.filter(statement => statement.type === 'ImportStatement')
-			.map(statement => ({
-				names: statement.names,
-				resolvedPath: this.resolveImportPath(filePath, statement.source),
-			}))
 		const exports = new Set<string>()
+		const dependencies: ModuleDependency[] = []
+		const availableNames = new Set<string>()
 		for (const statement of program.body) {
-			if (statement.type !== 'ExportStatement') {
+			if (statement.type === 'ImportStatement') {
+				dependencies.push({
+					kind: 'import',
+					names: statement.names,
+					resolvedPath: this.resolveImportPath(filePath, statement.source),
+				})
+				for (const name of statement.names) {
+					availableNames.add(name)
+				}
 				continue
 			}
-			exports.add(statement.statement.name)
+			if (statement.type === 'ExportStatement') {
+				exports.add(statement.statement.name)
+				availableNames.add(statement.statement.name)
+				continue
+			}
+			if (statement.type === 'NamedExportStatement') {
+				for (const name of statement.names) {
+					exports.add(name)
+				}
+				if (statement.source !== null) {
+					dependencies.push({
+						kind: 'reexport',
+						names: statement.names,
+						resolvedPath: this.resolveImportPath(filePath, statement.source),
+					})
+					continue
+				}
+				for (const name of statement.names) {
+					if (!availableNames.has(name)) {
+						throw new Error(
+							`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
+						)
+					}
+				}
+				continue
+			}
+			if ('name' in statement) {
+				availableNames.add(statement.name)
+			}
 		}
 
 		const loaded: LoadedModule = {
 			filePath,
 			program,
-			imports,
+			dependencies,
 			exports,
 		}
 		moduleCache.set(filePath, loaded)
@@ -158,6 +202,9 @@ class Compiler {
 			if (statement.type === 'ImportStatement') {
 				continue
 			}
+			if (statement.type === 'NamedExportStatement') {
+				continue
+			}
 			if (statement.type === 'ExportStatement') {
 				normalized.push(statement.statement)
 				continue
@@ -166,6 +213,23 @@ class Compiler {
 		}
 
 		return normalized
+	}
+
+	private createMissingExportError(
+		fromFilePath: string,
+		dependencyPath: string,
+		name: string,
+		kind: ModuleDependency['kind'],
+	): string {
+		const action = kind === 'reexport'
+			? 'реэкспортирует'
+			: 'импортирует'
+
+		return `Модуль ${this.formatModulePath(fromFilePath)} ${action} ${name} из ${this.formatModulePath(dependencyPath)}, но этот модуль его не экспортирует`
+	}
+
+	private formatModulePath(filePath: string): string {
+		return path.relative(process.cwd(), filePath)
 	}
 }
 

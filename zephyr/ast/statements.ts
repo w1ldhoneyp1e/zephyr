@@ -21,6 +21,12 @@ interface ExportStatementNode {
 	statement: ExportableStatementNode,
 }
 
+interface NamedExportStatementNode {
+	type: 'NamedExportStatement',
+	names: string[],
+	source: string | null,
+}
+
 interface BlockStatementNode {
 	type: 'BlockStatement',
 	statements: StatementNode[],
@@ -78,6 +84,7 @@ type StatementNode =
 	| ClassDeclarationNode
 	| ImportStatementNode
 	| ExportStatementNode
+	| NamedExportStatementNode
 	| IfStatementNode
 	| WhileStatementNode
 	| ForRangeStatementNode
@@ -93,6 +100,7 @@ export {
 	type BreakStatementNode,
 	type ContinueStatementNode,
 	type ExportableStatementNode,
+	type NamedExportStatementNode,
 	type ExportStatementNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,

@@ -8,6 +8,7 @@ import {
 	type FunctionDeclarationNode,
 	type ImportStatementNode,
 	type MethodDeclarationNode,
+	type NamedExportStatementNode,
 	type ParameterNode,
 	type SemanticValueAction,
 	type StructMemberListValue,
@@ -61,6 +62,16 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				type: 'ExportStatement',
 				statement: values[1] as VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
 			} satisfies ExportStatementNode)
+		case 'ExportStatement -> Export LeftBrace ImportNameListOpt RightBrace ExportFromOpt Semicolon':
+			return values => ({
+				type: 'NamedExportStatement',
+				names: values[2] as string[],
+				source: values[4] as string | null,
+			} satisfies NamedExportStatementNode)
+		case 'ExportFromOpt -> From String':
+			return values => tokenLexeme(values[1]).slice(1, -1)
+		case 'ExportFromOpt -> ε':
+			return () => null
 		case 'TypeAnnotationOpt -> Colon TypeExpression':
 			return values => createTypeName(values[1])
 		case 'TypeAnnotationOpt -> ε':

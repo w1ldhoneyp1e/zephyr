@@ -23,6 +23,7 @@ export type {
 	BreakStatementNode,
 	ContinueStatementNode,
 	ExportableStatementNode,
+	NamedExportStatementNode,
 	ExportStatementNode,
 	ExpressionStatementNode,
 	ForRangeStatementNode,

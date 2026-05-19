@@ -1,0 +1,3 @@
+import { add, } from "./index.zph";
+
+return add(3, 4);
