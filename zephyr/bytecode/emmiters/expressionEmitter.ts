@@ -1,12 +1,14 @@
 import {Opcode} from '../../../vm/types'
+import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
 	type ExpressionNode,
 	type NoArgOpcode,
 	type Value,
 } from '../context'
+import {emitCallableClosure} from './functionEmitter'
 
-function emitExpression(state: CompilerState, expression: ExpressionNode): void {
+function emitExpression(state: CompilerState, generator: BytecodeGenerator, expression: ExpressionNode): void {
 	switch (expression.type) {
 		case 'LiteralExpression': {
 			if (expression.value === null) {
@@ -40,7 +42,7 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 			break
 		}
 		case 'UnaryExpression': {
-			emitExpression(state, expression.argument)
+			emitExpression(state, generator, expression.argument)
 			if (expression.operator === '-') {
 				state.emitNoArg(Opcode.Neg)
 			}
@@ -54,18 +56,18 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 		}
 		case 'BinaryExpression': {
 			if (expression.operator === '??') {
-				emitExpression(state, expression.left)
+				emitExpression(state, generator, expression.left)
 				state.emitNoArg(Opcode.Dup)
 				state.emitNoArg(Opcode.Nil)
 				state.emitNoArg(Opcode.Eq)
 				const rightJump = state.emitJump(Opcode.JumpIfFalse)
 				state.emitNoArg(Opcode.Pop)
-				emitExpression(state, expression.right)
+				emitExpression(state, generator, expression.right)
 				state.patchJump(rightJump, state.getInstructions().length)
 				break
 			}
-			emitExpression(state, expression.left)
-			emitExpression(state, expression.right)
+			emitExpression(state, generator, expression.left)
+			emitExpression(state, generator, expression.right)
 			const opMap: Record<string, NoArgOpcode> = {
 				'+': Opcode.Add,
 				'-': Opcode.Sub,
@@ -90,38 +92,38 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 		}
 		case 'ArrayExpression': {
 			for (const element of expression.elements) {
-				emitExpression(state, element)
+				emitExpression(state, generator, element)
 			}
 			state.emitNumArg(Opcode.CreateArr, expression.elements.length)
 			break
 		}
 		case 'IndexExpression': {
-			emitExpression(state, expression.object)
-			emitExpression(state, expression.index)
+			emitExpression(state, generator, expression.object)
+			emitExpression(state, generator, expression.index)
 			state.emitNoArg(Opcode.GetEl)
 			break
 		}
 		case 'OptionalIndexExpression': {
-			emitExpression(state, expression.object)
+			emitExpression(state, generator, expression.object)
 			state.emitNoArg(Opcode.Dup)
 			state.emitNoArg(Opcode.Nil)
 			state.emitNoArg(Opcode.Eq)
 			const nonNullJump = state.emitJump(Opcode.JumpIfFalse)
 			const endJump = state.emitJump(Opcode.Jump)
 			state.patchJump(nonNullJump, state.getInstructions().length)
-			emitExpression(state, expression.index)
+			emitExpression(state, generator, expression.index)
 			state.emitNoArg(Opcode.GetEl)
 			state.patchJump(endJump, state.getInstructions().length)
 			break
 		}
 		case 'MemberExpression': {
-			emitExpression(state, expression.object)
+			emitExpression(state, generator, expression.object)
 			const propertyNameIndex = state.addConstant(expression.property)
 			state.emitNumArg(Opcode.GetProp, propertyNameIndex)
 			break
 		}
 		case 'OptionalMemberExpression': {
-			emitExpression(state, expression.object)
+			emitExpression(state, generator, expression.object)
 			state.emitNoArg(Opcode.Dup)
 			state.emitNoArg(Opcode.Nil)
 			state.emitNoArg(Opcode.Eq)
@@ -136,10 +138,14 @@ function emitExpression(state: CompilerState, expression: ExpressionNode): void 
 		case 'CallExpression': {
 			const argc = expression.args.length
 			for (const arg of expression.args) {
-				emitExpression(state, arg)
+				emitExpression(state, generator, arg)
 			}
-			emitExpression(state, expression.callee)
+			emitExpression(state, generator, expression.callee)
 			state.emitNumArg(Opcode.Call, argc)
+			break
+		}
+		case 'LambdaExpression': {
+			emitCallableClosure(state, generator, expression)
 			break
 		}
 		default:

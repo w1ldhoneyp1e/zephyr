@@ -1,3 +1,6 @@
+import {type ParameterNode} from './declarations'
+import {type BlockStatementNode} from './statements'
+
 interface IdentifierTargetNode {
 	type: 'IdentifierTarget',
 	name: string,
@@ -73,6 +76,12 @@ interface CallExpressionNode {
 	args: ExpressionNode[],
 }
 
+interface LambdaExpressionNode {
+	type: 'LambdaExpression',
+	params: ParameterNode[],
+	body: ExpressionNode | BlockStatementNode,
+}
+
 type AssignmentTargetNode = IdentifierTargetNode | IndexTargetNode | MemberTargetNode
 
 type ExpressionNode =
@@ -86,6 +95,7 @@ type ExpressionNode =
 	| MemberExpressionNode
 	| OptionalMemberExpressionNode
 	| CallExpressionNode
+	| LambdaExpressionNode
 
 export {
 	type ArrayExpressionNode,
@@ -97,6 +107,7 @@ export {
 	type IdentifierTargetNode,
 	type IndexExpressionNode,
 	type IndexTargetNode,
+	type LambdaExpressionNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
 	type MemberTargetNode,

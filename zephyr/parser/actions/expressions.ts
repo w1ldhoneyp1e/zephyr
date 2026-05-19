@@ -1,14 +1,17 @@
 import {type Production} from '../grammar'
 import {
 	type ArrayExpressionNode,
+	type BlockStatementNode,
 	type CallExpressionNode,
 	type ExpressionNode,
 	type IdentifierExpressionNode,
 	type IndexExpressionNode,
+	type LambdaExpressionNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
+	type ParameterNode,
 	type PendingAssignmentNode,
 	type SemanticValueAction,
 	createBinary,
@@ -22,6 +25,7 @@ import {
 function createExpressionAction(production: Production): SemanticValueAction | null {
 	switch (productionKey(production)) {
 		case 'Expression -> AssignmentExpression':
+		case 'Expression -> LambdaExpression':
 		case 'AssignmentExpression -> CoalesceExpression':
 		case 'CoalesceExpression -> OrExpression':
 		case 'OrExpression -> AndExpression':
@@ -147,6 +151,15 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				type: 'IdentifierExpression',
 				name: tokenLexeme(values[0]),
 			} satisfies IdentifierExpressionNode)
+		case 'LambdaExpression -> LeftParen ParameterListOpt RightParen Arrow LambdaBody':
+			return values => ({
+				type: 'LambdaExpression',
+				params: values[1] as ParameterNode[],
+				body: values[4] as ExpressionNode | BlockStatementNode,
+			} satisfies LambdaExpressionNode)
+		case 'LambdaBody -> BlockStatement':
+		case 'LambdaBody -> Expression':
+			return values => values[0]
 		case 'PrimaryExpression -> LeftParen Expression RightParen':
 			return values => ensureExpression(values[1], 'grouped expression')
 		case 'PrimaryExpression -> LeftBracket ArrayElementsOpt RightBracket':

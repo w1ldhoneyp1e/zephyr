@@ -4,6 +4,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type LambdaExpressionNode,
 	type MethodDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
@@ -214,7 +215,11 @@ class CompilerState {
 		return binding
 	}
 
-	getFunctionParameterBindings(name: FunctionDeclarationNode | MethodDeclarationNode): SemanticBinding[] {
+	getFunctionParameterBindings(name:
+			| FunctionDeclarationNode
+			| MethodDeclarationNode
+			| LambdaExpressionNode,
+	): SemanticBinding[] {
 		const bindings = this.model.functionParameterBindings.get(name)
 		if (bindings === undefined) {
 			throw new Error('CompilerState: function parameter bindings not found')

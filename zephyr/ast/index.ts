@@ -8,6 +8,7 @@ export type {
 	IdentifierTargetNode,
 	IndexExpressionNode,
 	IndexTargetNode,
+	LambdaExpressionNode,
 	LiteralExpressionNode,
 	MemberExpressionNode,
 	MemberTargetNode,

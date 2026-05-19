@@ -20,6 +20,7 @@ import {
 	type ImportStatementNode,
 	type IndexExpressionNode,
 	type IndexTargetNode,
+	type LambdaExpressionNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
 	type MemberTargetNode,
@@ -49,6 +50,7 @@ type SemanticValue =
 	| StructMemberListValue
 	| ProgramNode
 	| ExpressionNode
+	| LambdaExpressionNode
 	| MethodDeclarationNode
 	| StatementNode
 	| StatementNode[]
@@ -95,7 +97,7 @@ function appendArrayTypeSuffix(baseTypeName: TypeName): TypeName {
 }
 
 function createFunctionTypeName(paramTypeNames: TypeName[], returnTypeName: TypeName): TypeName {
-	return `fn(${paramTypeNames.join(', ')}): ${returnTypeName}`
+	return `(${paramTypeNames.join(', ')}) => ${returnTypeName}`
 }
 
 function createBinary(
@@ -187,6 +189,7 @@ function isExpressionNodeType(type: string): boolean {
 		|| type === 'MemberExpression'
 		|| type === 'OptionalMemberExpression'
 		|| type === 'CallExpression'
+		|| type === 'LambdaExpression'
 }
 
 function productionKey(production: Production): string {
@@ -214,6 +217,7 @@ export {
 	type ImportStatementNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
+	type LambdaExpressionNode,
 	type MemberExpressionNode,
 	type MethodDeclarationNode,
 	type OptionalIndexExpressionNode,

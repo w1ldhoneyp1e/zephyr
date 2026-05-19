@@ -260,6 +260,7 @@ const TERMINAL_ALIASES = new Map<string, TokenType>([
 	['%', TokenType.Percent],
 	['!', TokenType.Bang],
 	['=', TokenType.Equal],
+	['=>', TokenType.Arrow],
 	['==', TokenType.EqualEqual],
 	['!=', TokenType.BangEqual],
 	['<', TokenType.Less],

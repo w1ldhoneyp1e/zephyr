@@ -26,7 +26,7 @@ function emitStatement(
 			const binding = state.getDeclarationBinding(statement)
 			const slot = state.declareBinding(binding)
 			if (statement.initializer !== null) {
-				emitExpression(state, statement.initializer)
+				emitExpression(state, generator, statement.initializer)
 			}
 			else {
 				state.emitNoArg(Opcode.Nil)
@@ -35,14 +35,14 @@ function emitStatement(
 			break
 		}
 		case 'AssignmentStatement':
-			emitAssignment(state, statement)
+			emitAssignment(state, generator, statement)
 			break
 		case 'ExpressionStatement':
-			emitExpression(state, statement.expression)
+			emitExpression(state, generator, statement.expression)
 			state.emitNoArg(Opcode.Pop)
 			break
 		case 'IfStatement': {
-			emitExpression(state, statement.condition)
+			emitExpression(state, generator, statement.condition)
 			const elseJump = state.emitJump(Opcode.JumpIfFalse)
 			emitBlock(state, generator, compiler, statement.thenBranch.statements)
 			if (statement.elseBranch !== null) {
@@ -60,7 +60,7 @@ function emitStatement(
 			const loopStart = state.getInstructions().length
 			compiler.beginLoop()
 			compiler.setContinueTarget(loopStart)
-			emitExpression(state, statement.condition)
+			emitExpression(state, generator, statement.condition)
 			const endJump = state.emitJump(Opcode.JumpIfFalse)
 			emitBlock(state, generator, compiler, statement.body.statements)
 			state.emitNumArg(Opcode.Jump, loopStart)
@@ -74,7 +74,7 @@ function emitStatement(
 			break
 		case 'ReturnStatement':
 			if (statement.value !== null) {
-				emitExpression(state, statement.value)
+				emitExpression(state, generator, statement.value)
 			}
 			else {
 				state.emitNoArg(Opcode.Nil)

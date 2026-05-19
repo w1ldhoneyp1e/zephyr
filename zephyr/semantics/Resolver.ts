@@ -5,6 +5,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type LambdaExpressionNode,
 	type MethodDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
@@ -226,8 +227,20 @@ class Resolver {
 			parameterBindings.push(parameterBinding)
 		}
 		this.model.functionParameterBindings.set(statement, parameterBindings)
-		for (const bodyStatement of statement.body.statements) {
-			this.resolveStatement(bodyStatement)
+		if (statement.type === 'LambdaExpression') {
+			if (statement.body.type === 'BlockStatement') {
+				for (const bodyStatement of statement.body.statements) {
+					this.resolveStatement(bodyStatement)
+				}
+			}
+			else {
+				this.resolveExpression(statement.body)
+			}
+		}
+		else {
+			for (const bodyStatement of statement.body.statements) {
+				this.resolveStatement(bodyStatement)
+			}
 		}
 		this.leaveScope()
 		this.leaveFunction(statement)
@@ -281,9 +294,42 @@ class Resolver {
 					this.resolveExpression(arg)
 				}
 				return
+			case 'LambdaExpression':
+				this.resolveLambdaExpression(expression)
+				return
 			default:
 				throw new Error(`Resolver: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
 		}
+	}
+
+	private resolveLambdaExpression(expression: LambdaExpressionNode): void {
+		this.captures.set(expression, new Set())
+		this.enterFunction(expression)
+		this.enterScope()
+		const parameterBindings: SemanticBinding[] = []
+		for (const [index, param] of expression.params.entries()) {
+			const parameterBinding: SemanticBinding = {
+				kind: 'parameter',
+				callableDeclaration: expression,
+				index,
+				name: param.name,
+				typeName: param.typeName,
+			}
+			this.recordBindingOwner(parameterBinding)
+			this.declare(param.name, parameterBinding)
+			parameterBindings.push(parameterBinding)
+		}
+		this.model.functionParameterBindings.set(expression, parameterBindings)
+		if (expression.body.type === 'BlockStatement') {
+			for (const bodyStatement of expression.body.statements) {
+				this.resolveStatement(bodyStatement)
+			}
+		}
+		else {
+			this.resolveExpression(expression.body)
+		}
+		this.leaveScope()
+		this.leaveFunction(expression)
 	}
 
 	private resolveBlock(statements: StatementNode[]): void {

@@ -151,9 +151,11 @@ class Lexer {
 					: TokenType.Bang)
 				break
 			case '=':
-				this.addToken(this.match('=')
-					? TokenType.EqualEqual
-					: TokenType.Equal)
+				this.addToken(this.match('>')
+					? TokenType.Arrow
+					: this.match('=')
+						? TokenType.EqualEqual
+						: TokenType.Equal)
 				break
 			case '<':
 				this.addToken(this.match('=')

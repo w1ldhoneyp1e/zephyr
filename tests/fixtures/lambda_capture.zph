@@ -2,8 +2,5 @@ fn apply(f: (number) => number, x: number): number {
 	return f(x);
 }
 
-fn inc(x: number): number {
-	return x + 1;
-}
-
-return apply(inc, 4);
+var delta: number = 3;
+return apply((x: number) => x + delta, 4);

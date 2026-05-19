@@ -87,6 +87,21 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '5',
 	},
 	{
+		name: 'lambda_callback',
+		file: 'lambda_callback.zph',
+		expectedReturn: '7',
+	},
+	{
+		name: 'lambda_capture',
+		file: 'lambda_capture.zph',
+		expectedReturn: '7',
+	},
+	{
+		name: 'lambda_block_body',
+		file: 'lambda_block_body.zph',
+		expectedReturn: '7',
+	},
+	{
 		name: 'modules_basic',
 		file: 'modules/main.zph',
 		expectedReturn: '8',
@@ -114,7 +129,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'typed_callback_mismatch_error',
 		file: 'typed_callback_mismatch_error.zph',
-		expectedError: 'Несовместимые типы в вызов функции apply, аргумент 1: ожидалось fn(number): number, получено fn(string): number',
+		expectedError: 'Несовместимые типы в вызов функции apply, аргумент 1: ожидалось (number) => number, получено (string) => number',
 	},
 	{
 		name: 'typed_array_element_mismatch_error',

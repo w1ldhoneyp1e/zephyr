@@ -1,4 +1,4 @@
-fn apply(f: fn(number): number, x: number): number {
+fn apply(f: (number) => number, x: number): number {
 	return f(x);
 }
 

@@ -16,6 +16,7 @@ enum TokenType {
 	Percent = 'Percent',
 	Bang = 'Bang',
 	Equal = 'Equal',
+	Arrow = 'Arrow',
 	EqualEqual = 'EqualEqual',
 	BangEqual = 'BangEqual',
 	Less = 'Less',

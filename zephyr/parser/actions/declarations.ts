@@ -71,10 +71,10 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => tokenLexeme(values[0]) as TypeName
 		case 'PrimaryTypeExpression -> FunctionTypeExpression':
 			return values => createTypeName(values[0])
-		case 'FunctionTypeExpression -> Fn LeftParen TypeArgumentListOpt RightParen Colon TypeExpression':
+		case 'FunctionTypeExpression -> LeftParen TypeArgumentListOpt RightParen Arrow TypeExpression':
 			return values => createFunctionTypeName(
-				values[2] as TypeName[],
-				createTypeName(values[5]),
+				values[1] as TypeName[],
+				createTypeName(values[4]),
 			)
 		case 'TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt':
 			return values => values[0]

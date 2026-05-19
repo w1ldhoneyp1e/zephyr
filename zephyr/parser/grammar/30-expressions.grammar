@@ -1,6 +1,6 @@
 ExpressionStatement -> Expression ';'
 
-Expression -> AssignmentExpression
+Expression -> LambdaExpression | AssignmentExpression
 AssignmentExpression -> PostfixExpression '=' AssignmentExpression | CoalesceExpression
 CoalesceExpression -> CoalesceExpression '??' OrExpression | OrExpression
 OrExpression -> OrExpression '||' AndExpression | AndExpression
@@ -23,6 +23,8 @@ PrimaryExpression -> String
 PrimaryExpression -> Identifier
 PrimaryExpression -> '(' Expression ')'
 PrimaryExpression -> '[' ArrayElementsOpt ']'
+LambdaExpression -> '(' ParameterListOpt ')' '=>' LambdaBody
+LambdaBody -> BlockStatement | Expression
 ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt | ε
 ArrayTrailingCommaOpt -> ',' | ε
 ArrayElements -> ArrayElements ',' Expression | Expression

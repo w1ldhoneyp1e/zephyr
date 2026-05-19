@@ -70,6 +70,9 @@ class Validator {
 					this.validateExpression(statement.value, model)
 					const owner = model.returnOwners.get(statement)
 					if (owner !== undefined && owner !== null) {
+						if (owner.type === 'LambdaExpression') {
+							return
+						}
 						this.assertTypeAssignable(
 							owner.returnTypeName,
 							this.inferExpressionType(statement.value, model),
@@ -142,6 +145,17 @@ class Validator {
 	}
 
 	private validateCallableBody(callable: CallableDeclarationNode, model: SemanticModel): void {
+		if (callable.type === 'LambdaExpression') {
+			if (callable.body.type === 'BlockStatement') {
+				for (const bodyStatement of callable.body.statements) {
+					this.validateStatement(bodyStatement, model)
+				}
+			}
+			else {
+				this.validateExpression(callable.body, model)
+			}
+			return
+		}
 		for (const bodyStatement of callable.body.statements) {
 			this.validateStatement(bodyStatement, model)
 		}
@@ -184,6 +198,9 @@ class Validator {
 					this.validateExpression(arg, model)
 				}
 				this.validateCallExpression(expression, model)
+				return
+			case 'LambdaExpression':
+				this.validateCallableBody(expression, model)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
@@ -311,6 +328,13 @@ class Validator {
 					return this.findClassMethodReturnType(model, objectType, expression.callee.property)
 				}
 				return 'any'
+			case 'LambdaExpression':
+				return this.createCallableType(
+					expression.params.map(param => param.typeName),
+					expression.body.type === 'BlockStatement'
+						? this.inferBlockReturnType(expression.body.statements, model)
+						: this.inferExpressionType(expression.body, model),
+				)
 			default:
 				return 'any'
 		}
@@ -370,6 +394,52 @@ class Validator {
 		return `${firstType}[]`
 	}
 
+	private inferBlockReturnType(statements: StatementNode[], model: SemanticModel): string {
+		const returnTypes = this.collectReturnTypes(statements, model)
+		if (returnTypes.length === 0) {
+			return 'any'
+		}
+
+		const firstType = returnTypes[0]
+		for (const returnType of returnTypes) {
+			if (returnType !== firstType) {
+				return 'any'
+			}
+		}
+
+		return firstType
+	}
+
+	private collectReturnTypes(statements: StatementNode[], model: SemanticModel): string[] {
+		const types: string[] = []
+		for (const statement of statements) {
+			switch (statement.type) {
+				case 'ReturnStatement':
+					types.push(statement.value === null
+						? 'null'
+						: this.inferExpressionType(statement.value, model))
+					break
+				case 'BlockStatement':
+					types.push(...this.collectReturnTypes(statement.statements, model))
+					break
+				case 'IfStatement':
+					types.push(...this.collectReturnTypes(statement.thenBranch.statements, model))
+					if (statement.elseBranch !== null) {
+						types.push(...this.collectReturnTypes(statement.elseBranch.statements, model))
+					}
+					break
+				case 'WhileStatement':
+				case 'ForRangeStatement':
+					types.push(...this.collectReturnTypes(statement.body.statements, model))
+					break
+				default:
+					break
+			}
+		}
+
+		return types
+	}
+
 	private getIndexedElementType(containerType: string): string {
 		if (!containerType.endsWith('[]')) {
 			return 'any'
@@ -415,7 +485,7 @@ class Validator {
 	}
 
 	private createCallableType(paramTypes: string[], returnType: string): string {
-		return `fn(${paramTypes.join(', ')}): ${returnType}`
+		return `(${paramTypes.join(', ')}) => ${returnType}`
 	}
 
 	private assertUniqueFieldNames(fields: ClassFieldNode[]): void {
@@ -429,9 +499,13 @@ class Validator {
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {
-		return callable.type === 'FunctionDeclaration'
-			? `функции ${callable.name}`
-			: `методе ${callable.name}`
+		if (callable.type === 'FunctionDeclaration') {
+			return `функции ${callable.name}`
+		}
+		if (callable.type === 'MethodDeclaration') {
+			return `методе ${callable.name}`
+		}
+		return 'лямбде'
 	}
 }
 

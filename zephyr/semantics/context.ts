@@ -4,6 +4,7 @@ import {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
+	type LambdaExpressionNode,
 	type MethodDeclarationNode,
 	type ProgramNode,
 	type ReturnStatementNode,
@@ -59,7 +60,7 @@ type SemanticBinding =
 	| BuiltinSemanticBinding
 
 type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
-type CallableDeclarationNode = FunctionDeclarationNode | MethodDeclarationNode
+type CallableDeclarationNode = FunctionDeclarationNode | MethodDeclarationNode | LambdaExpressionNode
 type SemanticFunctionOwner = ProgramNode | CallableDeclarationNode
 type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode
 

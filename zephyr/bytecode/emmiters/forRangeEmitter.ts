@@ -15,11 +15,11 @@ function emitForRange(
 	compiler.beginLoop()
 	const iteratorBinding = state.getForRangeBinding(statement)
 	const iteratorSlot = state.declareBinding(iteratorBinding)
-	emitExpression(state, statement.start)
+	emitExpression(state, generator, statement.start)
 	state.emitNumArg(Opcode.SetLocal, iteratorSlot)
 	const endName = `__for_end_${iteratorSlot}_${state.getInstructions().length}`
 	const endSlot = state.declareInternalLocal(endName)
-	emitExpression(state, statement.end)
+	emitExpression(state, generator, statement.end)
 	state.emitNumArg(Opcode.SetLocal, endSlot)
 	const loopStart = state.getInstructions().length
 	state.emitNumArg(Opcode.GetLocal, iteratorSlot)

@@ -10,7 +10,7 @@ ExportStatement -> export ClassDeclaration
 TypeAnnotationOpt -> ':' TypeExpression | ε
 TypeExpression -> PrimaryTypeExpression TypeSuffixListOpt
 PrimaryTypeExpression -> Identifier | FunctionTypeExpression
-FunctionTypeExpression -> fn '(' TypeArgumentListOpt ')' ':' TypeExpression
+FunctionTypeExpression -> '(' TypeArgumentListOpt ')' '=>' TypeExpression
 TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt | ε
 TypeTrailingCommaOpt -> ',' | ε
 TypeArgumentList -> TypeArgumentList ',' TypeExpression | TypeExpression

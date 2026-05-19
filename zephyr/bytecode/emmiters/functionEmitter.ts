@@ -3,11 +3,13 @@ import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
 	type FunctionDeclarationNode,
+	type LambdaExpressionNode,
 	type MethodDeclarationNode,
 	type VmFunctionTemplate,
 	Opcode,
 } from '../context'
 import {emitBlock} from './blockEmitter'
+import {emitExpression} from './expressionEmitter'
 
 function emitFunctionDeclaration(
 	state: CompilerState,
@@ -35,20 +37,34 @@ function emitMethodDeclaration(
 function emitCallableClosure(
 	state: CompilerState,
 	generator: BytecodeGenerator,
-	node: FunctionDeclarationNode | MethodDeclarationNode,
+	node: FunctionDeclarationNode | MethodDeclarationNode | LambdaExpressionNode,
 	receiverTypeName?: string,
 ): void {
 	const functionName = node.type === 'FunctionDeclaration'
 		? node.name
-		: `${receiverTypeName ?? 'Struct'}.${node.name}`
+		: node.type === 'MethodDeclaration'
+			? `${receiverTypeName ?? 'Struct'}.${node.name}`
+			: '<lambda>'
 	const parameterBindings = state.getFunctionParameterBindings(node)
 	const nested = generator.createFunctionCompiler(state, functionName, parameterBindings.length)
 	nested.enterScope()
 	for (const parameterBinding of parameterBindings) {
 		nested.getState().declareBinding(parameterBinding)
 	}
-	emitBlock(nested.getState(), generator, nested, node.body.statements)
-	nested.emitNilReturn()
+	if (node.type === 'LambdaExpression') {
+		if (node.body.type === 'BlockStatement') {
+			emitBlock(nested.getState(), generator, nested, node.body.statements)
+			nested.emitNilReturn()
+		}
+		else {
+			emitExpression(nested.getState(), generator, node.body)
+			nested.getState().emitNoArg(Opcode.Return)
+		}
+	}
+	else {
+		emitBlock(nested.getState(), generator, nested, node.body.statements)
+		nested.emitNilReturn()
+	}
 	nested.leaveScope()
 	const prog = nested.buildVmProgram()
 	generator.functionPrograms.push(prog)
@@ -78,6 +94,7 @@ function emitBindingLoad(state: CompilerState, binding: SemanticBinding): void {
 }
 
 export {
+	emitCallableClosure,
 	emitFunctionDeclaration,
 	emitMethodDeclaration,
 }
