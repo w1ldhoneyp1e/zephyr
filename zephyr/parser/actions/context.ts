@@ -9,6 +9,7 @@ import {
 	type ClassDeclarationNode,
 	type ClassFieldNode,
 	type ContinueStatementNode,
+	type ExportStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,
@@ -16,6 +17,7 @@ import {
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
 	type IfStatementNode,
+	type ImportStatementNode,
 	type IndexExpressionNode,
 	type IndexTargetNode,
 	type LiteralExpressionNode,
@@ -42,6 +44,7 @@ type SemanticValue =
 	| ParameterNode[]
 	| ClassFieldNode
 	| ParameterNode
+	| TypeName[]
 	| ExpressionNode[]
 	| StructMemberListValue
 	| ProgramNode
@@ -50,6 +53,8 @@ type SemanticValue =
 	| StatementNode
 	| StatementNode[]
 	| PendingAssignmentNode
+	| ImportStatementNode
+	| ExportStatementNode
 
 interface PendingAssignmentNode {
 	type: 'PendingAssignment',
@@ -87,6 +92,10 @@ function createTypeName(value: SemanticValue): TypeName {
 
 function appendArrayTypeSuffix(baseTypeName: TypeName): TypeName {
 	return `${baseTypeName}[]`
+}
+
+function createFunctionTypeName(paramTypeNames: TypeName[], returnTypeName: TypeName): TypeName {
+	return `fn(${paramTypeNames.join(', ')}): ${returnTypeName}`
 }
 
 function createBinary(
@@ -195,12 +204,14 @@ export {
 	type ClassFieldNode,
 	type ClassDeclarationNode,
 	type ContinueStatementNode,
+	type ExportStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IfStatementNode,
+	type ImportStatementNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,
 	type MemberExpressionNode,
@@ -218,6 +229,7 @@ export {
 	type TypeName,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
+	createFunctionTypeName,
 	createTypeName,
 	appendArrayTypeSuffix,
 	createBinary,

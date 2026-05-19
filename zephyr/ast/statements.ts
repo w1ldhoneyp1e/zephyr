@@ -5,6 +5,22 @@ import {
 } from './declarations'
 import {type AssignmentTargetNode, type ExpressionNode} from './expressions'
 
+type ExportableStatementNode =
+	| VariableDeclarationNode
+	| FunctionDeclarationNode
+	| ClassDeclarationNode
+
+interface ImportStatementNode {
+	type: 'ImportStatement',
+	names: string[],
+	source: string,
+}
+
+interface ExportStatementNode {
+	type: 'ExportStatement',
+	statement: ExportableStatementNode,
+}
+
 interface BlockStatementNode {
 	type: 'BlockStatement',
 	statements: StatementNode[],
@@ -60,6 +76,8 @@ type StatementNode =
 	| VariableDeclarationNode
 	| FunctionDeclarationNode
 	| ClassDeclarationNode
+	| ImportStatementNode
+	| ExportStatementNode
 	| IfStatementNode
 	| WhileStatementNode
 	| ForRangeStatementNode
@@ -74,8 +92,11 @@ export {
 	type BlockStatementNode,
 	type BreakStatementNode,
 	type ContinueStatementNode,
+	type ExportableStatementNode,
+	type ExportStatementNode,
 	type ExpressionStatementNode,
 	type ForRangeStatementNode,
+	type ImportStatementNode,
 	type IfStatementNode,
 	type ReturnStatementNode,
 	type StatementNode,

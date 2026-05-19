@@ -1,7 +1,19 @@
 VariableDeclaration -> var Identifier TypeAnnotationOpt VariableInitializerOpt ';'
 VariableDeclaration -> const Identifier TypeAnnotationOpt VariableInitializerOpt ';'
+ImportStatement -> import '{' ImportNameListOpt '}' from String ';'
+ImportNameListOpt -> ImportNameList ImportTrailingCommaOpt | ε
+ImportTrailingCommaOpt -> ',' | ε
+ImportNameList -> ImportNameList ',' Identifier | Identifier
+ExportStatement -> export VariableDeclaration
+ExportStatement -> export FunctionDeclaration
+ExportStatement -> export ClassDeclaration
 TypeAnnotationOpt -> ':' TypeExpression | ε
-TypeExpression -> Identifier TypeSuffixListOpt
+TypeExpression -> PrimaryTypeExpression TypeSuffixListOpt
+PrimaryTypeExpression -> Identifier | FunctionTypeExpression
+FunctionTypeExpression -> fn '(' TypeArgumentListOpt ')' ':' TypeExpression
+TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt | ε
+TypeTrailingCommaOpt -> ',' | ε
+TypeArgumentList -> TypeArgumentList ',' TypeExpression | TypeExpression
 TypeSuffixListOpt -> TypeSuffixList | ε
 TypeSuffixList -> TypeSuffixList TypeSuffix | TypeSuffix
 TypeSuffix -> '[' ']'

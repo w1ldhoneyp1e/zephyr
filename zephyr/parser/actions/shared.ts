@@ -22,6 +22,8 @@ function createSharedAction(production: Production): SemanticValueAction | null 
 		case 'Statement -> VariableDeclaration':
 		case 'Statement -> FunctionDeclaration':
 		case 'Statement -> ClassDeclaration':
+		case 'Statement -> ImportStatement':
+		case 'Statement -> ExportStatement':
 		case 'Statement -> IfStatement':
 		case 'Statement -> WhileStatement':
 		case 'Statement -> ForRangeStatement':

@@ -82,6 +82,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedStdout: '17\n',
 	},
 	{
+		name: 'typed_callback',
+		file: 'typed_callback.zph',
+		expectedReturn: '5',
+	},
+	{
+		name: 'modules_basic',
+		file: 'modules/main.zph',
+		expectedReturn: '8',
+	},
+	{
 		name: 'type_mismatch_error',
 		file: 'type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной a: ожидалось number, получено string',
@@ -102,6 +112,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
 	},
 	{
+		name: 'typed_callback_mismatch_error',
+		file: 'typed_callback_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в вызов функции apply, аргумент 1: ожидалось fn(number): number, получено fn(string): number',
+	},
+	{
 		name: 'typed_array_element_mismatch_error',
 		file: 'typed_array_element_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
@@ -115,12 +130,11 @@ const TEST_CASES: FeatureTestCase[] = [
 
 function runTestCase(testCase: FeatureTestCase): void {
 	const fixturePath = path.resolve(__dirname, 'fixtures', testCase.file)
-	const source = fs.readFileSync(fixturePath, 'utf-8')
 	const compiler = new Compiler()
 	const writes: string[] = []
 
 	try {
-		const programs = compiler.compile(source)
+		const programs = compiler.compilePath(fixturePath)
 		const vm = new Vm({
 			read: createRead(testCase.stdin ?? null),
 			write: text => {

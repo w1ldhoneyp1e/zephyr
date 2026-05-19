@@ -3,13 +3,17 @@ import {
 	type BlockStatementNode,
 	type ClassDeclarationNode,
 	type ClassFieldNode,
+	type ExportStatementNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
+	type ImportStatementNode,
 	type MethodDeclarationNode,
 	type ParameterNode,
 	type SemanticValueAction,
 	type StructMemberListValue,
 	type TypeName,
+	type VariableDeclarationNode,
+	createFunctionTypeName,
 	createTypeName,
 	createVariableDeclaration,
 	ensureExpression,
@@ -33,12 +37,56 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				createTypeName(values[2]),
 				values[3] as ExpressionNode | null,
 			)
+		case 'ImportStatement -> Import LeftBrace ImportNameListOpt RightBrace From String Semicolon':
+			return values => ({
+				type: 'ImportStatement',
+				names: values[2] as string[],
+				source: tokenLexeme(values[5]).slice(1, -1),
+			} satisfies ImportStatementNode)
+		case 'ImportNameListOpt -> ImportNameList ImportTrailingCommaOpt':
+			return values => values[0]
+		case 'ImportNameListOpt -> ε':
+			return () => []
+		case 'ImportTrailingCommaOpt -> Comma':
+		case 'ImportTrailingCommaOpt -> ε':
+			return () => null
+		case 'ImportNameList -> ImportNameList Comma Identifier':
+			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
+		case 'ImportNameList -> Identifier':
+			return values => [tokenLexeme(values[0])]
+		case 'ExportStatement -> Export VariableDeclaration':
+		case 'ExportStatement -> Export FunctionDeclaration':
+		case 'ExportStatement -> Export ClassDeclaration':
+			return values => ({
+				type: 'ExportStatement',
+				statement: values[1] as VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
+			} satisfies ExportStatementNode)
 		case 'TypeAnnotationOpt -> Colon TypeExpression':
 			return values => createTypeName(values[1])
 		case 'TypeAnnotationOpt -> ε':
 			return () => 'any'
-		case 'TypeExpression -> Identifier TypeSuffixListOpt':
-			return values => `${tokenLexeme(values[0])}${values[1] as string}`
+		case 'TypeExpression -> PrimaryTypeExpression TypeSuffixListOpt':
+			return values => `${createTypeName(values[0])}${values[1] as string}`
+		case 'PrimaryTypeExpression -> Identifier':
+			return values => tokenLexeme(values[0]) as TypeName
+		case 'PrimaryTypeExpression -> FunctionTypeExpression':
+			return values => createTypeName(values[0])
+		case 'FunctionTypeExpression -> Fn LeftParen TypeArgumentListOpt RightParen Colon TypeExpression':
+			return values => createFunctionTypeName(
+				values[2] as TypeName[],
+				createTypeName(values[5]),
+			)
+		case 'TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt':
+			return values => values[0]
+		case 'TypeArgumentListOpt -> ε':
+			return () => []
+		case 'TypeTrailingCommaOpt -> Comma':
+		case 'TypeTrailingCommaOpt -> ε':
+			return () => null
+		case 'TypeArgumentList -> TypeArgumentList Comma TypeExpression':
+			return values => [...(values[0] as TypeName[]), createTypeName(values[2])]
+		case 'TypeArgumentList -> TypeExpression':
+			return values => [createTypeName(values[0])]
 		case 'TypeSuffixListOpt -> TypeSuffixList':
 			return values => values[0]
 		case 'TypeSuffixListOpt -> ε':

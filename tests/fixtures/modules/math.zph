@@ -1,0 +1,11 @@
+export fn add(a: number, b: number): number {
+	return a + b;
+}
+
+fn hidden(x: number): number {
+	return x * 2;
+}
+
+export fn boosted(x: number): number {
+	return hidden(x) + 1;
+}

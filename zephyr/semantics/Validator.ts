@@ -286,11 +286,11 @@ class Validator {
 				return this.getIndexedElementType(this.inferExpressionType(expression.object, model))
 			case 'MemberExpression': {
 				const objectType = this.inferExpressionType(expression.object, model)
-				return this.findClassFieldType(model, objectType, expression.property)
+				return this.findClassPropertyType(model, objectType, expression.property)
 			}
 			case 'OptionalMemberExpression': {
 				const objectType = this.inferExpressionType(expression.object, model)
-				return this.findClassFieldType(model, objectType, expression.property)
+				return this.findClassPropertyType(model, objectType, expression.property)
 			}
 			case 'CallExpression':
 				if (expression.callee.type === 'IdentifierExpression') {
@@ -323,7 +323,10 @@ class Validator {
 			case 'class':
 				return binding.declaration.name
 			case 'function':
-				return binding.declaration.returnTypeName
+				return this.createCallableType(
+					binding.declaration.params.map(param => param.typeName),
+					binding.declaration.returnTypeName,
+				)
 			case 'parameter':
 				return binding.typeName
 			case 'iterator':
@@ -338,6 +341,14 @@ class Validator {
 		}
 		const fields = model.classFieldTypes.get(className)
 		return fields?.get(property) ?? 'any'
+	}
+
+	private findClassPropertyType(model: SemanticModel, className: string, property: string): string {
+		const fieldType = this.findClassFieldType(model, className, property)
+		if (fieldType !== 'any') {
+			return fieldType
+		}
+		return this.findClassMethodType(model, className, property)
 	}
 
 	private inferArrayExpressionType(
@@ -374,6 +385,20 @@ class Validator {
 		return methods?.get(methodName) ?? 'any'
 	}
 
+	private findClassMethodType(model: SemanticModel, className: string, methodName: string): string {
+		if (className === 'any') {
+			return 'any'
+		}
+		const returnType = this.findClassMethodReturnType(model, className, methodName)
+		if (returnType === 'any') {
+			return 'any'
+		}
+		return this.createCallableType(
+			this.findClassMethodParameterTypes(model, className, methodName),
+			returnType,
+		)
+	}
+
 	private findClassMethodParameterTypes(model: SemanticModel, className: string, methodName: string): string[] {
 		if (className === 'any') {
 			return []
@@ -387,6 +412,10 @@ class Validator {
 			return
 		}
 		throw new Error(`Несовместимые типы в ${context}: ожидалось ${targetType}, получено ${sourceType}`)
+	}
+
+	private createCallableType(paramTypes: string[], returnType: string): string {
+		return `fn(${paramTypes.join(', ')}): ${returnType}`
 	}
 
 	private assertUniqueFieldNames(fields: ClassFieldNode[]): void {

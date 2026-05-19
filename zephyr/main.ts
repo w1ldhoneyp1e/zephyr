@@ -160,9 +160,8 @@ function serializeProgram(program: VmProgram): string {
 function main(): void {
 	const options = parseArgs(process.argv.slice(2))
 	const filePath = resolveInputPath(options.inputPath)
-	const source = fs.readFileSync(filePath, 'utf-8')
 	const compiler = new Compiler()
-	const programs = compiler.compile(source)
+	const programs = compiler.compilePath(filePath)
 	if (options.emitBytecode) {
 		const outPath = options.outputPath === null
 			? defaultBytecodePath(filePath)

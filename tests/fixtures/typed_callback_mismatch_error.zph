@@ -1,0 +1,9 @@
+fn apply(f: fn(number): number, x: number): number {
+	return f(x);
+}
+
+fn bad(x: string): number {
+	return 1;
+}
+
+return apply(bad, 4);

@@ -1,0 +1,3 @@
+import { add, boosted, } from "./math.zph";
+
+return add(boosted(2), 3);
