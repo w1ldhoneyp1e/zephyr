@@ -4,14 +4,12 @@ import {
 	type StatementNode,
 } from '../ast'
 import {ClassRegistry} from './ClassRegistry'
+import {type CallableDeclarationNode, type SemanticModel} from './context'
 import {AssignmentValidator} from './validation/AssignmentValidator'
 import {CallValidator} from './validation/CallValidator'
-import {
-	type CallableDeclarationNode,
-	type SemanticModel,
-} from './context'
 import {ClassValidator} from './validation/ClassValidator'
 import {TypeAnalyzer} from './validation/TypeAnalyzer'
+import {ValidationWalker} from './validation/ValidationWalker'
 
 class Validator {
 	private currentClassStack: string[] = []
@@ -20,6 +18,7 @@ class Validator {
 	private classValidator: ClassValidator | null = null
 	private callValidator: CallValidator | null = null
 	private assignmentValidator: AssignmentValidator | null = null
+	private validationWalker: ValidationWalker | null = null
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
 		this.classRegistry = new ClassRegistry(model)
@@ -34,7 +33,11 @@ class Validator {
 			model,
 			this.typeAnalyzer,
 			this.classValidator,
-			expression => this.validateExpression(expression, model),
+			expression => this.validateExpression(expression),
+		)
+		this.validationWalker = new ValidationWalker(
+			statement => this.validateStatement(statement, model),
+			expression => this.validateExpression(expression),
 		)
 		for (const statement of program.body) {
 			this.validateStatement(statement, model)
@@ -47,7 +50,7 @@ class Validator {
 		switch (statement.type) {
 			case 'VariableDeclaration':
 				if (statement.initializer !== null) {
-					this.validateExpression(statement.initializer, model)
+					this.validateExpression(statement.initializer)
 					this.getTypeAnalyzer().assertTypeAssignable(
 						statement.typeName,
 						this.getTypeAnalyzer().inferExpressionType(statement.initializer),
@@ -56,7 +59,7 @@ class Validator {
 				}
 				return
 			case 'FunctionDeclaration':
-				this.validateCallableBody(statement, model)
+				this.validateCallableBody(statement)
 				return
 			case 'ClassDeclaration':
 				this.getClassValidator().assertValidBaseClass(statement)
@@ -66,40 +69,16 @@ class Validator {
 				this.getClassValidator().assertNoMemberNameConflicts(statement)
 				this.currentClassStack.push(statement.name)
 				if (statement.constructorDeclaration !== null) {
-					this.validateCallableBody(statement.constructorDeclaration, model)
+					this.validateCallableBody(statement.constructorDeclaration)
 				}
 				for (const method of statement.methods) {
-					this.validateCallableBody(method, model)
+					this.validateCallableBody(method)
 				}
 				this.currentClassStack.pop()
 				return
-			case 'IfStatement':
-				this.validateExpression(statement.condition, model)
-				for (const bodyStatement of statement.thenBranch.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
-				if (statement.elseBranch !== null) {
-					for (const bodyStatement of statement.elseBranch.statements) {
-						this.validateStatement(bodyStatement, model)
-					}
-				}
-				return
-			case 'WhileStatement':
-				this.validateExpression(statement.condition, model)
-				for (const bodyStatement of statement.body.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
-				return
-			case 'ForRangeStatement':
-				this.validateExpression(statement.start, model)
-				this.validateExpression(statement.end, model)
-				for (const bodyStatement of statement.body.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
-				return
 			case 'ReturnStatement':
 				if (statement.value !== null) {
-					this.validateExpression(statement.value, model)
+					this.validateExpression(statement.value)
 					const owner = model.returnOwners.get(statement)
 					if (owner !== undefined && owner !== null) {
 						if (owner.type === 'ConstructorDeclaration') {
@@ -126,13 +105,12 @@ class Validator {
 					throw new Error('Нельзя использовать continue вне цикла')
 				}
 				return
+			case 'IfStatement':
+			case 'WhileStatement':
+			case 'ForRangeStatement':
 			case 'BlockStatement':
-				for (const bodyStatement of statement.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
-				return
 			case 'ExpressionStatement':
-				this.validateExpression(statement.expression, model)
+				this.getValidationWalker().walkStatementChildren(statement)
 				return
 			case 'AssignmentStatement':
 				this.getAssignmentValidator().validateAssignment(statement)
@@ -142,45 +120,20 @@ class Validator {
 		}
 	}
 
-	private validateCallableBody(callable: CallableDeclarationNode, model: SemanticModel): void {
-		if (callable.type === 'LambdaExpression') {
-			if (callable.body.type === 'BlockStatement') {
-				for (const bodyStatement of callable.body.statements) {
-					this.validateStatement(bodyStatement, model)
-				}
-			}
-			else {
-				this.validateExpression(callable.body, model)
-			}
-			return
-		}
-		for (const bodyStatement of callable.body.statements) {
-			this.validateStatement(bodyStatement, model)
-		}
+	private validateCallableBody(callable: CallableDeclarationNode): void {
+		this.getValidationWalker().walkCallableBody(callable)
 	}
 
-	private validateExpression(expression: ExpressionNode, model: SemanticModel): void {
+	private validateExpression(expression: ExpressionNode): void {
 		switch (expression.type) {
 			case 'LiteralExpression':
 			case 'IdentifierExpression':
-				return
-			case 'UnaryExpression':
-				this.validateExpression(expression.argument, model)
-				return
-			case 'BinaryExpression':
-				this.validateExpression(expression.left, model)
-				this.validateExpression(expression.right, model)
-				return
-			case 'ArrayExpression':
-				for (const element of expression.elements) {
-					this.validateExpression(element, model)
-				}
 				return
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
 			case 'MemberExpression':
 			case 'OptionalMemberExpression':
-				this.validateExpression(expression.object, model)
+				this.getValidationWalker().walkExpressionChildren(expression)
 				if ('property' in expression) {
 					this.getClassValidator().assertClassMemberAccessible(
 						this.getTypeAnalyzer().inferExpressionType(expression.object),
@@ -188,7 +141,6 @@ class Validator {
 					)
 				}
 				if ('index' in expression) {
-					this.validateExpression(expression.index, model)
 					this.getTypeAnalyzer().assertTypeAssignable(
 						'number',
 						this.getTypeAnalyzer().inferExpressionType(expression.index),
@@ -197,14 +149,16 @@ class Validator {
 				}
 				return
 			case 'CallExpression':
-				this.validateExpression(expression.callee, model)
-				for (const arg of expression.args) {
-					this.validateExpression(arg, model)
-				}
+				this.getValidationWalker().walkExpressionChildren(expression)
 				this.getCallValidator().validateCallExpression(expression)
 				return
 			case 'LambdaExpression':
-				this.validateCallableBody(expression, model)
+				this.getValidationWalker().walkExpressionChildren(expression)
+				return
+			case 'UnaryExpression':
+			case 'BinaryExpression':
+			case 'ArrayExpression':
+				this.getValidationWalker().walkExpressionChildren(expression)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
@@ -255,6 +209,14 @@ class Validator {
 		}
 
 		return this.assignmentValidator
+	}
+
+	private getValidationWalker(): ValidationWalker {
+		if (this.validationWalker === null) {
+			throw new Error('ValidationWalker не инициализирован')
+		}
+
+		return this.validationWalker
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {
