@@ -1,14 +1,14 @@
 import {
-	type ClassDeclarationNode,
 	type ExpressionNode,
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
 import {ClassRegistry} from './ClassRegistry'
+import {AssignmentValidator} from './validation/AssignmentValidator'
+import {CallValidator} from './validation/CallValidator'
 import {
 	type CallableDeclarationNode,
 	type SemanticModel,
-	isBindingMutable,
 } from './context'
 import {ClassValidator} from './validation/ClassValidator'
 import {TypeAnalyzer} from './validation/TypeAnalyzer'
@@ -18,6 +18,8 @@ class Validator {
 	private classRegistry: ClassRegistry | null = null
 	private typeAnalyzer: TypeAnalyzer | null = null
 	private classValidator: ClassValidator | null = null
+	private callValidator: CallValidator | null = null
+	private assignmentValidator: AssignmentValidator | null = null
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
 		this.classRegistry = new ClassRegistry(model)
@@ -26,6 +28,13 @@ class Validator {
 			model,
 			this.classRegistry,
 			() => this.getCurrentClassName(),
+		)
+		this.callValidator = new CallValidator(model, this.classRegistry, this.typeAnalyzer)
+		this.assignmentValidator = new AssignmentValidator(
+			model,
+			this.typeAnalyzer,
+			this.classValidator,
+			expression => this.validateExpression(expression, model),
 		)
 		for (const statement of program.body) {
 			this.validateStatement(statement, model)
@@ -126,45 +135,7 @@ class Validator {
 				this.validateExpression(statement.expression, model)
 				return
 			case 'AssignmentStatement':
-				if (statement.target.type === 'IdentifierTarget') {
-					const binding = model.assignmentTargetBindings.get(statement.target)
-					if (binding !== undefined && !isBindingMutable(binding)) {
-						throw new Error(`Нельзя присвоить значение имени: ${statement.target.name}`)
-					}
-					if (binding !== undefined) {
-						this.getTypeAnalyzer().assertTypeAssignable(
-							this.getTypeAnalyzer().getBindingType(binding),
-							this.getTypeAnalyzer().inferExpressionType(statement.value),
-							`присваивание ${statement.target.name}`,
-						)
-					}
-				}
-				else if (statement.target.type === 'IndexTarget') {
-					this.validateExpression(statement.target.object, model)
-					this.validateExpression(statement.target.index, model)
-					this.getTypeAnalyzer().assertTypeAssignable(
-						'number',
-						this.getTypeAnalyzer().inferExpressionType(statement.target.index),
-						'индекс массива',
-					)
-					this.getTypeAnalyzer().assertTypeAssignable(
-						this.getTypeAnalyzer().getIndexedElementType(this.getTypeAnalyzer().inferExpressionType(statement.target.object)),
-						this.getTypeAnalyzer().inferExpressionType(statement.value),
-						'присваивание элемента массива',
-					)
-				}
-				else {
-					this.validateExpression(statement.target.object, model)
-					const objectType = this.getTypeAnalyzer().inferExpressionType(statement.target.object)
-					this.getClassValidator().assertClassMemberAccessible(objectType, statement.target.property, 'field')
-					const memberType = this.getClassRegistry().getFieldType(objectType, statement.target.property)
-					this.getTypeAnalyzer().assertTypeAssignable(
-						memberType,
-						this.getTypeAnalyzer().inferExpressionType(statement.value),
-						`присваивание свойства ${statement.target.property}`,
-					)
-				}
-				this.validateExpression(statement.value, model)
+				this.getAssignmentValidator().validateAssignment(statement)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемый statement: ${(statement as {type: string}).type}`)
@@ -230,70 +201,13 @@ class Validator {
 				for (const arg of expression.args) {
 					this.validateExpression(arg, model)
 				}
-				this.validateCallExpression(expression, model)
+				this.getCallValidator().validateCallExpression(expression)
 				return
 			case 'LambdaExpression':
 				this.validateCallableBody(expression, model)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
-		}
-	}
-
-	private validateCallExpression(expression: Extract<ExpressionNode, {type: 'CallExpression'}>, model: SemanticModel): void {
-		if (expression.callee.type === 'IdentifierExpression') {
-			const binding = model.identifierBindings.get(expression.callee)
-			if (binding?.kind === 'function') {
-				this.validateCallArguments(
-					expression.args,
-					binding.declaration.params.map(param => param.typeName),
-					`вызов функции ${binding.declaration.name}`,
-				)
-				return
-			}
-			if (binding?.kind === 'class') {
-				this.validateCallArguments(
-					expression.args,
-					this.getClassRegistry().getConstructorParameterTypes(binding.declaration.name),
-					`создание класса ${binding.declaration.name}`,
-				)
-				return
-			}
-			if (binding?.kind === 'super') {
-				this.validateCallArguments(
-					expression.args,
-					this.getClassRegistry().getConstructorParameterTypes(binding.baseClassBinding.declaration.name),
-					`вызов super для ${binding.baseClassBinding.declaration.name}`,
-				)
-			}
-			return
-		}
-
-		if (expression.callee.type === 'MemberExpression' || expression.callee.type === 'OptionalMemberExpression') {
-			const objectType = this.getTypeAnalyzer().inferExpressionType(expression.callee.object)
-			this.validateCallArguments(
-				expression.args,
-				this.getClassRegistry().getMethodParameterTypes(objectType, expression.callee.property),
-				`вызов метода ${expression.callee.property}`,
-			)
-		}
-	}
-
-	private validateCallArguments(
-		args: ExpressionNode[],
-		expectedTypes: string[],
-		context: string,
-	): void {
-		if (args.length !== expectedTypes.length) {
-			throw new Error(`Неверное число аргументов в ${context}: ожидалось ${expectedTypes.length}, получено ${args.length}`)
-		}
-
-		for (const [index, arg] of args.entries()) {
-			this.getTypeAnalyzer().assertTypeAssignable(
-				expectedTypes[index],
-				this.getTypeAnalyzer().inferExpressionType(arg),
-				`${context}, аргумент ${index + 1}`,
-			)
 		}
 	}
 
@@ -325,6 +239,22 @@ class Validator {
 		}
 
 		return this.classValidator
+	}
+
+	private getCallValidator(): CallValidator {
+		if (this.callValidator === null) {
+			throw new Error('CallValidator не инициализирован')
+		}
+
+		return this.callValidator
+	}
+
+	private getAssignmentValidator(): AssignmentValidator {
+		if (this.assignmentValidator === null) {
+			throw new Error('AssignmentValidator не инициализирован')
+		}
+
+		return this.assignmentValidator
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {

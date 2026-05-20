@@ -80,6 +80,10 @@ class ClassValidator {
 		}
 		throw new Error(`Нельзя обращаться к private-члену ${member.ownerClassName}.${memberName} вне класса ${member.ownerClassName}`)
 	}
+
+	getClassRegistry(): ClassRegistry {
+		return this.classRegistry
+	}
 }
 
 export {
