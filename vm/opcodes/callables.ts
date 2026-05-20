@@ -62,7 +62,13 @@ function execCallableOpcode(
 				return callClosure(callee.method, methodArgs, environment)
 			}
 			if (isSuperObject(callee)) {
-				return callClassTemplate(callee.classTemplate, callee.receiver, args, environment, push)
+				return callClassTemplate({
+					structTemplate: callee.classTemplate,
+					receiver: callee.receiver,
+					args,
+					environment,
+					push,
+				})
 			}
 			if (isNative(callee)) {
 				assertNativeArity(callee, argc)
@@ -71,7 +77,13 @@ function execCallableOpcode(
 			}
 			if (isStructTemplate(callee)) {
 				const receiver = instantiateStruct(callee)
-				return callClassTemplate(callee, receiver, args, environment, push)
+				return callClassTemplate({
+					structTemplate: callee,
+					receiver,
+					args,
+					environment,
+					push,
+				})
 			}
 			if (!isClosure(callee)) {
 				throw new Error('call: ожидалось замыкание')
