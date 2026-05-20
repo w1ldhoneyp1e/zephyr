@@ -1,12 +1,8 @@
-import {
-	type AssignmentStatementNode,
-} from '../../ast'
-import {
-	type SemanticModel,
-	isBindingMutable,
-} from '../context'
-import {ClassValidator} from './ClassValidator'
-import {TypeAnalyzer} from './TypeAnalyzer'
+import {type AssignmentStatementNode} from '../../ast'
+import {type SemanticModel, isBindingMutable} from '../context'
+import {primitiveType} from '../SemanticType'
+import {type ClassValidator} from './ClassValidator'
+import {type TypeAnalyzer} from './TypeAnalyzer'
 
 class AssignmentValidator {
 	constructor(
@@ -35,7 +31,7 @@ class AssignmentValidator {
 			this.validateExpression(statement.target.object)
 			this.validateExpression(statement.target.index)
 			this.typeAnalyzer.assertTypeAssignable(
-				'number',
+				primitiveType('number'),
 				this.typeAnalyzer.inferExpressionType(statement.target.index),
 				'индекс массива',
 			)
@@ -49,7 +45,9 @@ class AssignmentValidator {
 			this.validateExpression(statement.target.object)
 			const objectType = this.typeAnalyzer.inferExpressionType(statement.target.object)
 			this.classValidator.assertClassMemberAccessible(objectType, statement.target.property, 'field')
-			const memberType = this.classValidator.getClassRegistry().getFieldType(objectType, statement.target.property)
+			const memberType = this.classValidator
+				.getClassRegistry()
+				.getFieldType(objectType, statement.target.property)
 			this.typeAnalyzer.assertTypeAssignable(
 				memberType,
 				this.typeAnalyzer.inferExpressionType(statement.value),

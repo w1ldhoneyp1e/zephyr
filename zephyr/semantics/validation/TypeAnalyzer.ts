@@ -1,6 +1,17 @@
 import {type ExpressionNode, type StatementNode} from '../../ast'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
+import {
+	type SemanticType,
+	anyType,
+	arrayType,
+	classType,
+	formatSemanticType,
+	functionType,
+	parseSemanticType,
+	primitiveType,
+	semanticTypesEqual,
+} from '../SemanticType'
 
 class TypeAnalyzer {
 	constructor(
@@ -9,42 +20,52 @@ class TypeAnalyzer {
 	) {
 	}
 
-	inferExpressionType(expression: ExpressionNode): string {
+	inferExpressionType(expression: ExpressionNode): SemanticType {
 		switch (expression.type) {
 			case 'LiteralExpression':
 				if (expression.value === null) {
-					return 'null'
+					return primitiveType('null')
 				}
-				return typeof expression.value
+				if (typeof expression.value === 'number') {
+					return primitiveType('number')
+				}
+				if (typeof expression.value === 'string') {
+					return primitiveType('string')
+				}
+				if (typeof expression.value === 'boolean') {
+					return primitiveType('boolean')
+				}
+				return anyType()
 			case 'IdentifierExpression': {
 				const binding = this.model.identifierBindings.get(expression)
 				return binding === undefined
-					? 'any'
+					? anyType()
 					: this.getBindingType(binding)
 			}
 			case 'UnaryExpression':
 				return expression.operator === '!'
-					? 'boolean'
-					: 'number'
+					? primitiveType('boolean')
+					: primitiveType('number')
 			case 'BinaryExpression':
 				if (['==', '!=', '<', '<=', '>', '>=', '&&', '||'].includes(expression.operator)) {
-					return 'boolean'
+					return primitiveType('boolean')
 				}
 				if (expression.operator === '??') {
 					const leftType = this.inferExpressionType(expression.left)
 					const rightType = this.inferExpressionType(expression.right)
-					return leftType === 'null'
+					return leftType.kind === 'primitive' && leftType.name === 'null'
 						? rightType
 						: leftType
 				}
 				if (expression.operator === '+') {
 					const leftType = this.inferExpressionType(expression.left)
 					const rightType = this.inferExpressionType(expression.right)
-					return leftType === 'string' || rightType === 'string'
-						? 'string'
-						: 'number'
+					return (leftType.kind === 'primitive' && leftType.name === 'string')
+						|| (rightType.kind === 'primitive' && rightType.name === 'string')
+						? primitiveType('string')
+						: primitiveType('number')
 				}
-				return 'number'
+				return primitiveType('number')
 			case 'ArrayExpression':
 				return this.inferArrayExpressionType(expression)
 			case 'IndexExpression':
@@ -62,13 +83,13 @@ class TypeAnalyzer {
 				if (expression.callee.type === 'IdentifierExpression') {
 					const binding = this.model.identifierBindings.get(expression.callee)
 					if (binding?.kind === 'class') {
-						return binding.declaration.name
+						return classType(binding.declaration.name)
 					}
 					if (binding?.kind === 'super') {
-						return binding.selfBinding.typeName
+						return binding.selfBinding.type
 					}
 					if (binding?.kind === 'function') {
-						return binding.declaration.returnTypeName
+						return parseSemanticType(binding.declaration.returnTypeName)
 					}
 				}
 				if (expression.callee.type === 'MemberExpression') {
@@ -79,108 +100,104 @@ class TypeAnalyzer {
 					const objectType = this.inferExpressionType(expression.callee.object)
 					return this.classRegistry.getMethodReturnType(objectType, expression.callee.property)
 				}
-				return 'any'
+				return anyType()
 			case 'LambdaExpression':
-				return this.createCallableType(
-					expression.params.map(param => param.typeName),
+				return functionType(
+					expression.params.map(param => parseSemanticType(param.typeName)),
 					expression.body.type === 'BlockStatement'
 						? this.inferBlockReturnType(expression.body.statements)
 						: this.inferExpressionType(expression.body),
 				)
 			default:
-				return 'any'
+				return anyType()
 		}
 	}
 
-	assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
+	assertTypeAssignable(targetType: SemanticType, sourceType: SemanticType, context: string): void {
 		if (
-			targetType === 'any'
-			|| sourceType === 'any'
-			|| targetType === sourceType
+			targetType.kind === 'any'
+			|| sourceType.kind === 'any'
+			|| semanticTypesEqual(targetType, sourceType)
 			|| this.classRegistry.isSubclassOf(sourceType, targetType)
 		) {
 			return
 		}
-		throw new Error(`Несовместимые типы в ${context}: ожидалось ${targetType}, получено ${sourceType}`)
+		throw new Error(`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}`)
 	}
 
-	getIndexedElementType(containerType: string): string {
-		if (!containerType.endsWith('[]')) {
-			return 'any'
+	getIndexedElementType(containerType: SemanticType): SemanticType {
+		if (containerType.kind !== 'array') {
+			return anyType()
 		}
-		return containerType.slice(0, -2)
+		return containerType.elementType
 	}
 
-	createCallableType(paramTypes: string[], returnType: string): string {
-		return `(${paramTypes.join(', ')}) => ${returnType}`
-	}
-
-	getBindingType(binding: SemanticBinding): string {
+	getBindingType(binding: SemanticBinding): SemanticType {
 		return this.resolveBindingType(binding)
 	}
 
-	private resolveBindingType(binding: SemanticBinding): string {
+	private resolveBindingType(binding: SemanticBinding): SemanticType {
 		switch (binding.kind) {
 			case 'variable':
-				return binding.declaration.typeName
+				return parseSemanticType(binding.declaration.typeName)
 			case 'class':
-				return binding.declaration.name
+				return classType(binding.declaration.name)
 			case 'function':
-				return this.createCallableType(
-					binding.declaration.params.map(param => param.typeName),
-					binding.declaration.returnTypeName,
+				return functionType(
+					binding.declaration.params.map(param => parseSemanticType(param.typeName)),
+					parseSemanticType(binding.declaration.returnTypeName),
 				)
 			case 'parameter':
-				return binding.typeName
+				return binding.type
 			case 'super':
-				return binding.baseClassBinding.declaration.name
+				return classType(binding.baseClassBinding.declaration.name)
 			case 'iterator':
 			case 'builtin':
-				return 'any'
+				return anyType()
 		}
 	}
 
 	private inferArrayExpressionType(
 		expression: Extract<ExpressionNode, {type: 'ArrayExpression'}>,
-	): string {
+	): SemanticType {
 		if (expression.elements.length === 0) {
-			return 'any[]'
+			return arrayType(anyType())
 		}
 
 		const elementTypes = expression.elements.map(element => this.inferExpressionType(element))
 		const firstType = elementTypes[0]
 		for (const elementType of elementTypes) {
-			if (elementType !== firstType) {
-				return 'any[]'
+			if (!semanticTypesEqual(elementType, firstType)) {
+				return arrayType(anyType())
 			}
 		}
 
-		return `${firstType}[]`
+		return arrayType(firstType)
 	}
 
-	private inferBlockReturnType(statements: StatementNode[]): string {
+	private inferBlockReturnType(statements: StatementNode[]): SemanticType {
 		const returnTypes = this.collectReturnTypes(statements)
 		if (returnTypes.length === 0) {
-			return 'any'
+			return anyType()
 		}
 
 		const firstType = returnTypes[0]
 		for (const returnType of returnTypes) {
-			if (returnType !== firstType) {
-				return 'any'
+			if (!semanticTypesEqual(returnType, firstType)) {
+				return anyType()
 			}
 		}
 
 		return firstType
 	}
 
-	private collectReturnTypes(statements: StatementNode[]): string[] {
-		const types: string[] = []
+	private collectReturnTypes(statements: StatementNode[]): SemanticType[] {
+		const types: SemanticType[] = []
 		for (const statement of statements) {
 			switch (statement.type) {
 				case 'ReturnStatement':
 					types.push(statement.value === null
-						? 'null'
+						? primitiveType('null')
 						: this.inferExpressionType(statement.value))
 					break
 				case 'BlockStatement':

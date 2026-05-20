@@ -14,6 +14,7 @@ import {
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 } from '../ast'
+import {type SemanticType} from './SemanticType'
 
 interface SemanticScope {
 	bindings: Set<string>,
@@ -39,7 +40,7 @@ interface ParameterSemanticBinding {
 	callableDeclaration: CallableDeclarationNode,
 	index: number,
 	name: string,
-	typeName: string,
+	type: SemanticType,
 }
 
 interface SuperSemanticBinding {
@@ -92,12 +93,12 @@ interface SemanticModel {
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
 	methodReceiverBindings: WeakMap<MethodDeclarationNode | ConstructorDeclarationNode, ClassSemanticBinding>,
-	classFieldTypes: Map<string, Map<string, string>>,
+	classFieldTypes: Map<string, Map<string, SemanticType>>,
 	classFieldVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
-	classConstructorParameterTypes: Map<string, string[]>,
+	classConstructorParameterTypes: Map<string, SemanticType[]>,
 	classBaseNames: Map<string, string | null>,
-	classMethodReturnTypes: Map<string, Map<string, string>>,
-	classMethodParameterTypes: Map<string, Map<string, string[]>>,
+	classMethodReturnTypes: Map<string, Map<string, SemanticType>>,
+	classMethodParameterTypes: Map<string, Map<string, SemanticType[]>>,
 	classMethodVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
 	classBaseBindings: WeakMap<ClassDeclarationNode, ClassSemanticBinding | null>,
 }

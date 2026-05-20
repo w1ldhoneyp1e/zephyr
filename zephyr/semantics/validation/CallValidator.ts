@@ -1,6 +1,7 @@
 import {type CallExpressionNode, type ExpressionNode} from '../../ast'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticModel} from '../context'
+import {type SemanticType, parseSemanticType} from '../SemanticType'
 import {type TypeAnalyzer} from './TypeAnalyzer'
 
 class CallValidator {
@@ -17,7 +18,7 @@ class CallValidator {
 			if (binding?.kind === 'function') {
 				this.validateCallArguments(
 					expression.args,
-					binding.declaration.params.map(param => param.typeName),
+					binding.declaration.params.map(param => parseSemanticType(param.typeName)),
 					`вызов функции ${binding.declaration.name}`,
 				)
 				return
@@ -52,7 +53,7 @@ class CallValidator {
 
 	private validateCallArguments(
 		args: ExpressionNode[],
-		expectedTypes: string[],
+		expectedTypes: SemanticType[],
 		context: string,
 	): void {
 		if (args.length !== expectedTypes.length) {

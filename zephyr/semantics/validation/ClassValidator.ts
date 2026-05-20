@@ -1,6 +1,7 @@
 import {type ClassDeclarationNode, type ClassFieldNode} from '../../ast'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticModel} from '../context'
+import {type SemanticType} from '../SemanticType'
 
 class ClassValidator {
 	constructor(
@@ -62,16 +63,16 @@ class ClassValidator {
 	}
 
 	assertClassMemberAccessible(
-		className: string,
+		classType: SemanticType,
 		memberName: string,
 		preferredKind?: 'field' | 'method',
 	): void {
-		if (className === 'any') {
+		if (classType.kind === 'any') {
 			return
 		}
 		const member = preferredKind === 'field'
-			? this.classRegistry.getFieldInfo(className, memberName)
-			: this.classRegistry.getMemberInfo(className, memberName)
+			? this.classRegistry.getFieldInfo(classType, memberName)
+			: this.classRegistry.getMemberInfo(classType, memberName)
 		if (member === null || member.visibility === 'public') {
 			return
 		}

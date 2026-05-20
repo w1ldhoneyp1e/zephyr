@@ -1,5 +1,10 @@
 import {type ClassMemberVisibility} from '../ast'
 import {type SemanticModel} from './context'
+import {
+	type SemanticType,
+	anyType,
+	functionType,
+} from './SemanticType'
 
 interface ClassMemberInfo {
 	ownerClassName: string,
@@ -9,11 +14,11 @@ interface ClassMemberInfo {
 interface ClassInfo {
 	name: string,
 	baseClassName: string | null,
-	fieldTypes: Map<string, string>,
+	fieldTypes: Map<string, SemanticType>,
 	fieldVisibilities: Map<string, ClassMemberVisibility>,
-	constructorParameterTypes: string[],
-	methodReturnTypes: Map<string, string>,
-	methodParameterTypes: Map<string, string[]>,
+	constructorParameterTypes: SemanticType[],
+	methodReturnTypes: Map<string, SemanticType>,
+	methodParameterTypes: Map<string, SemanticType[]>,
 	methodVisibilities: Map<string, ClassMemberVisibility>,
 }
 
@@ -43,57 +48,72 @@ class ClassRegistry {
 		return this.getClassInfo(className)?.baseClassName ?? null
 	}
 
-	getConstructorParameterTypes(className: string): string[] {
+	getConstructorParameterTypes(className: string): SemanticType[] {
 		return this.getClassInfo(className)?.constructorParameterTypes ?? []
 	}
 
-	getFieldType(className: string, property: string): string {
-		if (className === 'any') {
-			return 'any'
+	getFieldType(classType: SemanticType, property: string): SemanticType {
+		if (classType.kind === 'any') {
+			return anyType()
 		}
-		const classInfo = this.getClassInfo(className)
+		if (classType.kind !== 'class') {
+			return anyType()
+		}
+		const classInfo = this.getClassInfo(classType.name)
 		if (classInfo === null) {
-			return 'any'
+			return anyType()
 		}
 		const fieldType = classInfo.fieldTypes.get(property)
 		if (fieldType !== undefined) {
 			return fieldType
 		}
 		return classInfo.baseClassName === null
-			? 'any'
-			: this.getFieldType(classInfo.baseClassName, property)
+			? anyType()
+			: this.getFieldType({
+				kind: 'class',
+				name: classInfo.baseClassName,
+			}, property)
 	}
 
-	getPropertyType(className: string, property: string): string {
-		const fieldType = this.getFieldType(className, property)
-		if (fieldType !== 'any') {
+	getPropertyType(classType: SemanticType, property: string): SemanticType {
+		const fieldType = this.getFieldType(classType, property)
+		if (fieldType.kind !== 'any') {
 			return fieldType
 		}
-		return this.getMethodType(className, property)
+		return this.getMethodType(classType, property)
 	}
 
-	getMethodReturnType(className: string, methodName: string): string {
-		if (className === 'any') {
-			return 'any'
+	getMethodReturnType(classType: SemanticType, methodName: string): SemanticType {
+		if (classType.kind === 'any') {
+			return anyType()
 		}
-		const classInfo = this.getClassInfo(className)
+		if (classType.kind !== 'class') {
+			return anyType()
+		}
+		const classInfo = this.getClassInfo(classType.name)
 		if (classInfo === null) {
-			return 'any'
+			return anyType()
 		}
 		const returnType = classInfo.methodReturnTypes.get(methodName)
 		if (returnType !== undefined) {
 			return returnType
 		}
 		return classInfo.baseClassName === null
-			? 'any'
-			: this.getMethodReturnType(classInfo.baseClassName, methodName)
+			? anyType()
+			: this.getMethodReturnType({
+				kind: 'class',
+				name: classInfo.baseClassName,
+			}, methodName)
 	}
 
-	getMethodParameterTypes(className: string, methodName: string): string[] {
-		if (className === 'any') {
+	getMethodParameterTypes(classType: SemanticType, methodName: string): SemanticType[] {
+		if (classType.kind === 'any') {
 			return []
 		}
-		const classInfo = this.getClassInfo(className)
+		if (classType.kind !== 'class') {
+			return []
+		}
+		const classInfo = this.getClassInfo(classType.name)
 		if (classInfo === null) {
 			return []
 		}
@@ -103,78 +123,96 @@ class ClassRegistry {
 		}
 		return classInfo.baseClassName === null
 			? []
-			: this.getMethodParameterTypes(classInfo.baseClassName, methodName)
+			: this.getMethodParameterTypes({
+				kind: 'class',
+				name: classInfo.baseClassName,
+			}, methodName)
 	}
 
-	getMethodType(className: string, methodName: string): string {
-		if (className === 'any') {
-			return 'any'
+	getMethodType(classType: SemanticType, methodName: string): SemanticType {
+		if (classType.kind === 'any') {
+			return anyType()
 		}
-		const returnType = this.getMethodReturnType(className, methodName)
-		if (returnType === 'any') {
-			return 'any'
+		const returnType = this.getMethodReturnType(classType, methodName)
+		if (returnType.kind === 'any') {
+			return anyType()
 		}
-		return `(${this.getMethodParameterTypes(className, methodName).join(', ')}) => ${returnType}`
+		return functionType(this.getMethodParameterTypes(classType, methodName), returnType)
 	}
 
-	getFieldInfo(className: string, fieldName: string): ClassMemberInfo | null {
-		if (className === 'any') {
+	getFieldInfo(classType: SemanticType, fieldName: string): ClassMemberInfo | null {
+		if (classType.kind === 'any') {
 			return null
 		}
-		const classInfo = this.getClassInfo(className)
+		if (classType.kind !== 'class') {
+			return null
+		}
+		const classInfo = this.getClassInfo(classType.name)
 		if (classInfo === null) {
 			return null
 		}
 		const visibility = classInfo.fieldVisibilities.get(fieldName)
 		if (visibility !== undefined) {
 			return {
-				ownerClassName: className,
+				ownerClassName: classType.name,
 				visibility,
 			}
 		}
 		return classInfo.baseClassName === null
 			? null
-			: this.getFieldInfo(classInfo.baseClassName, fieldName)
+			: this.getFieldInfo({
+				kind: 'class',
+				name: classInfo.baseClassName,
+			}, fieldName)
 	}
 
-	getMethodInfo(className: string, methodName: string): ClassMemberInfo | null {
-		if (className === 'any') {
+	getMethodInfo(classType: SemanticType, methodName: string): ClassMemberInfo | null {
+		if (classType.kind === 'any') {
 			return null
 		}
-		const classInfo = this.getClassInfo(className)
+		if (classType.kind !== 'class') {
+			return null
+		}
+		const classInfo = this.getClassInfo(classType.name)
 		if (classInfo === null) {
 			return null
 		}
 		const visibility = classInfo.methodVisibilities.get(methodName)
 		if (visibility !== undefined) {
 			return {
-				ownerClassName: className,
+				ownerClassName: classType.name,
 				visibility,
 			}
 		}
 		return classInfo.baseClassName === null
 			? null
-			: this.getMethodInfo(classInfo.baseClassName, methodName)
+			: this.getMethodInfo({
+				kind: 'class',
+				name: classInfo.baseClassName,
+			}, methodName)
 	}
 
-	getMemberInfo(className: string, memberName: string, preferredKind?: 'field' | 'method'): ClassMemberInfo | null {
+	getMemberInfo(classType: SemanticType, memberName: string, preferredKind?: 'field' | 'method'): ClassMemberInfo | null {
 		if (preferredKind === 'field') {
-			return this.getFieldInfo(className, memberName)
+			return this.getFieldInfo(classType, memberName)
 		}
-		const fieldInfo = this.getFieldInfo(className, memberName)
+		const fieldInfo = this.getFieldInfo(classType, memberName)
 		if (fieldInfo !== null) {
 			return fieldInfo
 		}
-		return this.getMethodInfo(className, memberName)
+		return this.getMethodInfo(classType, memberName)
 	}
 
-	isSubclassOf(sourceType: string, targetType: string): boolean {
-		if (sourceType === targetType) {
+	isSubclassOf(sourceType: SemanticType, targetType: SemanticType): boolean {
+		if (sourceType.kind !== 'class' || targetType.kind !== 'class') {
+			return false
+		}
+		if (sourceType.name === targetType.name) {
 			return true
 		}
-		let current = this.getBaseClassName(sourceType)
+		let current = this.getBaseClassName(sourceType.name)
 		while (current !== null) {
-			if (current === targetType) {
+			if (current === targetType.name) {
 				return true
 			}
 			current = this.getBaseClassName(current)

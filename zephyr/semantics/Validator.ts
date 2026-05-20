@@ -5,6 +5,7 @@ import {
 } from '../ast'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
+import {parseSemanticType, primitiveType} from './SemanticType'
 import {AssignmentValidator} from './validation/AssignmentValidator'
 import {CallValidator} from './validation/CallValidator'
 import {ClassValidator} from './validation/ClassValidator'
@@ -52,7 +53,7 @@ class Validator {
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer)
 					this.getTypeAnalyzer().assertTypeAssignable(
-						statement.typeName,
+						parseSemanticType(statement.typeName),
 						this.getTypeAnalyzer().inferExpressionType(statement.initializer),
 						`инициализатор переменной ${statement.name}`,
 					)
@@ -88,7 +89,7 @@ class Validator {
 							return
 						}
 						this.getTypeAnalyzer().assertTypeAssignable(
-							owner.returnTypeName,
+							parseSemanticType(owner.returnTypeName),
 							this.getTypeAnalyzer().inferExpressionType(statement.value),
 							`return в ${this.describeCallable(owner)}`,
 						)
@@ -142,7 +143,7 @@ class Validator {
 				}
 				if ('index' in expression) {
 					this.getTypeAnalyzer().assertTypeAssignable(
-						'number',
+						primitiveType('number'),
 						this.getTypeAnalyzer().inferExpressionType(expression.index),
 						'индекс массива',
 					)

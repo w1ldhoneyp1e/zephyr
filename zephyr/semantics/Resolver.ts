@@ -21,6 +21,7 @@ import {
 	type SemanticLoopOwner,
 	type SemanticModel,
 } from './context'
+import {parseSemanticType} from './SemanticType'
 
 class Resolver {
 	private scopes: {
@@ -181,7 +182,7 @@ class Resolver {
 		)
 		this.model.classFieldTypes.set(
 			statement.name,
-			new Map(statement.fields.map(field => [field.name, field.typeName])),
+			new Map(statement.fields.map(field => [field.name, parseSemanticType(field.typeName)])),
 		)
 		this.model.classFieldVisibilities.set(
 			statement.name,
@@ -189,17 +190,17 @@ class Resolver {
 		)
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
-			statement.constructorDeclaration?.params.map(param => param.typeName) ?? [],
+			statement.constructorDeclaration?.params.map(param => parseSemanticType(param.typeName)) ?? [],
 		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
-			new Map(statement.methods.map(method => [method.name, method.returnTypeName])),
+			new Map(statement.methods.map(method => [method.name, parseSemanticType(method.returnTypeName)])),
 		)
 		this.model.classMethodParameterTypes.set(
 			statement.name,
 			new Map(statement.methods.map(method => [
 				method.name,
-				method.params.map(param => param.typeName),
+				method.params.map(param => parseSemanticType(param.typeName)),
 			])),
 		)
 		this.model.classMethodVisibilities.set(
@@ -253,7 +254,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: 0,
 				name: 'self',
-				typeName: selfName,
+				type: parseSemanticType(selfName),
 			}
 			this.recordBindingOwner(selfBinding)
 			this.declare('self', selfBinding)
@@ -280,7 +281,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: index + parameterBindings.length,
 				name: param.name,
-				typeName: param.typeName,
+				type: parseSemanticType(param.typeName),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
@@ -373,7 +374,7 @@ class Resolver {
 				callableDeclaration: expression,
 				index,
 				name: param.name,
-				typeName: param.typeName,
+				type: parseSemanticType(param.typeName),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
