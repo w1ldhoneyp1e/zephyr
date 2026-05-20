@@ -32,6 +32,7 @@ const NO_ARG_OPCODES = new Map<string, NoArgOpcode>([
 	['return', Opcode.Return],
 	['get_el', Opcode.GetEl],
 	['set_el', Opcode.SetEl],
+	['make_super', Opcode.MakeSuper],
 ])
 
 const NUM_ARG_OPCODES = new Map<string, NumArgOpcode>([

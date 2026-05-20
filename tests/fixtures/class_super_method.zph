@@ -1,0 +1,19 @@
+class Animal {
+	public age: number;
+
+	fn grow(): number {
+		self.age = self.age + 1;
+		return self.age;
+	}
+}
+
+class Dog extends Animal {
+	public weight: number;
+
+	fn grow(): number {
+		return super.grow() + self.weight;
+	}
+}
+
+var dog: Dog = Dog(2, 3);
+return dog.grow();

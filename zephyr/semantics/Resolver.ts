@@ -223,12 +223,14 @@ class Resolver {
 			throw new Error(`Метод ${statement.name} должен принадлежать классу`)
 		}
 		this.model.methodReceiverBindings.set(statement, receiverBinding)
-		this.resolveCallableDeclaration(statement, receiverBinding.declaration.name)
+		const baseBinding = this.model.classBaseBindings.get(receiverBinding.declaration) ?? null
+		this.resolveCallableDeclaration(statement, receiverBinding.declaration.name, baseBinding)
 	}
 
 	private resolveCallableDeclaration(
 		statement: CallableDeclarationNode,
 		selfName?: string,
+		baseClassBinding?: SemanticBinding | null,
 	): void {
 		this.captures.set(statement, new Set())
 		this.enterFunction(statement)
@@ -245,6 +247,21 @@ class Resolver {
 			this.recordBindingOwner(selfBinding)
 			this.declare('self', selfBinding)
 			parameterBindings.push(selfBinding)
+			if (
+				baseClassBinding !== undefined
+				&& baseClassBinding !== null
+				&& baseClassBinding.kind === 'class'
+				&& statement.type === 'MethodDeclaration'
+			) {
+				const superBinding: SemanticBinding = {
+					kind: 'super',
+					callableDeclaration: statement,
+					baseClassBinding,
+					selfBinding: selfBinding as Extract<SemanticBinding, {kind: 'parameter'}>,
+				}
+				this.recordBindingOwner(superBinding)
+				this.declare('super', superBinding)
+			}
 		}
 		for (const [index, param] of statement.params.entries()) {
 			const parameterBinding: SemanticBinding = {

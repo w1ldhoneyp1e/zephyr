@@ -66,6 +66,32 @@ function execCollectionOpcode(
 			setProperty(target, propertyNameRaw, value)
 			return true
 		}
+		case Opcode.MakeSuper: {
+			const classTemplate = pop()
+			const receiver = pop()
+			if (
+				typeof receiver !== 'object'
+				|| receiver === null
+				|| !('kind' in receiver)
+				|| receiver.kind !== 'object'
+			) {
+				throw new Error('make_super: ожидался объект-получатель')
+			}
+			if (
+				typeof classTemplate !== 'object'
+				|| classTemplate === null
+				|| !('kind' in classTemplate)
+				|| classTemplate.kind !== 'struct'
+			) {
+				throw new Error('make_super: ожидался шаблон базового класса')
+			}
+			push({
+				kind: 'super_object',
+				receiver,
+				classTemplate,
+			})
+			return true
+		}
 		default:
 			return false
 	}

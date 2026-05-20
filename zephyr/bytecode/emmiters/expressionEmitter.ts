@@ -6,7 +6,7 @@ import {
 	type NoArgOpcode,
 	type Value,
 } from '../context'
-import {emitCallableClosure} from './functionEmitter'
+import {emitBindingLoad, emitCallableClosure} from './functionEmitter'
 
 function emitExpression(state: CompilerState, generator: BytecodeGenerator, expression: ExpressionNode): void {
 	switch (expression.type) {
@@ -28,6 +28,12 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 		}
 		case 'IdentifierExpression': {
 			const binding = state.getExpressionBinding(expression)
+			if (binding.kind === 'super') {
+				emitBindingLoad(state, binding.selfBinding)
+				emitBindingLoad(state, binding.baseClassBinding)
+				state.emitNoArg(Opcode.MakeSuper)
+				break
+			}
 			const resolved = state.resolveExpressionBinding(binding)
 			if (resolved.kind === 'local') {
 				state.emitNumArg(Opcode.GetLocal, resolved.slot)

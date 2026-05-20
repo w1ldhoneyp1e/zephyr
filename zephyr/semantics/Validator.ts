@@ -372,6 +372,8 @@ class Validator {
 				)
 			case 'parameter':
 				return binding.typeName
+			case 'super':
+				return binding.baseClassBinding.declaration.name
 			case 'iterator':
 			case 'builtin':
 				return 'any'

@@ -34,6 +34,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '9',
 	},
 	{
+		name: 'class_super_method',
+		file: 'class_super_method.zph',
+		expectedReturn: '6',
+	},
+	{
 		name: 'matrix_read',
 		file: 'matrix_read.zph',
 		expectedReturn: '4',

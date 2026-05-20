@@ -147,6 +147,7 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				value: unquoteString(tokenLexeme(values[0])),
 			} satisfies LiteralExpressionNode)
 		case 'PrimaryExpression -> Identifier':
+		case 'PrimaryExpression -> Super':
 			return values => ({
 				type: 'IdentifierExpression',
 				name: tokenLexeme(values[0]),

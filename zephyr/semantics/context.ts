@@ -41,6 +41,13 @@ interface ParameterSemanticBinding {
 	typeName: string,
 }
 
+interface SuperSemanticBinding {
+	kind: 'super',
+	callableDeclaration: MethodDeclarationNode,
+	baseClassBinding: ClassSemanticBinding,
+	selfBinding: ParameterSemanticBinding,
+}
+
 interface IteratorSemanticBinding {
 	kind: 'iterator',
 	statement: ForRangeStatementNode,
@@ -57,6 +64,7 @@ type SemanticBinding =
 	| FunctionSemanticBinding
 	| ClassSemanticBinding
 	| ParameterSemanticBinding
+	| SuperSemanticBinding
 	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
 
@@ -97,8 +105,11 @@ function getBindingName(binding: SemanticBinding): string {
 			return binding.declaration.name
 		case 'parameter':
 		case 'iterator':
+		case 'super':
 		case 'builtin':
-			return binding.name
+			return binding.kind === 'super'
+				? 'super'
+				: binding.name
 	}
 }
 
@@ -109,6 +120,8 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 		case 'parameter':
 		case 'iterator':
 			return true
+		case 'super':
+			return false
 		case 'function':
 		case 'class':
 		case 'builtin':
@@ -130,6 +143,7 @@ export {
 	type SemanticFunctionOwner,
 	type SemanticLoopOwner,
 	type SemanticModel,
+	type SuperSemanticBinding,
 	type SemanticScope,
 	type VariableSemanticBinding,
 }

@@ -4,6 +4,7 @@ import {
 	type VmMethodValue,
 	type VmObject,
 	type VmStructTemplate,
+	type VmSuperObject,
 } from './types'
 
 function getProperty(target: Value, propertyName: string): Value {
@@ -26,6 +27,13 @@ function getProperty(target: Value, propertyName: string): Value {
 		}
 
 		return null
+	}
+
+	if (isVmSuperObject(target)) {
+		const method = getMethod(target.classTemplate, propertyName)
+		return method === undefined
+			? null
+			: createBoundMethod(target.receiver, method)
 	}
 
 	if (isVmStructTemplate(target)) {
@@ -79,6 +87,13 @@ function isVmStructTemplate(value: Value): value is VmStructTemplate {
 		&& value !== null
 		&& 'kind' in value
 		&& value.kind === 'struct'
+}
+
+function isVmSuperObject(value: Value): value is VmSuperObject {
+	return typeof value === 'object'
+		&& value !== null
+		&& 'kind' in value
+		&& value.kind === 'super_object'
 }
 
 function isVmMethodValue(value: Value): value is VmMethodValue {

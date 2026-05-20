@@ -48,6 +48,12 @@ interface VmBoundMethod {
 	method: VmMethodValue,
 }
 
+interface VmSuperObject {
+	kind: 'super_object',
+	receiver: VmObject,
+	classTemplate: VmStructTemplate,
+}
+
 type Value =
 	| null
 	| number
@@ -59,6 +65,7 @@ type Value =
 	| VmObject
 	| VmStructTemplate
 	| VmBoundMethod
+	| VmSuperObject
 
 type ConstantPoolItem = Value | VmFunctionTemplate | VmStructTemplate
 
@@ -115,6 +122,7 @@ enum Opcode {
 	SetEl = 'set_el',
 	GetProp = 'get_prop',
 	SetProp = 'set_prop',
+	MakeSuper = 'make_super',
 
 	Call = 'call',
 	Closure = 'closure',
@@ -125,7 +133,7 @@ type NoArgOpcode =
 	| Opcode.Add | Opcode.Sub | Opcode.Mul | Opcode.Div | Opcode.Mod | Opcode.Neg
 	| Opcode.Eq | Opcode.Ne | Opcode.Lt | Opcode.Lte | Opcode.Gt | Opcode.Gte
 	| Opcode.And | Opcode.Or | Opcode.Not
-	| Opcode.Return | Opcode.GetEl | Opcode.SetEl
+	| Opcode.Return | Opcode.GetEl | Opcode.SetEl | Opcode.MakeSuper
 
 type NumArgOpcode =
 	| Opcode.Const
@@ -161,6 +169,7 @@ export {
 	VmBoundMethod,
 	VmFunctionTemplate,
 	VmStructTemplate,
+	VmSuperObject,
 	VmClosure,
 	VmMethodValue,
 	VmNative,

@@ -21,6 +21,7 @@ PrimaryExpression -> null
 PrimaryExpression -> Number
 PrimaryExpression -> String
 PrimaryExpression -> Identifier
+PrimaryExpression -> super
 PrimaryExpression -> '(' Expression ')'
 PrimaryExpression -> '[' ArrayElementsOpt ']'
 LambdaExpression -> '(' ParameterListOpt ')' '=>' LambdaBody
