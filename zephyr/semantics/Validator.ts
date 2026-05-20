@@ -1,6 +1,5 @@
 import {
 	type ClassDeclarationNode,
-	type ClassFieldNode,
 	type ExpressionNode,
 	type ProgramNode,
 	type StatementNode,
@@ -8,19 +7,26 @@ import {
 import {ClassRegistry} from './ClassRegistry'
 import {
 	type CallableDeclarationNode,
-	type SemanticBinding,
 	type SemanticModel,
 	isBindingMutable,
 } from './context'
+import {ClassValidator} from './validation/ClassValidator'
+import {TypeAnalyzer} from './validation/TypeAnalyzer'
 
 class Validator {
 	private currentClassStack: string[] = []
-	private activeModel: SemanticModel | null = null
 	private classRegistry: ClassRegistry | null = null
+	private typeAnalyzer: TypeAnalyzer | null = null
+	private classValidator: ClassValidator | null = null
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
-		this.activeModel = model
 		this.classRegistry = new ClassRegistry(model)
+		this.typeAnalyzer = new TypeAnalyzer(model, this.classRegistry)
+		this.classValidator = new ClassValidator(
+			model,
+			this.classRegistry,
+			() => this.getCurrentClassName(),
+		)
 		for (const statement of program.body) {
 			this.validateStatement(statement, model)
 		}
@@ -33,9 +39,9 @@ class Validator {
 			case 'VariableDeclaration':
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer, model)
-					this.assertTypeAssignable(
+					this.getTypeAnalyzer().assertTypeAssignable(
 						statement.typeName,
-						this.inferExpressionType(statement.initializer, model),
+						this.getTypeAnalyzer().inferExpressionType(statement.initializer),
 						`инициализатор переменной ${statement.name}`,
 					)
 				}
@@ -44,11 +50,11 @@ class Validator {
 				this.validateCallableBody(statement, model)
 				return
 			case 'ClassDeclaration':
-				this.assertValidBaseClass(statement, model)
-				this.assertNoInheritanceCycle(statement.name, model)
-				this.assertUniqueFieldNames(statement.fields)
-				this.assertUniqueMethodNames(statement)
-				this.assertNoMemberNameConflicts(statement)
+				this.getClassValidator().assertValidBaseClass(statement)
+				this.getClassValidator().assertNoInheritanceCycle(statement.name)
+				this.getClassValidator().assertUniqueFieldNames(statement.fields)
+				this.getClassValidator().assertUniqueMethodNames(statement)
+				this.getClassValidator().assertNoMemberNameConflicts(statement)
 				this.currentClassStack.push(statement.name)
 				if (statement.constructorDeclaration !== null) {
 					this.validateCallableBody(statement.constructorDeclaration, model)
@@ -93,9 +99,9 @@ class Validator {
 						if (owner.type === 'LambdaExpression') {
 							return
 						}
-						this.assertTypeAssignable(
+						this.getTypeAnalyzer().assertTypeAssignable(
 							owner.returnTypeName,
-							this.inferExpressionType(statement.value, model),
+							this.getTypeAnalyzer().inferExpressionType(statement.value),
 							`return в ${this.describeCallable(owner)}`,
 						)
 					}
@@ -126,9 +132,9 @@ class Validator {
 						throw new Error(`Нельзя присвоить значение имени: ${statement.target.name}`)
 					}
 					if (binding !== undefined) {
-						this.assertTypeAssignable(
-							this.getBindingType(binding),
-							this.inferExpressionType(statement.value, model),
+						this.getTypeAnalyzer().assertTypeAssignable(
+							this.getTypeAnalyzer().getBindingType(binding),
+							this.getTypeAnalyzer().inferExpressionType(statement.value),
 							`присваивание ${statement.target.name}`,
 						)
 					}
@@ -136,25 +142,25 @@ class Validator {
 				else if (statement.target.type === 'IndexTarget') {
 					this.validateExpression(statement.target.object, model)
 					this.validateExpression(statement.target.index, model)
-					this.assertTypeAssignable(
+					this.getTypeAnalyzer().assertTypeAssignable(
 						'number',
-						this.inferExpressionType(statement.target.index, model),
+						this.getTypeAnalyzer().inferExpressionType(statement.target.index),
 						'индекс массива',
 					)
-					this.assertTypeAssignable(
-						this.getIndexedElementType(this.inferExpressionType(statement.target.object, model)),
-						this.inferExpressionType(statement.value, model),
+					this.getTypeAnalyzer().assertTypeAssignable(
+						this.getTypeAnalyzer().getIndexedElementType(this.getTypeAnalyzer().inferExpressionType(statement.target.object)),
+						this.getTypeAnalyzer().inferExpressionType(statement.value),
 						'присваивание элемента массива',
 					)
 				}
 				else {
 					this.validateExpression(statement.target.object, model)
-					const objectType = this.inferExpressionType(statement.target.object, model)
-					this.assertClassMemberAccessible(model, objectType, statement.target.property, 'field')
+					const objectType = this.getTypeAnalyzer().inferExpressionType(statement.target.object)
+					this.getClassValidator().assertClassMemberAccessible(objectType, statement.target.property, 'field')
 					const memberType = this.getClassRegistry().getFieldType(objectType, statement.target.property)
-					this.assertTypeAssignable(
+					this.getTypeAnalyzer().assertTypeAssignable(
 						memberType,
-						this.inferExpressionType(statement.value, model),
+						this.getTypeAnalyzer().inferExpressionType(statement.value),
 						`присваивание свойства ${statement.target.property}`,
 					)
 				}
@@ -205,17 +211,16 @@ class Validator {
 			case 'OptionalMemberExpression':
 				this.validateExpression(expression.object, model)
 				if ('property' in expression) {
-					this.assertClassMemberAccessible(
-						model,
-						this.inferExpressionType(expression.object, model),
+					this.getClassValidator().assertClassMemberAccessible(
+						this.getTypeAnalyzer().inferExpressionType(expression.object),
 						expression.property,
 					)
 				}
 				if ('index' in expression) {
 					this.validateExpression(expression.index, model)
-					this.assertTypeAssignable(
+					this.getTypeAnalyzer().assertTypeAssignable(
 						'number',
-						this.inferExpressionType(expression.index, model),
+						this.getTypeAnalyzer().inferExpressionType(expression.index),
 						'индекс массива',
 					)
 				}
@@ -242,7 +247,6 @@ class Validator {
 				this.validateCallArguments(
 					expression.args,
 					binding.declaration.params.map(param => param.typeName),
-					model,
 					`вызов функции ${binding.declaration.name}`,
 				)
 				return
@@ -251,8 +255,7 @@ class Validator {
 				this.validateCallArguments(
 					expression.args,
 					this.getClassRegistry().getConstructorParameterTypes(binding.declaration.name),
-					model,
-						`создание класса ${binding.declaration.name}`,
+					`создание класса ${binding.declaration.name}`,
 				)
 				return
 			}
@@ -260,7 +263,6 @@ class Validator {
 				this.validateCallArguments(
 					expression.args,
 					this.getClassRegistry().getConstructorParameterTypes(binding.baseClassBinding.declaration.name),
-					model,
 					`вызов super для ${binding.baseClassBinding.declaration.name}`,
 				)
 			}
@@ -268,11 +270,10 @@ class Validator {
 		}
 
 		if (expression.callee.type === 'MemberExpression' || expression.callee.type === 'OptionalMemberExpression') {
-			const objectType = this.inferExpressionType(expression.callee.object, model)
+			const objectType = this.getTypeAnalyzer().inferExpressionType(expression.callee.object)
 			this.validateCallArguments(
 				expression.args,
 				this.getClassRegistry().getMethodParameterTypes(objectType, expression.callee.property),
-				model,
 				`вызов метода ${expression.callee.property}`,
 			)
 		}
@@ -281,7 +282,6 @@ class Validator {
 	private validateCallArguments(
 		args: ExpressionNode[],
 		expectedTypes: string[],
-		model: SemanticModel,
 		context: string,
 	): void {
 		if (args.length !== expectedTypes.length) {
@@ -289,276 +289,12 @@ class Validator {
 		}
 
 		for (const [index, arg] of args.entries()) {
-			this.assertTypeAssignable(
+			this.getTypeAnalyzer().assertTypeAssignable(
 				expectedTypes[index],
-				this.inferExpressionType(arg, model),
+				this.getTypeAnalyzer().inferExpressionType(arg),
 				`${context}, аргумент ${index + 1}`,
 			)
 		}
-	}
-
-	private inferExpressionType(expression: ExpressionNode, model: SemanticModel): string {
-		switch (expression.type) {
-			case 'LiteralExpression':
-				if (expression.value === null) {
-					return 'null'
-				}
-				return typeof expression.value
-			case 'IdentifierExpression': {
-				const binding = model.identifierBindings.get(expression)
-				return binding === undefined
-					? 'any'
-					: this.getBindingType(binding)
-			}
-			case 'UnaryExpression':
-				return expression.operator === '!'
-					? 'boolean'
-					: 'number'
-			case 'BinaryExpression':
-				if (['==', '!=', '<', '<=', '>', '>=', '&&', '||'].includes(expression.operator)) {
-					return 'boolean'
-				}
-				if (expression.operator === '??') {
-					const leftType = this.inferExpressionType(expression.left, model)
-					const rightType = this.inferExpressionType(expression.right, model)
-					return leftType === 'null'
-						? rightType
-						: leftType
-				}
-				if (expression.operator === '+') {
-					const leftType = this.inferExpressionType(expression.left, model)
-					const rightType = this.inferExpressionType(expression.right, model)
-					return leftType === 'string' || rightType === 'string'
-						? 'string'
-						: 'number'
-				}
-				return 'number'
-			case 'ArrayExpression':
-				return this.inferArrayExpressionType(expression, model)
-			case 'IndexExpression':
-			case 'OptionalIndexExpression':
-				return this.getIndexedElementType(this.inferExpressionType(expression.object, model))
-			case 'MemberExpression': {
-				const objectType = this.inferExpressionType(expression.object, model)
-				return this.getClassRegistry().getPropertyType(objectType, expression.property)
-			}
-			case 'OptionalMemberExpression': {
-				const objectType = this.inferExpressionType(expression.object, model)
-				return this.getClassRegistry().getPropertyType(objectType, expression.property)
-			}
-			case 'CallExpression':
-				if (expression.callee.type === 'IdentifierExpression') {
-					const binding = model.identifierBindings.get(expression.callee)
-					if (binding?.kind === 'class') {
-						return binding.declaration.name
-					}
-					if (binding?.kind === 'super') {
-						return binding.selfBinding.typeName
-					}
-					if (binding?.kind === 'function') {
-						return binding.declaration.returnTypeName
-					}
-				}
-				if (expression.callee.type === 'MemberExpression') {
-					const objectType = this.inferExpressionType(expression.callee.object, model)
-					return this.getClassRegistry().getMethodReturnType(objectType, expression.callee.property)
-				}
-				if (expression.callee.type === 'OptionalMemberExpression') {
-					const objectType = this.inferExpressionType(expression.callee.object, model)
-					return this.getClassRegistry().getMethodReturnType(objectType, expression.callee.property)
-				}
-				return 'any'
-			case 'LambdaExpression':
-				return this.createCallableType(
-					expression.params.map(param => param.typeName),
-					expression.body.type === 'BlockStatement'
-						? this.inferBlockReturnType(expression.body.statements, model)
-						: this.inferExpressionType(expression.body, model),
-				)
-			default:
-				return 'any'
-		}
-	}
-
-	private getBindingType(binding: SemanticBinding): string {
-		switch (binding.kind) {
-			case 'variable':
-				return binding.declaration.typeName
-			case 'class':
-				return binding.declaration.name
-			case 'function':
-				return this.createCallableType(
-					binding.declaration.params.map(param => param.typeName),
-					binding.declaration.returnTypeName,
-				)
-			case 'parameter':
-				return binding.typeName
-			case 'super':
-				return binding.baseClassBinding.declaration.name
-			case 'iterator':
-			case 'builtin':
-				return 'any'
-		}
-	}
-
-	private inferArrayExpressionType(
-		expression: Extract<ExpressionNode, {type: 'ArrayExpression'}>,
-		model: SemanticModel,
-	): string {
-		if (expression.elements.length === 0) {
-			return 'any[]'
-		}
-
-		const elementTypes = expression.elements.map(element => this.inferExpressionType(element, model))
-		const firstType = elementTypes[0]
-		for (const elementType of elementTypes) {
-			if (elementType !== firstType) {
-				return 'any[]'
-			}
-		}
-
-		return `${firstType}[]`
-	}
-
-	private inferBlockReturnType(statements: StatementNode[], model: SemanticModel): string {
-		const returnTypes = this.collectReturnTypes(statements, model)
-		if (returnTypes.length === 0) {
-			return 'any'
-		}
-
-		const firstType = returnTypes[0]
-		for (const returnType of returnTypes) {
-			if (returnType !== firstType) {
-				return 'any'
-			}
-		}
-
-		return firstType
-	}
-
-	private collectReturnTypes(statements: StatementNode[], model: SemanticModel): string[] {
-		const types: string[] = []
-		for (const statement of statements) {
-			switch (statement.type) {
-				case 'ReturnStatement':
-					types.push(statement.value === null
-						? 'null'
-						: this.inferExpressionType(statement.value, model))
-					break
-				case 'BlockStatement':
-					types.push(...this.collectReturnTypes(statement.statements, model))
-					break
-				case 'IfStatement':
-					types.push(...this.collectReturnTypes(statement.thenBranch.statements, model))
-					if (statement.elseBranch !== null) {
-						types.push(...this.collectReturnTypes(statement.elseBranch.statements, model))
-					}
-					break
-				case 'WhileStatement':
-				case 'ForRangeStatement':
-					types.push(...this.collectReturnTypes(statement.body.statements, model))
-					break
-				default:
-					break
-			}
-		}
-
-		return types
-	}
-
-	private getIndexedElementType(containerType: string): string {
-		if (!containerType.endsWith('[]')) {
-			return 'any'
-		}
-		return containerType.slice(0, -2)
-	}
-
-	private assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
-		if (
-			targetType === 'any'
-			|| sourceType === 'any'
-			|| targetType === sourceType
-			|| this.getClassRegistry().isSubclassOf(sourceType, targetType)
-		) {
-			return
-		}
-		throw new Error(`Несовместимые типы в ${context}: ожидалось ${targetType}, получено ${sourceType}`)
-	}
-
-	private createCallableType(paramTypes: string[], returnType: string): string {
-		return `(${paramTypes.join(', ')}) => ${returnType}`
-	}
-
-	private assertUniqueFieldNames(fields: ClassFieldNode[]): void {
-		const seen = new Set<string>()
-		for (const field of fields) {
-			if (seen.has(field.name)) {
-				throw new Error(`Повторное объявление поля класса: ${field.name}`)
-			}
-			seen.add(field.name)
-		}
-	}
-
-	private assertUniqueMethodNames(statement: ClassDeclarationNode): void {
-		const seen = new Set<string>()
-		for (const method of statement.methods) {
-			if (seen.has(method.name)) {
-				throw new Error(`Повторное объявление метода класса ${statement.name}: ${method.name}`)
-			}
-			seen.add(method.name)
-		}
-	}
-
-	private assertNoMemberNameConflicts(statement: ClassDeclarationNode): void {
-		const fieldNames = new Set(statement.fields.map(field => field.name))
-		for (const method of statement.methods) {
-			if (fieldNames.has(method.name)) {
-				throw new Error(`Конфликт имени члена класса ${statement.name}: ${method.name} объявлен и как поле, и как метод`)
-			}
-		}
-	}
-
-	private assertValidBaseClass(statement: ClassDeclarationNode, model: SemanticModel): void {
-		if (statement.baseClassName === null) {
-			return
-		}
-		const baseBinding = model.classBaseBindings.get(statement)
-		if (baseBinding === undefined) {
-			throw new Error(`Базовый класс ${statement.baseClassName} для ${statement.name} не разрешён`)
-		}
-	}
-
-	private assertNoInheritanceCycle(className: string, model: SemanticModel): void {
-		const seen = new Set<string>([className])
-		let current = this.getClassRegistry().getBaseClassName(className)
-		while (current !== null) {
-			if (seen.has(current)) {
-				throw new Error(`Циклическое наследование классов: ${[...seen, current].join(' -> ')}`)
-			}
-			seen.add(current)
-			current = this.getClassRegistry().getBaseClassName(current)
-		}
-	}
-
-	private assertClassMemberAccessible(
-		model: SemanticModel,
-		className: string,
-		memberName: string,
-		preferredKind?: 'field' | 'method',
-	): void {
-		if (className === 'any') {
-			return
-		}
-		const member = preferredKind === 'field'
-			? this.getClassRegistry().getFieldInfo(className, memberName)
-			: this.getClassRegistry().getMemberInfo(className, memberName)
-		if (member === null || member.visibility === 'public') {
-			return
-		}
-		if (this.getCurrentClassName() === member.ownerClassName) {
-			return
-		}
-		throw new Error(`Нельзя обращаться к private-члену ${member.ownerClassName}.${memberName} вне класса ${member.ownerClassName}`)
 	}
 
 	private getCurrentClassName(): string | null {
@@ -573,6 +309,22 @@ class Validator {
 		}
 
 		return this.classRegistry
+	}
+
+	private getTypeAnalyzer(): TypeAnalyzer {
+		if (this.typeAnalyzer === null) {
+			throw new Error('TypeAnalyzer не инициализирован')
+		}
+
+		return this.typeAnalyzer
+	}
+
+	private getClassValidator(): ClassValidator {
+		if (this.classValidator === null) {
+			throw new Error('ClassValidator не инициализирован')
+		}
+
+		return this.classValidator
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {
