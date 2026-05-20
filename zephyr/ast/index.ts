@@ -38,6 +38,7 @@ export type {
 	ClassMemberVisibility,
 	ClassFieldNode,
 	ClassDeclarationNode,
+	ConstructorDeclarationNode,
 	FunctionDeclarationNode,
 	MethodDeclarationNode,
 	ParameterNode,

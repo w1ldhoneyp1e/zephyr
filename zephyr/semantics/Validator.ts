@@ -47,6 +47,9 @@ class Validator {
 				this.assertUniqueMethodNames(statement)
 				this.assertNoMemberNameConflicts(statement)
 				this.currentClassStack.push(statement.name)
+				if (statement.constructorDeclaration !== null) {
+					this.validateCallableBody(statement.constructorDeclaration, model)
+				}
 				for (const method of statement.methods) {
 					this.validateCallableBody(method, model)
 				}
@@ -81,6 +84,9 @@ class Validator {
 					this.validateExpression(statement.value, model)
 					const owner = model.returnOwners.get(statement)
 					if (owner !== undefined && owner !== null) {
+						if (owner.type === 'ConstructorDeclaration') {
+							throw new Error('Нельзя использовать return внутри constructor')
+						}
 						if (owner.type === 'LambdaExpression') {
 							return
 						}
@@ -245,6 +251,15 @@ class Validator {
 					model,
 					`создание класса ${binding.declaration.name}`,
 				)
+				return
+			}
+			if (binding?.kind === 'super') {
+				this.validateCallArguments(
+					expression.args,
+					model.classConstructorParameterTypes.get(binding.baseClassBinding.declaration.name) ?? [],
+					model,
+					`вызов super для ${binding.baseClassBinding.declaration.name}`,
+				)
 			}
 			return
 		}
@@ -333,6 +348,9 @@ class Validator {
 					const binding = model.identifierBindings.get(expression.callee)
 					if (binding?.kind === 'class') {
 						return binding.declaration.name
+					}
+					if (binding?.kind === 'super') {
+						return binding.selfBinding.typeName
 					}
 					if (binding?.kind === 'function') {
 						return binding.declaration.returnTypeName
@@ -702,6 +720,9 @@ class Validator {
 		}
 		if (callable.type === 'MethodDeclaration') {
 			return `методе ${callable.name}`
+		}
+		if (callable.type === 'ConstructorDeclaration') {
+			return 'constructor'
 		}
 		return 'лямбде'
 	}

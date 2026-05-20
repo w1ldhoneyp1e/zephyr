@@ -15,6 +15,7 @@ import {emitExpression} from './expressionEmitter'
 import {emitForRange} from './forRangeEmitter'
 import {
 	emitBindingLoad,
+	emitConstructorDeclaration,
 	emitFunctionDeclaration,
 	emitMethodDeclaration,
 } from './functionEmitter'
@@ -117,6 +118,7 @@ function emitClassDeclaration(
 		name: statement.name,
 		baseClass: null,
 		fields: statement.fields.map(field => field.name),
+		constructorMethod: null,
 		methods: {},
 	}
 	const constIdx = state.addConstant(template)
@@ -131,6 +133,9 @@ function emitClassDeclaration(
 	}
 	for (const method of statement.methods) {
 		emitMethodDeclaration(state, generator, method)
+	}
+	if (statement.constructorDeclaration !== null) {
+		emitConstructorDeclaration(state, generator, statement.constructorDeclaration)
 	}
 }
 

@@ -1,5 +1,6 @@
 import {
 	type ClassDeclarationNode,
+	type ConstructorDeclarationNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -222,6 +223,7 @@ class CompilerState {
 	getFunctionParameterBindings(name:
 			| FunctionDeclarationNode
 			| MethodDeclarationNode
+			| ConstructorDeclarationNode
 			| LambdaExpressionNode,
 	): SemanticBinding[] {
 		const bindings = this.model.functionParameterBindings.get(name)
@@ -259,7 +261,7 @@ class CompilerState {
 		return binding
 	}
 
-	getMethodReceiverBinding(name: MethodDeclarationNode): ClassSemanticBinding {
+	getMethodReceiverBinding(name: MethodDeclarationNode | ConstructorDeclarationNode): ClassSemanticBinding {
 		const binding = this.model.methodReceiverBindings.get(name)
 		if (binding === undefined) {
 			throw new Error('CompilerState: method receiver binding not found')

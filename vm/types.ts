@@ -17,6 +17,7 @@ interface VmStructTemplate {
 	name: string,
 	baseClass: VmStructTemplate | null,
 	fields: string[],
+	constructorMethod: VmMethodValue | null,
 	methods: Record<string, VmMethodValue>,
 }
 

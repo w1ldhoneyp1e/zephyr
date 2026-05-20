@@ -1,6 +1,10 @@
 class Point {
 	x: number;
 	y: number;
+	constructor(x: number, y: number) {
+		self.x = x;
+		self.y = y;
+	}
 }
 
 return Point(1);

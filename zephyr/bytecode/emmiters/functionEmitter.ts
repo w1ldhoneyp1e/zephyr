@@ -2,6 +2,7 @@ import {type SemanticBinding} from '../../semantics/context'
 import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
+	type ConstructorDeclarationNode,
 	type FunctionDeclarationNode,
 	type LambdaExpressionNode,
 	type MethodDeclarationNode,
@@ -34,17 +35,31 @@ function emitMethodDeclaration(
 	state.emitNumArg(Opcode.SetProp, propertyNameIndex)
 }
 
+function emitConstructorDeclaration(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	node: ConstructorDeclarationNode,
+): void {
+	const receiverBinding = state.getMethodReceiverBinding(node)
+	emitCallableClosure(state, generator, node, receiverBinding.declaration.name)
+	emitBindingLoad(state, receiverBinding)
+	const propertyNameIndex = state.addConstant('__constructor__')
+	state.emitNumArg(Opcode.SetProp, propertyNameIndex)
+}
+
 function emitCallableClosure(
 	state: CompilerState,
 	generator: BytecodeGenerator,
-	node: FunctionDeclarationNode | MethodDeclarationNode | LambdaExpressionNode,
+	node: FunctionDeclarationNode | MethodDeclarationNode | ConstructorDeclarationNode | LambdaExpressionNode,
 	receiverTypeName?: string,
 ): void {
 	const functionName = node.type === 'FunctionDeclaration'
 		? node.name
 		: node.type === 'MethodDeclaration'
 			? `${receiverTypeName ?? 'Struct'}.${node.name}`
-			: '<lambda>'
+			: node.type === 'ConstructorDeclaration'
+				? `${receiverTypeName ?? 'Class'}.constructor`
+				: '<lambda>'
 	const parameterBindings = state.getFunctionParameterBindings(node)
 	const nested = generator.createFunctionCompiler(state, functionName, parameterBindings.length)
 	nested.enterScope()
@@ -60,6 +75,11 @@ function emitCallableClosure(
 			emitExpression(nested.getState(), generator, node.body)
 			nested.getState().emitNoArg(Opcode.Return)
 		}
+	}
+	else if (node.type === 'ConstructorDeclaration') {
+		emitBlock(nested.getState(), generator, nested, node.body.statements)
+		emitBindingLoad(nested.getState(), parameterBindings[0])
+		nested.getState().emitNoArg(Opcode.Return)
 	}
 	else {
 		emitBlock(nested.getState(), generator, nested, node.body.statements)
@@ -94,6 +114,7 @@ function emitBindingLoad(state: CompilerState, binding: SemanticBinding): void {
 }
 
 export {
+	emitConstructorDeclaration,
 	emitCallableClosure,
 	emitBindingLoad,
 	emitFunctionDeclaration,

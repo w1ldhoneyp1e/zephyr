@@ -1,6 +1,7 @@
 import {
 	type ClassDeclarationNode,
 	type ClassMemberVisibility,
+	type ConstructorDeclarationNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -43,7 +44,7 @@ interface ParameterSemanticBinding {
 
 interface SuperSemanticBinding {
 	kind: 'super',
-	callableDeclaration: MethodDeclarationNode,
+	callableDeclaration: MethodDeclarationNode | ConstructorDeclarationNode,
 	baseClassBinding: ClassSemanticBinding,
 	selfBinding: ParameterSemanticBinding,
 }
@@ -69,7 +70,11 @@ type SemanticBinding =
 	| BuiltinSemanticBinding
 
 type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
-type CallableDeclarationNode = FunctionDeclarationNode | MethodDeclarationNode | LambdaExpressionNode
+type CallableDeclarationNode =
+	| FunctionDeclarationNode
+	| MethodDeclarationNode
+	| ConstructorDeclarationNode
+	| LambdaExpressionNode
 type SemanticFunctionOwner = ProgramNode | CallableDeclarationNode
 type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode
 
@@ -86,7 +91,7 @@ interface SemanticModel {
 	returnOwners: WeakMap<ReturnStatementNode, CallableDeclarationNode | null>,
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
-	methodReceiverBindings: WeakMap<MethodDeclarationNode, ClassSemanticBinding>,
+	methodReceiverBindings: WeakMap<MethodDeclarationNode | ConstructorDeclarationNode, ClassSemanticBinding>,
 	classFieldTypes: Map<string, Map<string, string>>,
 	classFieldVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
 	classConstructorParameterTypes: Map<string, string[]>,

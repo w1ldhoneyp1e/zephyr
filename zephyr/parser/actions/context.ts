@@ -9,6 +9,7 @@ import {
 	type ClassDeclarationNode,
 	type ClassFieldNode,
 	type ClassMemberVisibility,
+	type ConstructorDeclarationNode,
 	type ContinueStatementNode,
 	type ExportStatementNode,
 	type ExpressionNode,
@@ -54,6 +55,7 @@ type SemanticValue =
 	| ExpressionNode
 	| LambdaExpressionNode
 	| MethodDeclarationNode
+	| ConstructorDeclarationNode
 	| StatementNode
 	| StatementNode[]
 	| PendingAssignmentNode
@@ -69,6 +71,7 @@ interface PendingAssignmentNode {
 
 interface StructMemberListValue {
 	fields: ClassFieldNode[],
+	constructorDeclaration: ConstructorDeclarationNode | null,
 	methods: MethodDeclarationNode[],
 }
 
@@ -211,6 +214,7 @@ export {
 	type ClassFieldNode,
 	type ClassDeclarationNode,
 	type ContinueStatementNode,
+	type ConstructorDeclarationNode,
 	type ExportStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,

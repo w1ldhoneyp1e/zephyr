@@ -56,6 +56,13 @@ function setProperty(target: Value, propertyName: string, value: Value): void {
 			target.baseClass = value
 			return
 		}
+		if (propertyName === '__constructor__') {
+			if (!isVmMethodValue(value)) {
+				throw new Error(`set_prop: конструктор ${target.name} должен быть функцией`)
+			}
+			target.constructorMethod = value
+			return
+		}
 		if (!isVmMethodValue(value)) {
 			throw new Error(`set_prop: метод ${propertyName} должен быть функцией`)
 		}

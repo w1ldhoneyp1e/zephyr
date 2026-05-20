@@ -4,6 +4,9 @@ fn add(a: number, b: number): number {
 
 class Counter {
 	value: number;
+	constructor(value: number) {
+		self.value = value;
+	}
 	fn inc(step: number): number {
 		self.value = self.value + step;
 		return self.value;

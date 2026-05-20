@@ -12,6 +12,7 @@ import {
 	type VmClosure,
 	type VmFunctionTemplate,
 	type VmStructTemplate,
+	type VmSuperObject,
 	Opcode,
 } from '../types'
 import {
@@ -60,14 +61,17 @@ function execCallableOpcode(
 				}
 				return callClosure(callee.method, methodArgs, environment)
 			}
+			if (isSuperObject(callee)) {
+				return callClassTemplate(callee.classTemplate, callee.receiver, args, environment, push)
+			}
 			if (isNative(callee)) {
 				assertNativeArity(callee, argc)
 				push(invokeNative(natives, callee, args))
 				return true
 			}
 			if (isStructTemplate(callee)) {
-				push(instantiateStruct(callee, args))
-				return true
+				const receiver = instantiateStruct(callee)
+				return callClassTemplate(callee, receiver, args, environment, push)
 			}
 			if (!isClosure(callee)) {
 				throw new Error('call: ожидалось замыкание')
@@ -152,14 +156,11 @@ function callClosure(
 	return true
 }
 
-function instantiateStruct(structTemplate: VmStructTemplate, args: Value[]): Value {
+function instantiateStruct(structTemplate: VmStructTemplate): Value {
 	const allFields = getAllFields(structTemplate)
-	if (args.length !== allFields.length) {
-		throw new Error(`call ${structTemplate.name}: ожидалось ${allFields.length} аргументов, получено ${args.length}`)
-	}
 	const properties: Record<string, Value> = {}
 	for (let i = 0; i < allFields.length; i++) {
-		properties[allFields[i]] = args[i] ?? null
+		properties[allFields[i]] = null
 	}
 
 	return {
@@ -168,6 +169,38 @@ function instantiateStruct(structTemplate: VmStructTemplate, args: Value[]): Val
 		structTemplate,
 		properties,
 	}
+}
+
+interface CallClassTemplateArgs {
+	structTemplate: VmStructTemplate,
+	receiver: Value,
+	args: Value[],
+	environment: CallableEnvironment,
+	push: (value: Value) => void,
+}
+
+function callClassTemplate({
+	structTemplate,
+	receiver,
+	args,
+	environment,
+	push,
+}: CallClassTemplateArgs): boolean {
+	const constructorMethod = structTemplate.constructorMethod
+	if (constructorMethod === null) {
+		if (args.length !== 0) {
+			throw new Error(`call ${structTemplate.name}: ожидалось 0 аргументов, получено ${args.length}`)
+		}
+		push(receiver)
+		return true
+	}
+	const constructorArgs = [receiver, ...args]
+	if (isNative(constructorMethod)) {
+		assertNativeArity(constructorMethod, constructorArgs.length)
+		push(invokeNative(environment.natives, constructorMethod, constructorArgs))
+		return true
+	}
+	return callClosure(constructorMethod, constructorArgs, environment)
 }
 
 function getAllFields(structTemplate: VmStructTemplate): string[] {
@@ -198,6 +231,13 @@ function isStructTemplate(value: Value): value is VmStructTemplate {
 		&& value !== null
 		&& 'kind' in value
 		&& value.kind === 'struct'
+}
+
+function isSuperObject(value: Value): value is VmSuperObject {
+	return typeof value === 'object'
+		&& value !== null
+		&& 'kind' in value
+		&& value.kind === 'super_object'
 }
 
 export {

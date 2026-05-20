@@ -1,5 +1,8 @@
 class Box {
 	items: any;
+	constructor(items: any) {
+		self.items = items;
+	}
 	fn size() {
 		return self.items?.length ?? 0;
 	}

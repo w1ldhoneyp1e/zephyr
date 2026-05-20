@@ -45,11 +45,18 @@ interface MethodDeclarationNode {
 	body: BlockStatementNode,
 }
 
+interface ConstructorDeclarationNode {
+	type: 'ConstructorDeclaration',
+	params: ParameterNode[],
+	body: BlockStatementNode,
+}
+
 interface ClassDeclarationNode {
 	type: 'ClassDeclaration',
 	name: string,
 	baseClassName: string | null,
 	fields: ClassFieldNode[],
+	constructorDeclaration: ConstructorDeclarationNode | null,
 	methods: MethodDeclarationNode[],
 }
 
@@ -57,6 +64,7 @@ export {
 	type ClassMemberVisibility,
 	type ClassFieldNode,
 	type ClassDeclarationNode,
+	type ConstructorDeclarationNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
 	type ParameterNode,

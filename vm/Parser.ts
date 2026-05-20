@@ -106,6 +106,7 @@ function parseConstantLine(line: string): ConstantPoolItem {
 			name,
 			baseClass: null,
 			fields,
+			constructorMethod: null,
 			methods: {},
 		}
 	}

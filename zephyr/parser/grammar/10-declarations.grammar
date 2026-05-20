@@ -23,6 +23,7 @@ VariableInitializerOpt -> '=' Expression | ε
 
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
 MethodDeclaration -> VisibilityOpt fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+ConstructorDeclaration -> constructor '(' ParameterListOpt ')' BlockStatement
 ReturnTypeOpt -> ':' TypeExpression | ε
 ParameterListOpt -> ParameterList ParameterTrailingCommaOpt | ε
 ParameterTrailingCommaOpt -> ',' | ε
@@ -34,5 +35,5 @@ ClassExtendsOpt -> extends Identifier | ε
 VisibilityOpt -> public | private | ε
 StructMemberListOpt -> StructMemberList | ε
 StructMemberList -> StructMemberList StructMember | StructMember
-StructMember -> FieldDeclaration | MethodDeclaration
+StructMember -> FieldDeclaration | MethodDeclaration | ConstructorDeclaration
 FieldDeclaration -> VisibilityOpt Identifier TypeAnnotationOpt ';'

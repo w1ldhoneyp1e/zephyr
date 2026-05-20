@@ -1,5 +1,6 @@
 import {
 	type ClassDeclarationNode,
+	type ConstructorDeclarationNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
@@ -188,12 +189,7 @@ class Resolver {
 		)
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
-			[
-				...(baseBinding === null
-					? []
-					: this.model.classConstructorParameterTypes.get(baseBinding.declaration.name) ?? []),
-				...statement.fields.map(field => field.typeName),
-			],
+			statement.constructorDeclaration?.params.map(param => param.typeName) ?? [],
 		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
@@ -210,9 +206,24 @@ class Resolver {
 			statement.name,
 			new Map(statement.methods.map(method => [method.name, method.visibility])),
 		)
+		if (statement.constructorDeclaration !== null) {
+			this.resolveConstructorDeclaration(statement.constructorDeclaration, binding, baseBinding)
+		}
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)
 		}
+	}
+
+	private resolveConstructorDeclaration(
+		statement: ConstructorDeclarationNode,
+		receiverBinding: SemanticBinding,
+		baseBinding: SemanticBinding | null,
+	): void {
+		if (receiverBinding.kind !== 'class') {
+			throw new Error(`Конструктор должен принадлежать классу`)
+		}
+		this.model.methodReceiverBindings.set(statement, receiverBinding)
+		this.resolveCallableDeclaration(statement, receiverBinding.declaration.name, baseBinding)
 	}
 
 	private resolveMethodDeclaration(
@@ -251,7 +262,7 @@ class Resolver {
 				baseClassBinding !== undefined
 				&& baseClassBinding !== null
 				&& baseClassBinding.kind === 'class'
-				&& statement.type === 'MethodDeclaration'
+				&& (statement.type === 'MethodDeclaration' || statement.type === 'ConstructorDeclaration')
 			) {
 				const superBinding: SemanticBinding = {
 					kind: 'super',

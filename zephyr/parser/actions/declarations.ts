@@ -4,6 +4,7 @@ import {
 	type ClassDeclarationNode,
 	type ClassFieldNode,
 	type ClassMemberVisibility,
+	type ConstructorDeclarationNode,
 	type ExportStatementNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
@@ -131,6 +132,12 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				returnTypeName: createTypeName(values[6]),
 				body: values[7] as BlockStatementNode,
 			} satisfies MethodDeclarationNode)
+		case 'ConstructorDeclaration -> Constructor LeftParen ParameterListOpt RightParen BlockStatement':
+			return values => ({
+				type: 'ConstructorDeclaration',
+				params: values[2] as ParameterNode[],
+				body: values[4] as BlockStatementNode,
+			} satisfies ConstructorDeclarationNode)
 		case 'ReturnTypeOpt -> Colon TypeExpression':
 			return values => createTypeName(values[1])
 		case 'ReturnTypeOpt -> ε':
@@ -158,6 +165,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				name: tokenLexeme(values[1]),
 				baseClassName: values[2] as string | null,
 				fields: (values[4] as StructMemberListValue).fields,
+				constructorDeclaration: (values[4] as StructMemberListValue).constructorDeclaration,
 				methods: (values[4] as StructMemberListValue).methods,
 			} satisfies ClassDeclarationNode)
 		case 'ClassExtendsOpt -> Extends Identifier':
@@ -175,15 +183,20 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'StructMemberListOpt -> ε':
 			return () => ({
 				fields: [],
+				constructorDeclaration: null,
 				methods: [],
 			} satisfies StructMemberListValue)
 		case 'StructMemberList -> StructMemberList StructMember':
 			return values => {
 				const list = values[0] as StructMemberListValue
 				const member = values[1] as StructMemberListValue
+				if (list.constructorDeclaration !== null && member.constructorDeclaration !== null) {
+					throw new Error('В классе можно объявить только один constructor')
+				}
 
 				return {
 					fields: [...list.fields, ...member.fields],
+					constructorDeclaration: member.constructorDeclaration ?? list.constructorDeclaration,
 					methods: [...list.methods, ...member.methods],
 				} satisfies StructMemberListValue
 			}
@@ -192,6 +205,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'StructMember -> FieldDeclaration':
 			return values => ({
 				fields: [values[0] as ClassFieldNode],
+				constructorDeclaration: null,
 				methods: [],
 			} satisfies StructMemberListValue)
 		case 'FieldDeclaration -> VisibilityOpt Identifier TypeAnnotationOpt Semicolon':
@@ -203,7 +217,14 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'StructMember -> MethodDeclaration':
 			return values => ({
 				fields: [],
+				constructorDeclaration: null,
 				methods: [values[0] as MethodDeclarationNode],
+			} satisfies StructMemberListValue)
+		case 'StructMember -> ConstructorDeclaration':
+			return values => ({
+				fields: [],
+				constructorDeclaration: values[0] as ConstructorDeclarationNode,
+				methods: [],
 			} satisfies StructMemberListValue)
 
 		default:

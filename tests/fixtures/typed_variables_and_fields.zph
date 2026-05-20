@@ -2,6 +2,9 @@ var a: number = 10;
 
 class Box {
 	value: number;
+	constructor(value: number) {
+		self.value = value;
+	}
 	fn get() {
 		return self.value;
 	}
