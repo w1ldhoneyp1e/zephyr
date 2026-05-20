@@ -41,9 +41,13 @@ class Resolver {
 		callableCaptures: new WeakMap(),
 		methodReceiverBindings: new WeakMap(),
 		classFieldTypes: new Map(),
+		classFieldVisibilities: new Map(),
 		classConstructorParameterTypes: new Map(),
+		classBaseNames: new Map(),
 		classMethodReturnTypes: new Map(),
 		classMethodParameterTypes: new Map(),
+		classMethodVisibilities: new Map(),
+		classBaseBindings: new WeakMap(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -67,9 +71,13 @@ class Resolver {
 			callableCaptures: new WeakMap(),
 			methodReceiverBindings: new WeakMap(),
 			classFieldTypes: new Map(),
+			classFieldVisibilities: new Map(),
 			classConstructorParameterTypes: new Map(),
+			classBaseNames: new Map(),
 			classMethodReturnTypes: new Map(),
 			classMethodParameterTypes: new Map(),
+			classMethodVisibilities: new Map(),
+			classBaseBindings: new WeakMap(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -159,13 +167,33 @@ class Resolver {
 	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
 		const binding = this.createClassBinding(statement)
 		this.declare(statement.name, binding)
+		const baseBinding = statement.baseClassName === null
+			? null
+			: this.resolveName(statement.baseClassName)
+		if (baseBinding !== null && baseBinding.kind !== 'class') {
+			throw new Error(`Класс ${statement.name} может наследоваться только от класса: ${statement.baseClassName}`)
+		}
+		this.model.classBaseBindings.set(statement, baseBinding)
+		this.model.classBaseNames.set(
+			statement.name,
+			baseBinding?.declaration.name ?? null,
+		)
 		this.model.classFieldTypes.set(
 			statement.name,
 			new Map(statement.fields.map(field => [field.name, field.typeName])),
 		)
+		this.model.classFieldVisibilities.set(
+			statement.name,
+			new Map(statement.fields.map(field => [field.name, field.visibility])),
+		)
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
-			statement.fields.map(field => field.typeName),
+			[
+				...(baseBinding === null
+					? []
+					: this.model.classConstructorParameterTypes.get(baseBinding.declaration.name) ?? []),
+				...statement.fields.map(field => field.typeName),
+			],
 		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
@@ -177,6 +205,10 @@ class Resolver {
 				method.name,
 				method.params.map(param => param.typeName),
 			])),
+		)
+		this.model.classMethodVisibilities.set(
+			statement.name,
+			new Map(statement.methods.map(method => [method.name, method.visibility])),
 		)
 		for (const method of statement.methods) {
 			this.resolveMethodDeclaration(method, binding)

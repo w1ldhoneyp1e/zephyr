@@ -35,6 +35,7 @@ export type {
 } from './statements'
 
 export type {
+	ClassMemberVisibility,
 	ClassFieldNode,
 	ClassDeclarationNode,
 	FunctionDeclarationNode,

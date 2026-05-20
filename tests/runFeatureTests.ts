@@ -24,6 +24,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '15',
 	},
 	{
+		name: 'class_private_access_ok',
+		file: 'class_private_access_ok.zph',
+		expectedReturn: '5',
+	},
+	{
+		name: 'class_inheritance',
+		file: 'class_inheritance.zph',
+		expectedReturn: '9',
+	},
+	{
 		name: 'matrix_read',
 		file: 'matrix_read.zph',
 		expectedReturn: '4',
@@ -150,6 +160,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'break_outside_loop_error',
 		file: 'break_outside_loop_error.zph',
 		expectedError: 'Нельзя использовать break вне цикла',
+	},
+	{
+		name: 'class_private_access_error',
+		file: 'class_private_access_error.zph',
+		expectedError: 'Нельзя обращаться к private-члену Counter.value вне класса Counter',
 	},
 ]
 

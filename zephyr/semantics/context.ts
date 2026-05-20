@@ -1,5 +1,6 @@
 import {
 	type ClassDeclarationNode,
+	type ClassMemberVisibility,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -79,9 +80,13 @@ interface SemanticModel {
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
 	methodReceiverBindings: WeakMap<MethodDeclarationNode, ClassSemanticBinding>,
 	classFieldTypes: Map<string, Map<string, string>>,
+	classFieldVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
 	classConstructorParameterTypes: Map<string, string[]>,
+	classBaseNames: Map<string, string | null>,
 	classMethodReturnTypes: Map<string, Map<string, string>>,
 	classMethodParameterTypes: Map<string, Map<string, string[]>>,
+	classMethodVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
+	classBaseBindings: WeakMap<ClassDeclarationNode, ClassSemanticBinding | null>,
 }
 
 function getBindingName(binding: SemanticBinding): string {

@@ -3,6 +3,7 @@ import {
 	type BlockStatementNode,
 	type ClassDeclarationNode,
 	type ClassFieldNode,
+	type ClassMemberVisibility,
 	type ExportStatementNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
@@ -121,13 +122,14 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				returnTypeName: createTypeName(values[5]),
 				body: values[6] as BlockStatementNode,
 			} satisfies FunctionDeclarationNode)
-		case 'MethodDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
+		case 'MethodDeclaration -> VisibilityOpt Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
 			return values => ({
 				type: 'MethodDeclaration',
-				name: tokenLexeme(values[1]),
-				params: values[3] as ParameterNode[],
-				returnTypeName: createTypeName(values[5]),
-				body: values[6] as BlockStatementNode,
+				visibility: values[0] as ClassMemberVisibility,
+				name: tokenLexeme(values[2]),
+				params: values[4] as ParameterNode[],
+				returnTypeName: createTypeName(values[6]),
+				body: values[7] as BlockStatementNode,
 			} satisfies MethodDeclarationNode)
 		case 'ReturnTypeOpt -> Colon TypeExpression':
 			return values => createTypeName(values[1])
@@ -150,13 +152,24 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				typeName: createTypeName(values[1]),
 			} satisfies ParameterNode)
 
-		case 'ClassDeclaration -> Class Identifier LeftBrace StructMemberListOpt RightBrace':
+		case 'ClassDeclaration -> Class Identifier ClassExtendsOpt LeftBrace StructMemberListOpt RightBrace':
 			return values => ({
 				type: 'ClassDeclaration',
 				name: tokenLexeme(values[1]),
-				fields: (values[3] as StructMemberListValue).fields,
-				methods: (values[3] as StructMemberListValue).methods,
+				baseClassName: values[2] as string | null,
+				fields: (values[4] as StructMemberListValue).fields,
+				methods: (values[4] as StructMemberListValue).methods,
 			} satisfies ClassDeclarationNode)
+		case 'ClassExtendsOpt -> Extends Identifier':
+			return values => tokenLexeme(values[1])
+		case 'ClassExtendsOpt -> ε':
+			return () => null
+		case 'VisibilityOpt -> Public':
+			return () => 'public'
+		case 'VisibilityOpt -> Private':
+			return () => 'private'
+		case 'VisibilityOpt -> ε':
+			return () => 'public'
 		case 'StructMemberListOpt -> StructMemberList':
 			return values => values[0]
 		case 'StructMemberListOpt -> ε':
@@ -181,10 +194,11 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				fields: [values[0] as ClassFieldNode],
 				methods: [],
 			} satisfies StructMemberListValue)
-		case 'FieldDeclaration -> Identifier TypeAnnotationOpt Semicolon':
+		case 'FieldDeclaration -> VisibilityOpt Identifier TypeAnnotationOpt Semicolon':
 			return values => ({
-				name: tokenLexeme(values[0]),
-				typeName: createTypeName(values[1]),
+				visibility: values[0] as ClassMemberVisibility,
+				name: tokenLexeme(values[1]),
+				typeName: createTypeName(values[2]),
 			} satisfies ClassFieldNode)
 		case 'StructMember -> MethodDeclaration':
 			return values => ({

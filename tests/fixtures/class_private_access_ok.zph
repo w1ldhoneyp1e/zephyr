@@ -1,0 +1,11 @@
+class Counter {
+	private value: number;
+
+	fn inc(): number {
+		self.value = self.value + 1;
+		return self.value;
+	}
+}
+
+var counter: Counter = Counter(4);
+return counter.inc();

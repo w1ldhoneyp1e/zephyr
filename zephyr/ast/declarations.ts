@@ -2,6 +2,7 @@ import {type ExpressionNode} from './expressions'
 import {type BlockStatementNode, type StatementNode} from './statements'
 
 type TypeName = string
+type ClassMemberVisibility = 'public' | 'private'
 
 interface ParameterNode {
 	name: string,
@@ -24,6 +25,7 @@ interface VariableDeclarationNode {
 interface ClassFieldNode {
 	name: string,
 	typeName: TypeName,
+	visibility: ClassMemberVisibility,
 }
 
 interface FunctionDeclarationNode {
@@ -37,6 +39,7 @@ interface FunctionDeclarationNode {
 interface MethodDeclarationNode {
 	type: 'MethodDeclaration',
 	name: string,
+	visibility: ClassMemberVisibility,
 	params: ParameterNode[],
 	returnTypeName: TypeName,
 	body: BlockStatementNode,
@@ -45,11 +48,13 @@ interface MethodDeclarationNode {
 interface ClassDeclarationNode {
 	type: 'ClassDeclaration',
 	name: string,
+	baseClassName: string | null,
 	fields: ClassFieldNode[],
 	methods: MethodDeclarationNode[],
 }
 
 export {
+	type ClassMemberVisibility,
 	type ClassFieldNode,
 	type ClassDeclarationNode,
 	type FunctionDeclarationNode,

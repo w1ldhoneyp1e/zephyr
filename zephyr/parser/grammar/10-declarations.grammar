@@ -22,15 +22,17 @@ TypeSuffix -> '[' ']'
 VariableInitializerOpt -> '=' Expression | ε
 
 FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
-MethodDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+MethodDeclaration -> VisibilityOpt fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
 ReturnTypeOpt -> ':' TypeExpression | ε
 ParameterListOpt -> ParameterList ParameterTrailingCommaOpt | ε
 ParameterTrailingCommaOpt -> ',' | ε
 ParameterList -> ParameterList ',' Parameter | Parameter
 Parameter -> Identifier TypeAnnotationOpt
 
-ClassDeclaration -> class Identifier '{' StructMemberListOpt '}'
+ClassDeclaration -> class Identifier ClassExtendsOpt '{' StructMemberListOpt '}'
+ClassExtendsOpt -> extends Identifier | ε
+VisibilityOpt -> public | private | ε
 StructMemberListOpt -> StructMemberList | ε
 StructMemberList -> StructMemberList StructMember | StructMember
 StructMember -> FieldDeclaration | MethodDeclaration
-FieldDeclaration -> Identifier TypeAnnotationOpt ';'
+FieldDeclaration -> VisibilityOpt Identifier TypeAnnotationOpt ';'

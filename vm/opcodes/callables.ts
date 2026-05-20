@@ -153,12 +153,13 @@ function callClosure(
 }
 
 function instantiateStruct(structTemplate: VmStructTemplate, args: Value[]): Value {
-	if (args.length !== structTemplate.fields.length) {
-		throw new Error(`call ${structTemplate.name}: ожидалось ${structTemplate.fields.length} аргументов, получено ${args.length}`)
+	const allFields = getAllFields(structTemplate)
+	if (args.length !== allFields.length) {
+		throw new Error(`call ${structTemplate.name}: ожидалось ${allFields.length} аргументов, получено ${args.length}`)
 	}
 	const properties: Record<string, Value> = {}
-	for (let i = 0; i < structTemplate.fields.length; i++) {
-		properties[structTemplate.fields[i]] = args[i] ?? null
+	for (let i = 0; i < allFields.length; i++) {
+		properties[allFields[i]] = args[i] ?? null
 	}
 
 	return {
@@ -167,6 +168,15 @@ function instantiateStruct(structTemplate: VmStructTemplate, args: Value[]): Val
 		structTemplate,
 		properties,
 	}
+}
+
+function getAllFields(structTemplate: VmStructTemplate): string[] {
+	return [
+		...(structTemplate.baseClass === null
+			? []
+			: getAllFields(structTemplate.baseClass)),
+		...structTemplate.fields,
+	]
 }
 
 function isBoundMethod(value: Value): value is VmBoundMethod {

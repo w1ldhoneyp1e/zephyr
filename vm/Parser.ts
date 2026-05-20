@@ -98,11 +98,12 @@ function parseConstantLine(line: string): ConstantPoolItem {
 		if (parts.length < 2) {
 			throw new Error(`Неверная константа class: ${line}`)
 		}
-		const [name, ...fields] = parts
+		const [name, , ...fields] = parts
 
 		return {
 			kind: 'struct',
 			name,
+			baseClass: null,
 			fields,
 			methods: {},
 		}

@@ -1,4 +1,5 @@
 import {
+	type ClassDeclarationNode,
 	type ClassFieldNode,
 	type ExpressionNode,
 	type ProgramNode,
@@ -12,7 +13,11 @@ import {
 } from './context'
 
 class Validator {
+	private currentClassStack: string[] = []
+	private activeModel: SemanticModel | null = null
+
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
+		this.activeModel = model
 		for (const statement of program.body) {
 			this.validateStatement(statement, model)
 		}
@@ -36,10 +41,16 @@ class Validator {
 				this.validateCallableBody(statement, model)
 				return
 			case 'ClassDeclaration':
+				this.assertValidBaseClass(statement, model)
+				this.assertNoInheritanceCycle(statement.name, model)
 				this.assertUniqueFieldNames(statement.fields)
+				this.assertUniqueMethodNames(statement)
+				this.assertNoMemberNameConflicts(statement)
+				this.currentClassStack.push(statement.name)
 				for (const method of statement.methods) {
 					this.validateCallableBody(method, model)
 				}
+				this.currentClassStack.pop()
 				return
 			case 'IfStatement':
 				this.validateExpression(statement.condition, model)
@@ -130,6 +141,7 @@ class Validator {
 				else {
 					this.validateExpression(statement.target.object, model)
 					const objectType = this.inferExpressionType(statement.target.object, model)
+					this.assertClassMemberAccessible(model, objectType, statement.target.property, 'field')
 					const memberType = this.findClassFieldType(model, objectType, statement.target.property)
 					this.assertTypeAssignable(
 						memberType,
@@ -183,6 +195,13 @@ class Validator {
 			case 'MemberExpression':
 			case 'OptionalMemberExpression':
 				this.validateExpression(expression.object, model)
+				if ('property' in expression) {
+					this.assertClassMemberAccessible(
+						model,
+						this.inferExpressionType(expression.object, model),
+						expression.property,
+					)
+				}
 				if ('index' in expression) {
 					this.validateExpression(expression.index, model)
 					this.assertTypeAssignable(
@@ -364,7 +383,14 @@ class Validator {
 			return 'any'
 		}
 		const fields = model.classFieldTypes.get(className)
-		return fields?.get(property) ?? 'any'
+		const fieldType = fields?.get(property)
+		if (fieldType !== undefined) {
+			return fieldType
+		}
+		const baseClassName = model.classBaseNames.get(className)
+		return baseClassName === undefined || baseClassName === null
+			? 'any'
+			: this.findClassFieldType(model, baseClassName, property)
 	}
 
 	private findClassPropertyType(model: SemanticModel, className: string, property: string): string {
@@ -452,7 +478,14 @@ class Validator {
 			return 'any'
 		}
 		const methods = model.classMethodReturnTypes.get(className)
-		return methods?.get(methodName) ?? 'any'
+		const returnType = methods?.get(methodName)
+		if (returnType !== undefined) {
+			return returnType
+		}
+		const baseClassName = model.classBaseNames.get(className)
+		return baseClassName === undefined || baseClassName === null
+			? 'any'
+			: this.findClassMethodReturnType(model, baseClassName, methodName)
 	}
 
 	private findClassMethodType(model: SemanticModel, className: string, methodName: string): string {
@@ -474,11 +507,23 @@ class Validator {
 			return []
 		}
 		const methods = model.classMethodParameterTypes.get(className)
-		return methods?.get(methodName) ?? []
+		const parameterTypes = methods?.get(methodName)
+		if (parameterTypes !== undefined) {
+			return parameterTypes
+		}
+		const baseClassName = model.classBaseNames.get(className)
+		return baseClassName === undefined || baseClassName === null
+			? []
+			: this.findClassMethodParameterTypes(model, baseClassName, methodName)
 	}
 
 	private assertTypeAssignable(targetType: string, sourceType: string, context: string): void {
-		if (targetType === 'any' || sourceType === 'any' || targetType === sourceType) {
+		if (
+			targetType === 'any'
+			|| sourceType === 'any'
+			|| targetType === sourceType
+			|| this.isSubclassOf(sourceType, targetType)
+		) {
 			return
 		}
 		throw new Error(`Несовместимые типы в ${context}: ожидалось ${targetType}, получено ${sourceType}`)
@@ -496,6 +541,157 @@ class Validator {
 			}
 			seen.add(field.name)
 		}
+	}
+
+	private assertUniqueMethodNames(statement: ClassDeclarationNode): void {
+		const seen = new Set<string>()
+		for (const method of statement.methods) {
+			if (seen.has(method.name)) {
+				throw new Error(`Повторное объявление метода класса ${statement.name}: ${method.name}`)
+			}
+			seen.add(method.name)
+		}
+	}
+
+	private assertNoMemberNameConflicts(statement: ClassDeclarationNode): void {
+		const fieldNames = new Set(statement.fields.map(field => field.name))
+		for (const method of statement.methods) {
+			if (fieldNames.has(method.name)) {
+				throw new Error(`Конфликт имени члена класса ${statement.name}: ${method.name} объявлен и как поле, и как метод`)
+			}
+		}
+	}
+
+	private assertValidBaseClass(statement: ClassDeclarationNode, model: SemanticModel): void {
+		if (statement.baseClassName === null) {
+			return
+		}
+		if (!model.classBaseNames.has(statement.name)) {
+			return
+		}
+		const baseBinding = model.classBaseBindings.get(statement)
+		if (baseBinding === undefined) {
+			throw new Error(`Базовый класс ${statement.baseClassName} для ${statement.name} не разрешён`)
+		}
+	}
+
+	private assertNoInheritanceCycle(className: string, model: SemanticModel): void {
+		const seen = new Set<string>([className])
+		let current = model.classBaseNames.get(className) ?? null
+		while (current !== null) {
+			if (seen.has(current)) {
+				throw new Error(`Циклическое наследование классов: ${[...seen, current].join(' -> ')}`)
+			}
+			seen.add(current)
+			current = model.classBaseNames.get(current) ?? null
+		}
+	}
+
+	private assertClassMemberAccessible(
+		model: SemanticModel,
+		className: string,
+		memberName: string,
+		preferredKind?: 'field' | 'method',
+	): void {
+		if (className === 'any') {
+			return
+		}
+		const member = preferredKind === 'field'
+			? this.findClassFieldInfo(model, className, memberName)
+			: this.findClassMemberInfo(model, className, memberName)
+		if (member === null || member.visibility === 'public') {
+			return
+		}
+		if (this.getCurrentClassName() === member.ownerClassName) {
+			return
+		}
+		throw new Error(`Нельзя обращаться к private-члену ${member.ownerClassName}.${memberName} вне класса ${member.ownerClassName}`)
+	}
+
+	private findClassMemberInfo(
+		model: SemanticModel,
+		className: string,
+		memberName: string,
+	): {
+		ownerClassName: string,
+		visibility: 'public' | 'private',
+	} | null {
+		const fieldInfo = this.findClassFieldInfo(model, className, memberName)
+		if (fieldInfo !== null) {
+			return fieldInfo
+		}
+		return this.findClassMethodInfo(model, className, memberName)
+	}
+
+	private findClassFieldInfo(
+		model: SemanticModel,
+		className: string,
+		fieldName: string,
+	): {
+		ownerClassName: string,
+		visibility: 'public' | 'private',
+	} | null {
+		if (className === 'any') {
+			return null
+		}
+		const visibilities = model.classFieldVisibilities.get(className)
+		const visibility = visibilities?.get(fieldName)
+		if (visibility !== undefined) {
+			return {
+				ownerClassName: className,
+				visibility,
+			}
+		}
+		const baseClassName = model.classBaseNames.get(className)
+		return baseClassName === undefined || baseClassName === null
+			? null
+			: this.findClassFieldInfo(model, baseClassName, fieldName)
+	}
+
+	private findClassMethodInfo(
+		model: SemanticModel,
+		className: string,
+		methodName: string,
+	): {
+		ownerClassName: string,
+		visibility: 'public' | 'private',
+	} | null {
+		if (className === 'any') {
+			return null
+		}
+		const visibilities = model.classMethodVisibilities.get(className)
+		const visibility = visibilities?.get(methodName)
+		if (visibility !== undefined) {
+			return {
+				ownerClassName: className,
+				visibility,
+			}
+		}
+		const baseClassName = model.classBaseNames.get(className)
+		return baseClassName === undefined || baseClassName === null
+			? null
+			: this.findClassMethodInfo(model, baseClassName, methodName)
+	}
+
+	private isSubclassOf(sourceType: string, targetType: string): boolean {
+		const model = this.activeModel
+		if (model === null) {
+			return false
+		}
+		let current = model.classBaseNames.get(sourceType) ?? null
+		while (current !== null) {
+			if (current === targetType) {
+				return true
+			}
+			current = model.classBaseNames.get(current) ?? null
+		}
+		return false
+	}
+
+	private getCurrentClassName(): string | null {
+		return this.currentClassStack.length === 0
+			? null
+			: this.currentClassStack[this.currentClassStack.length - 1]
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {

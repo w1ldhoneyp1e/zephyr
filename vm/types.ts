@@ -15,6 +15,7 @@ interface VmFunctionTemplate {
 interface VmStructTemplate {
 	kind: 'struct',
 	name: string,
+	baseClass: VmStructTemplate | null,
 	fields: string[],
 	methods: Record<string, VmMethodValue>,
 }

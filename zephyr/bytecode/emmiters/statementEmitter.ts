@@ -13,7 +13,11 @@ import {emitAssignment} from './assignmentEmitter'
 import {emitBlock} from './blockEmitter'
 import {emitExpression} from './expressionEmitter'
 import {emitForRange} from './forRangeEmitter'
-import {emitFunctionDeclaration, emitMethodDeclaration} from './functionEmitter'
+import {
+	emitBindingLoad,
+	emitFunctionDeclaration,
+	emitMethodDeclaration,
+} from './functionEmitter'
 
 function emitStatement(
 	state: CompilerState,
@@ -111,12 +115,20 @@ function emitClassDeclaration(
 	const template: VmStructTemplate = {
 		kind: 'struct',
 		name: statement.name,
+		baseClass: null,
 		fields: statement.fields.map(field => field.name),
 		methods: {},
 	}
 	const constIdx = state.addConstant(template)
 	state.emitNumArg(Opcode.Const, constIdx)
 	state.emitNumArg(Opcode.SetLocal, slot)
+	const baseBinding = state.getClassBaseBinding(statement)
+	if (baseBinding !== null) {
+		emitBindingLoad(state, baseBinding)
+		state.emitNumArg(Opcode.GetLocal, slot)
+		const propertyNameIndex = state.addConstant('__baseClass__')
+		state.emitNumArg(Opcode.SetProp, propertyNameIndex)
+	}
 	for (const method of statement.methods) {
 		emitMethodDeclaration(state, generator, method)
 	}

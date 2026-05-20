@@ -95,6 +95,7 @@ function emitBindingLoad(state: CompilerState, binding: SemanticBinding): void {
 
 export {
 	emitCallableClosure,
+	emitBindingLoad,
 	emitFunctionDeclaration,
 	emitMethodDeclaration,
 }

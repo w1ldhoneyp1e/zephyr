@@ -215,6 +215,10 @@ class CompilerState {
 		return binding
 	}
 
+	getClassBaseBinding(name: ClassDeclarationNode): ClassSemanticBinding | null {
+		return this.model.classBaseBindings.get(name) ?? null
+	}
+
 	getFunctionParameterBindings(name:
 			| FunctionDeclarationNode
 			| MethodDeclarationNode

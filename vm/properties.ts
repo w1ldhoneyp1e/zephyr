@@ -19,7 +19,7 @@ function getProperty(target: Value, propertyName: string): Value {
 			return ownProperty
 		}
 		if (target.structTemplate !== null) {
-			const method = target.structTemplate.methods[propertyName]
+			const method = getMethod(target.structTemplate, propertyName)
 			if (method !== undefined) {
 				return createBoundMethod(target, method)
 			}
@@ -29,7 +29,7 @@ function getProperty(target: Value, propertyName: string): Value {
 	}
 
 	if (isVmStructTemplate(target)) {
-		return target.methods[propertyName] ?? null
+		return getMethod(target, propertyName) ?? null
 	}
 
 	throw new Error(`get_prop: неподдерживаемое свойство ${propertyName}`)
@@ -41,6 +41,13 @@ function setProperty(target: Value, propertyName: string, value: Value): void {
 		return
 	}
 	if (isVmStructTemplate(target)) {
+		if (propertyName === '__baseClass__') {
+			if (!isVmStructTemplate(value)) {
+				throw new Error(`set_prop: базовый класс ${target.name} должен быть классом`)
+			}
+			target.baseClass = value
+			return
+		}
 		if (!isVmMethodValue(value)) {
 			throw new Error(`set_prop: метод ${propertyName} должен быть функцией`)
 		}
@@ -48,6 +55,16 @@ function setProperty(target: Value, propertyName: string, value: Value): void {
 		return
 	}
 	throw new Error(`set_prop: неподдерживаемое свойство ${propertyName}`)
+}
+
+function getMethod(target: VmStructTemplate, propertyName: string): VmMethodValue | undefined {
+	const ownMethod = target.methods[propertyName]
+	if (ownMethod !== undefined) {
+		return ownMethod
+	}
+	return target.baseClass === null
+		? undefined
+		: getMethod(target.baseClass, propertyName)
 }
 
 function isVmObject(value: Value): value is VmObject {

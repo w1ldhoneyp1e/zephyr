@@ -1,0 +1,6 @@
+class Counter {
+	private value: number;
+}
+
+var counter: Counter = Counter(4);
+return counter.value;
