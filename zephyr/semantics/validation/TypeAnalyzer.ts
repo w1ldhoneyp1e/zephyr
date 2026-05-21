@@ -148,7 +148,11 @@ class TypeAnalyzer {
 	}
 
 	resolveTypeName(typeName: string): SemanticType {
-		return resolveSemanticType(typeName, this.model.typeAliases)
+		return resolveSemanticType(
+			typeName,
+			this.model.typeAliases,
+			name => this.model.classNames.has(name) || this.model.typeAliasNames.has(name),
+		)
 	}
 
 	isTypeAssignable(targetType: SemanticType, sourceType: SemanticType): boolean {

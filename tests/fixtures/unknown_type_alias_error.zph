@@ -1,0 +1,5 @@
+type Id = MissingType | number;
+
+var value: Id = 1;
+
+return value;

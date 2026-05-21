@@ -113,6 +113,8 @@ interface SemanticModel {
 	classBaseBindings: WeakMap<ClassDeclarationNode, ClassSemanticBinding | null>,
 	classDiscriminantValues: Map<string, Map<string, string | number | boolean | null>>,
 	typeAliases: Map<string, SemanticType>,
+	classNames: Set<string>,
+	typeAliasNames: Set<string>,
 }
 
 function getBindingName(binding: SemanticBinding): string {

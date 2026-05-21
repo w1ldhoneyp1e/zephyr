@@ -25,7 +25,6 @@ import {
 import {
 	parseSemanticType,
 	removeNullFromType,
-	resolveSemanticType,
 	unionType,
 } from './SemanticType'
 
@@ -43,6 +42,8 @@ class Resolver {
 	private loopOwners: SemanticLoopOwner[] = []
 	private functionLoopSnapshots: SemanticLoopOwner[][] = []
 	private captures = new Map<CallableDeclarationNode, Set<SemanticBinding>>()
+	private typeAliasDeclarations = new Map<string, TypeAliasDeclarationNode>()
+	private resolvingTypeAliases = new Set<string>()
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
@@ -64,6 +65,8 @@ class Resolver {
 		classBaseBindings: new WeakMap(),
 		classDiscriminantValues: new Map(),
 		typeAliases: new Map(),
+		classNames: new Set(),
+		typeAliasNames: new Set(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -75,6 +78,8 @@ class Resolver {
 		this.loopOwners = []
 		this.functionLoopSnapshots = []
 		this.captures = new Map()
+		this.typeAliasDeclarations = new Map()
+		this.resolvingTypeAliases = new Set()
 		this.model = {
 			identifierBindings: new WeakMap(),
 			assignmentTargetBindings: new WeakMap(),
@@ -96,7 +101,10 @@ class Resolver {
 			classBaseBindings: new WeakMap(),
 			classDiscriminantValues: new Map(),
 			typeAliases: new Map(),
+			classNames: new Set(),
+			typeAliasNames: new Set(),
 		}
+		this.collectTypeDeclarations(program)
 		this.enterScope()
 		for (const statement of program.body) {
 			this.resolveStatement(statement)
@@ -199,6 +207,18 @@ class Resolver {
 		}
 		this.declare(statement.name, binding)
 		this.model.declarationBindings.set(statement, binding)
+	}
+
+	private collectTypeDeclarations(program: ProgramNode): void {
+		for (const statement of program.body) {
+			if (statement.type === 'ClassDeclaration') {
+				this.model.classNames.add(statement.name)
+			}
+			else if (statement.type === 'TypeAliasDeclaration') {
+				this.model.typeAliasNames.add(statement.name)
+				this.typeAliasDeclarations.set(statement.name, statement)
+			}
+		}
 	}
 
 	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
@@ -664,7 +684,43 @@ class Resolver {
 	}
 
 	private resolveTypeName(typeName: string): ReturnType<typeof parseSemanticType> {
-		return resolveSemanticType(typeName, this.model.typeAliases)
+		return parseSemanticType(
+			typeName,
+			name => this.model.typeAliasNames.has(name)
+				? this.resolveTypeAliasByName(name)
+				: null,
+			name => this.isKnownTypeName(name),
+		)
+	}
+
+	private isKnownTypeName(name: string): boolean {
+		if (this.model.classNames.has(name)) {
+			return true
+		}
+		if (!this.model.typeAliasNames.has(name)) {
+			return false
+		}
+		this.resolveTypeAliasByName(name)
+		return true
+	}
+
+	private resolveTypeAliasByName(name: string): ReturnType<typeof parseSemanticType> {
+		const cached = this.model.typeAliases.get(name)
+		if (cached !== undefined) {
+			return cached
+		}
+		const declaration = this.typeAliasDeclarations.get(name)
+		if (declaration === undefined) {
+			throw new Error(`Неизвестный тип: ${name}`)
+		}
+		if (this.resolvingTypeAliases.has(name)) {
+			throw new Error(`Циклический type alias: ${name}`)
+		}
+		this.resolvingTypeAliases.add(name)
+		const resolved = this.resolveTypeName(declaration.typeName)
+		this.resolvingTypeAliases.delete(name)
+		this.model.typeAliases.set(name, resolved)
+		return resolved
 	}
 
 	private getDiscriminantValue(

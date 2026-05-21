@@ -181,6 +181,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '12',
 	},
 	{
+		name: 'type_alias_forward_reference',
+		file: 'type_alias_forward_reference.zph',
+		expectedReturn: '19',
+	},
+	{
 		name: 'parenthesized_union_array_type',
 		file: 'parenthesized_union_array_type.zph',
 		expectedReturn: '7',
@@ -309,6 +314,21 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'type_alias_mismatch_error',
 		file: 'type_alias_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
+	},
+	{
+		name: 'unknown_type_error',
+		file: 'unknown_type_error.zph',
+		expectedError: 'Неизвестный тип: Numbre',
+	},
+	{
+		name: 'unknown_type_alias_error',
+		file: 'unknown_type_alias_error.zph',
+		expectedError: 'Неизвестный тип: MissingType',
+	},
+	{
+		name: 'type_alias_cycle_error',
+		file: 'type_alias_cycle_error.zph',
+		expectedError: 'Циклический type alias',
 	},
 	{
 		name: 'contextual_array_element_error',

@@ -40,6 +40,7 @@ type SemanticType =
 
 const ANY_TYPE: SemanticType = {kind: 'any'}
 type TypeAliasResolver = (name: string) => SemanticType | null
+type TypeNameValidator = (name: string) => boolean
 
 function anyType(): SemanticType {
 	return ANY_TYPE
@@ -172,11 +173,19 @@ function semanticTypesEqual(left: SemanticType, right: SemanticType): boolean {
 	}
 }
 
-function resolveSemanticType(typeName: string, aliases: Map<string, SemanticType>): SemanticType {
-	return parseSemanticType(typeName, name => aliases.get(name) ?? null)
+function resolveSemanticType(
+	typeName: string,
+	aliases: Map<string, SemanticType>,
+	isKnownTypeName?: TypeNameValidator,
+): SemanticType {
+	return parseSemanticType(typeName, name => aliases.get(name) ?? null, isKnownTypeName)
 }
 
-function parseSemanticType(typeName: string, resolveAlias?: TypeAliasResolver): SemanticType {
+function parseSemanticType(
+	typeName: string,
+	resolveAlias?: TypeAliasResolver,
+	isKnownTypeName?: TypeNameValidator,
+): SemanticType {
 	const normalized = typeName.trim()
 	if (normalized === '' || normalized === 'any') {
 		return anyType()
@@ -190,13 +199,13 @@ function parseSemanticType(typeName: string, resolveAlias?: TypeAliasResolver): 
 		const returnSource = current.slice(arrowIndex + 2).trim()
 		const paramTypes = paramsSource === ''
 			? []
-			: splitTopLevel(paramsSource, ',').map(part => parseSemanticType(part, resolveAlias))
-		return functionType(paramTypes, parseSemanticType(returnSource, resolveAlias))
+			: splitTopLevel(paramsSource, ',').map(part => parseSemanticType(part, resolveAlias, isKnownTypeName))
+		return functionType(paramTypes, parseSemanticType(returnSource, resolveAlias, isKnownTypeName))
 	}
 
 	const unionParts = splitTopLevel(current, '|')
 	if (unionParts.length > 1) {
-		return unionType(unionParts.map(part => parseSemanticType(part, resolveAlias)))
+		return unionType(unionParts.map(part => parseSemanticType(part, resolveAlias, isKnownTypeName)))
 	}
 
 	let arrayDepth = 0
@@ -207,16 +216,16 @@ function parseSemanticType(typeName: string, resolveAlias?: TypeAliasResolver): 
 
 	let baseType: SemanticType
 	if (isWrappedInParens(current)) {
-		baseType = parseSemanticType(current.slice(1, -1), resolveAlias)
+		baseType = parseSemanticType(current.slice(1, -1), resolveAlias, isKnownTypeName)
 	}
 	else if (current === 'number' || current === 'string' || current === 'boolean' || current === 'null') {
 		baseType = primitiveType(current)
 	}
 	else if (resolveAlias !== undefined) {
-		baseType = resolveAlias(current) ?? classType(current)
+		baseType = resolveAlias(current) ?? createNamedType(current, isKnownTypeName)
 	}
 	else {
-		baseType = classType(current)
+		baseType = createNamedType(current, isKnownTypeName)
 	}
 
 	for (let depth = 0; depth < arrayDepth; depth++) {
@@ -224,6 +233,13 @@ function parseSemanticType(typeName: string, resolveAlias?: TypeAliasResolver): 
 	}
 
 	return baseType
+}
+
+function createNamedType(name: string, isKnownTypeName?: TypeNameValidator): SemanticType {
+	if (isKnownTypeName !== undefined && !isKnownTypeName(name)) {
+		throw new Error(`Неизвестный тип: ${name}`)
+	}
+	return classType(name)
 }
 
 function isWrappedInParens(source: string): boolean {
