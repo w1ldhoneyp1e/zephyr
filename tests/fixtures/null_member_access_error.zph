@@ -1,0 +1,17 @@
+class Box {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn get(): number {
+		return self.value;
+	}
+}
+
+fn readBox(box: Box | null): number {
+	return box.get();
+}
+
+return readBox(null);

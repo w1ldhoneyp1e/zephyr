@@ -1,7 +1,7 @@
 import {type ClassDeclarationNode, type ClassFieldNode} from '../../ast'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticModel} from '../context'
-import {type SemanticType} from '../SemanticType'
+import {type SemanticType, formatSemanticType} from '../SemanticType'
 
 class ClassValidator {
 	constructor(
@@ -67,6 +67,9 @@ class ClassValidator {
 		memberName: string,
 		preferredKind?: 'field' | 'method',
 	): void {
+		if (this.isNullableType(classType)) {
+			throw new Error(`Нельзя обращаться к члену ${memberName} у nullable-типа ${formatSemanticType(classType)}`)
+		}
 		if (classType.kind === 'any') {
 			return
 		}
@@ -84,6 +87,11 @@ class ClassValidator {
 
 	getClassRegistry(): ClassRegistry {
 		return this.classRegistry
+	}
+
+	private isNullableType(type: SemanticType): boolean {
+		return type.kind === 'union'
+			&& type.types.some(item => item.kind === 'primitive' && item.name === 'null')
 	}
 }
 

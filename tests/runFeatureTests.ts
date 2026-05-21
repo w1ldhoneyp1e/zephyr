@@ -211,6 +211,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
 	},
 	{
+		name: 'null_member_access_error',
+		file: 'null_member_access_error.zph',
+		expectedError: 'Нельзя обращаться к члену get у nullable-типа Box | null',
+	},
+	{
 		name: 'break_outside_loop_error',
 		file: 'break_outside_loop_error.zph',
 		expectedError: 'Нельзя использовать break вне цикла',

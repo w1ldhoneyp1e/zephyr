@@ -137,10 +137,12 @@ class Validator {
 			case 'OptionalMemberExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
 				if ('property' in expression) {
-					this.getClassValidator().assertClassMemberAccessible(
-						this.getTypeAnalyzer().inferExpressionType(expression.object),
-						expression.property,
-					)
+					if (expression.type === 'MemberExpression') {
+						this.getClassValidator().assertClassMemberAccessible(
+							this.getTypeAnalyzer().inferExpressionType(expression.object),
+							expression.property,
+						)
+					}
 				}
 				if ('index' in expression) {
 					this.getTypeAnalyzer().assertTypeAssignable(
