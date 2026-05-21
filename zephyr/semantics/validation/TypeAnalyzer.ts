@@ -140,7 +140,9 @@ class TypeAnalyzer {
 		if (this.isTypeAssignable(targetType, sourceType)) {
 			return
 		}
-		throw new Error(`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}`)
+		throw new Error(
+			`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}${this.describeTypeMismatch(targetType, sourceType)}`,
+		)
 	}
 
 	assertExpressionAssignable(targetType: SemanticType, expression: ExpressionNode, context: string): void {
@@ -180,6 +182,22 @@ class TypeAnalyzer {
 			}
 		}
 		return true
+	}
+
+	private describeTypeMismatch(targetType: SemanticType, sourceType: SemanticType): string {
+		if (targetType.kind !== 'object') {
+			return ''
+		}
+		for (const [propertyName, propertyType] of targetType.properties.entries()) {
+			const sourcePropertyType = this.classRegistry.getPropertyType(sourceType, propertyName)
+			if (sourcePropertyType.kind === 'any') {
+				return `; отсутствует член ${propertyName}`
+			}
+			if (!this.isTypeAssignable(propertyType, sourcePropertyType)) {
+				return `; член ${propertyName}: ожидалось ${formatSemanticType(propertyType)}, получено ${formatSemanticType(sourcePropertyType)}`
+			}
+		}
+		return ''
 	}
 
 	getIndexedElementType(containerType: SemanticType): SemanticType {

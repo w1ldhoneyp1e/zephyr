@@ -348,7 +348,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'object_type_contract_error',
 		file: 'object_type_contract_error.zph',
-		expectedError: 'Несовместимые типы в вызов функции readScore, аргумент 1',
+		expectedError: 'отсутствует член score',
+	},
+	{
+		name: 'object_type_member_type_error',
+		file: 'object_type_member_type_error.zph',
+		expectedError: 'член score: ожидалось () => number, получено () => string',
 	},
 ]
 
