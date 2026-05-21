@@ -25,6 +25,7 @@ enum TokenType {
 	Greater = 'Greater',
 	GreaterEqual = 'GreaterEqual',
 	AndAnd = 'AndAnd',
+	Pipe = 'Pipe',
 	OrOr = 'OrOr',
 	QuestionQuestion = 'QuestionQuestion',
 	QuestionQuestionEqual = 'QuestionQuestionEqual',

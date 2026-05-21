@@ -1,0 +1,11 @@
+var value: number | string = 1;
+value = "ok";
+
+fn maybe(flag: boolean): number | null {
+	return choose {
+		flag => 7,
+		_ => null,
+	};
+}
+
+return maybe(false) ?? 3;

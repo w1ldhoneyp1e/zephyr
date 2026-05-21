@@ -10,8 +10,10 @@ ExportStatement -> export ClassDeclaration
 ExportStatement -> export '{' ImportNameListOpt '}' ExportFromOpt ';'
 ExportFromOpt -> from String | ε
 TypeAnnotationOpt -> ':' TypeExpression | ε
-TypeExpression -> PrimaryTypeExpression TypeSuffixListOpt
-PrimaryTypeExpression -> Identifier | FunctionTypeExpression
+TypeExpression -> UnionTypeExpression
+UnionTypeExpression -> UnionTypeExpression '|' ArrayTypeExpression | ArrayTypeExpression
+ArrayTypeExpression -> PrimaryTypeExpression TypeSuffixListOpt
+PrimaryTypeExpression -> Identifier | null | FunctionTypeExpression
 FunctionTypeExpression -> '(' TypeArgumentListOpt ')' '=>' TypeExpression
 TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt | ε
 TypeTrailingCommaOpt -> ',' | ε

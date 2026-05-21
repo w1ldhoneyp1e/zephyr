@@ -269,6 +269,7 @@ const TERMINAL_ALIASES = new Map<string, TokenType>([
 	['>', TokenType.Greater],
 	['>=', TokenType.GreaterEqual],
 	['&&', TokenType.AndAnd],
+	['|', TokenType.Pipe],
 	['||', TokenType.OrOr],
 	['??', TokenType.QuestionQuestion],
 	['??=', TokenType.QuestionQuestionEqual],

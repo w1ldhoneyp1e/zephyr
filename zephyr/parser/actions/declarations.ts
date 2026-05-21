@@ -78,10 +78,17 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => createTypeName(values[1])
 		case 'TypeAnnotationOpt -> ε':
 			return () => 'any'
-		case 'TypeExpression -> PrimaryTypeExpression TypeSuffixListOpt':
+		case 'TypeExpression -> UnionTypeExpression':
+		case 'UnionTypeExpression -> ArrayTypeExpression':
+			return values => createTypeName(values[0])
+		case 'UnionTypeExpression -> UnionTypeExpression Pipe ArrayTypeExpression':
+			return values => `${createTypeName(values[0])} | ${createTypeName(values[2])}`
+		case 'ArrayTypeExpression -> PrimaryTypeExpression TypeSuffixListOpt':
 			return values => `${createTypeName(values[0])}${values[1] as string}`
 		case 'PrimaryTypeExpression -> Identifier':
 			return values => tokenLexeme(values[0]) as TypeName
+		case 'PrimaryTypeExpression -> Null':
+			return () => 'null'
 		case 'PrimaryTypeExpression -> FunctionTypeExpression':
 			return values => createTypeName(values[0])
 		case 'FunctionTypeExpression -> LeftParen TypeArgumentListOpt RightParen Arrow TypeExpression':

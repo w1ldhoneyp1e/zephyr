@@ -1,0 +1,3 @@
+var value: number | string = true;
+
+return 0;

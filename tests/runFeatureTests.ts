@@ -53,6 +53,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '11',
 	},
 	{
+		name: 'union_types',
+		file: 'union_types.zph',
+		expectedReturn: '3',
+	},
+	{
 		name: 'trailing_comma',
 		file: 'trailing_comma.zph',
 		expectedReturn: '4',
@@ -194,6 +199,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'typed_array_element_mismatch_error',
 		file: 'typed_array_element_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
+	},
+	{
+		name: 'union_type_mismatch_error',
+		file: 'union_type_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
 	},
 	{
 		name: 'break_outside_loop_error',

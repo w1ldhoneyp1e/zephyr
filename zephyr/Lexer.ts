@@ -184,7 +184,8 @@ class Lexer {
 					this.addToken(TokenType.PipeGreater)
 					break
 				}
-				throw this.error('Ожидался "|" или ">"')
+				this.addToken(TokenType.Pipe)
+				break
 			case '?':
 				if (this.match('?')) {
 					this.addToken(this.match('=')

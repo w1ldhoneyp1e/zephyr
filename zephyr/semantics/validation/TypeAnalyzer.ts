@@ -12,6 +12,7 @@ import {
 	parseSemanticType,
 	primitiveType,
 	semanticTypesEqual,
+	unionType,
 } from '../SemanticType'
 
 class TypeAnalyzer {
@@ -134,15 +135,24 @@ class TypeAnalyzer {
 	}
 
 	assertTypeAssignable(targetType: SemanticType, sourceType: SemanticType, context: string): void {
-		if (
-			targetType.kind === 'any'
-			|| sourceType.kind === 'any'
-			|| semanticTypesEqual(targetType, sourceType)
-			|| this.classRegistry.isSubclassOf(sourceType, targetType)
-		) {
+		if (this.isTypeAssignable(targetType, sourceType)) {
 			return
 		}
 		throw new Error(`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}`)
+	}
+
+	isTypeAssignable(targetType: SemanticType, sourceType: SemanticType): boolean {
+		if (targetType.kind === 'any' || sourceType.kind === 'any') {
+			return true
+		}
+		if (sourceType.kind === 'union') {
+			return sourceType.types.every(type => this.isTypeAssignable(targetType, type))
+		}
+		if (targetType.kind === 'union') {
+			return targetType.types.some(type => this.isTypeAssignable(type, sourceType))
+		}
+		return semanticTypesEqual(targetType, sourceType)
+			|| this.classRegistry.isSubclassOf(sourceType, targetType)
 	}
 
 	getIndexedElementType(containerType: SemanticType): SemanticType {
@@ -218,7 +228,7 @@ class TypeAnalyzer {
 		const firstType = types[0]
 		for (const type of types) {
 			if (!semanticTypesEqual(type, firstType)) {
-				return anyType()
+				return unionType(types)
 			}
 		}
 
