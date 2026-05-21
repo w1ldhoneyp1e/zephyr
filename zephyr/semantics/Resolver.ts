@@ -28,7 +28,7 @@ import {
 	unionType,
 } from './SemanticType'
 
-interface NullCheckNarrowing {
+interface ConditionNarrowing {
 	name: string,
 	binding: SemanticBinding,
 	type: ReturnType<typeof parseSemanticType>,
@@ -142,12 +142,12 @@ class Resolver {
 				this.resolveExpression(statement.condition)
 				this.resolveConditionBlock(
 					statement.thenBranch.statements,
-					this.getNullCheckNarrowing(statement.condition, true),
+					this.getConditionNarrowing(statement.condition, true),
 				)
 				if (statement.elseBranch !== null) {
 					this.resolveConditionBlock(
 						statement.elseBranch.statements,
-						this.getNullCheckNarrowing(statement.condition, false),
+						this.getConditionNarrowing(statement.condition, false),
 					)
 				}
 				return
@@ -520,7 +520,7 @@ class Resolver {
 		this.leaveScope()
 	}
 
-	private resolveConditionBlock(statements: StatementNode[], narrowing: NullCheckNarrowing | null): void {
+	private resolveConditionBlock(statements: StatementNode[], narrowing: ConditionNarrowing | null): void {
 		this.enterScope()
 		if (narrowing !== null) {
 			this.declare(narrowing.name, {
@@ -536,7 +536,12 @@ class Resolver {
 		this.leaveScope()
 	}
 
-	private getNullCheckNarrowing(condition: ExpressionNode, truthyBranch: boolean): NullCheckNarrowing | null {
+	private getConditionNarrowing(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing | null {
+		return this.getNullCheckNarrowing(condition, truthyBranch)
+			?? this.getDiscriminantCheckNarrowing(condition, truthyBranch)
+	}
+
+	private getNullCheckNarrowing(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing | null {
 		if (condition.type !== 'BinaryExpression') {
 			return null
 		}
@@ -574,6 +579,62 @@ class Resolver {
 			return right
 		}
 		return null
+	}
+
+	private getDiscriminantCheckNarrowing(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing | null {
+		if (condition.type !== 'BinaryExpression') {
+			return null
+		}
+		if (condition.operator !== '==' && condition.operator !== '!=') {
+			return null
+		}
+		const check = this.getDiscriminantCheck(condition.left, condition.right)
+			?? this.getDiscriminantCheck(condition.right, condition.left)
+		if (check === null) {
+			return null
+		}
+		const binding = this.model.identifierBindings.get(check.subject)
+		if (binding === undefined) {
+			return null
+		}
+		const narrowsToMatchingClasses = condition.operator === '=='
+			? truthyBranch
+			: !truthyBranch
+		const narrowedType = this.inferDiscriminantNarrowedType(
+			binding,
+			check.discriminant,
+			check.value,
+			narrowsToMatchingClasses,
+		)
+		if (narrowedType === null) {
+			return null
+		}
+		return {
+			name: check.subject.name,
+			binding,
+			type: narrowedType,
+		}
+	}
+
+	private getDiscriminantCheck(
+		member: ExpressionNode,
+		value: ExpressionNode,
+	): {
+		subject: IdentifierExpressionNode,
+		discriminant: string,
+		value: string | number | boolean | null,
+	} | null {
+		if (member.type !== 'MemberExpression' || member.object.type !== 'IdentifierExpression') {
+			return null
+		}
+		if (value.type !== 'LiteralExpression') {
+			return null
+		}
+		return {
+			subject: member.object,
+			discriminant: member.property,
+			value: value.value,
+		}
 	}
 
 	private isNullLiteral(expression: ExpressionNode): boolean {
@@ -642,9 +703,20 @@ class Resolver {
 		discriminant: string,
 		patternValue: string | number | boolean | null,
 	): ReturnType<typeof parseSemanticType> | null {
+		return this.inferDiscriminantNarrowedType(binding, discriminant, patternValue, true)
+	}
+
+	private inferDiscriminantNarrowedType(
+		binding: SemanticBinding,
+		discriminant: string,
+		patternValue: string | number | boolean | null,
+		includeMatchingClasses: boolean,
+	): ReturnType<typeof parseSemanticType> | null {
 		const bindingType = this.getBindingDeclaredType(binding)
 		const matchingClasses = this.getMatchByCandidateClassNames(bindingType)
-			.filter(className => this.getDiscriminantValue(className, discriminant) === patternValue)
+			.filter(className =>
+				(this.getDiscriminantValue(className, discriminant) === patternValue) === includeMatchingClasses,
+			)
 
 		if (matchingClasses.length === 0) {
 			return null
