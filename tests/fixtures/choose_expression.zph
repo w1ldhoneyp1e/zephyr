@@ -1,0 +1,7 @@
+var score: number = 82;
+
+return choose {
+	score >= 90 => 5,
+	score >= 80 => 4,
+	_ => 3,
+};

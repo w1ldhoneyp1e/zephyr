@@ -1,4 +1,3 @@
-import * as fs from 'fs'
 import * as path from 'path'
 import {formatValue, Vm} from '../vm'
 import {Compiler} from '../zephyr/Compiler'
@@ -114,6 +113,26 @@ const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'lambda_block_body',
 		file: 'lambda_block_body.zph',
+		expectedReturn: '7',
+	},
+	{
+		name: 'choose_expression',
+		file: 'choose_expression.zph',
+		expectedReturn: '4',
+	},
+	{
+		name: 'collect_expression',
+		file: 'collect_expression.zph',
+		expectedReturn: '3',
+	},
+	{
+		name: 'match_expression',
+		file: 'match_expression.zph',
+		expectedReturn: '20',
+	},
+	{
+		name: 'match_by_expression',
+		file: 'match_by_expression.zph',
 		expectedReturn: '7',
 	},
 	{

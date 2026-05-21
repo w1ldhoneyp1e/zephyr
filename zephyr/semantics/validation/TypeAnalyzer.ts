@@ -69,6 +69,25 @@ class TypeAnalyzer {
 				return primitiveType('number')
 			case 'ArrayExpression':
 				return this.inferArrayExpressionType(expression)
+			case 'ChooseExpression':
+				return this.inferCommonType([
+					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
+					this.inferExpressionType(expression.defaultValue),
+				])
+			case 'CollectExpression':
+				return arrayType(this.inferCommonType(
+					expression.branches.map(branch => this.inferExpressionType(branch.value)),
+				))
+			case 'MatchExpression':
+				return this.inferCommonType([
+					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
+					this.inferExpressionType(expression.defaultValue),
+				])
+			case 'MatchByExpression':
+				return this.inferCommonType([
+					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
+					this.inferExpressionType(expression.defaultValue),
+				])
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
 				return this.getIndexedElementType(this.inferExpressionType(expression.object))
@@ -151,35 +170,13 @@ class TypeAnalyzer {
 	private inferArrayExpressionType(
 		expression: Extract<ExpressionNode, {type: 'ArrayExpression'}>,
 	): SemanticType {
-		if (expression.elements.length === 0) {
-			return arrayType(anyType())
-		}
-
-		const elementTypes = expression.elements.map(element => this.inferExpressionType(element))
-		const firstType = elementTypes[0]
-		for (const elementType of elementTypes) {
-			if (!semanticTypesEqual(elementType, firstType)) {
-				return arrayType(anyType())
-			}
-		}
-
-		return arrayType(firstType)
+		return arrayType(this.inferCommonType(
+			expression.elements.map(element => this.inferExpressionType(element)),
+		))
 	}
 
 	private inferBlockReturnType(statements: StatementNode[]): SemanticType {
-		const returnTypes = this.collectReturnTypes(statements)
-		if (returnTypes.length === 0) {
-			return anyType()
-		}
-
-		const firstType = returnTypes[0]
-		for (const returnType of returnTypes) {
-			if (!semanticTypesEqual(returnType, firstType)) {
-				return anyType()
-			}
-		}
-
-		return firstType
+		return this.inferCommonType(this.collectReturnTypes(statements))
 	}
 
 	private collectReturnTypes(statements: StatementNode[]): SemanticType[] {
@@ -210,6 +207,21 @@ class TypeAnalyzer {
 		}
 
 		return types
+	}
+
+	private inferCommonType(types: SemanticType[]): SemanticType {
+		if (types.length === 0) {
+			return anyType()
+		}
+
+		const firstType = types[0]
+		for (const type of types) {
+			if (!semanticTypesEqual(type, firstType)) {
+				return anyType()
+			}
+		}
+
+		return firstType
 	}
 }
 

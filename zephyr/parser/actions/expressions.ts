@@ -3,11 +3,22 @@ import {
 	type ArrayExpressionNode,
 	type BlockStatementNode,
 	type CallExpressionNode,
+	type ChooseBranchesValue,
+	type ChooseExpressionNode,
+	type CollectExpressionNode,
+	type ConditionalBranchNode,
 	type ExpressionNode,
 	type IdentifierExpressionNode,
 	type IndexExpressionNode,
 	type LambdaExpressionNode,
 	type LiteralExpressionNode,
+	type MatchByBranchesValue,
+	type MatchByBranchNode,
+	type MatchByExpressionNode,
+	type MatchByPatternNode,
+	type MatchExpressionNode,
+	type MatchValueBranchesValue,
+	type MatchValueBranchNode,
 	type MemberExpressionNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
@@ -168,6 +179,157 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				type: 'ArrayExpression',
 				elements: values[1] as ExpressionNode[],
 			} satisfies ArrayExpressionNode)
+		case 'PrimaryExpression -> ChooseExpression':
+		case 'PrimaryExpression -> CollectExpression':
+		case 'PrimaryExpression -> MatchExpression':
+			return values => values[0]
+		case 'ChooseExpression -> Choose LeftBrace ChooseBranches RightBrace':
+			return values => {
+				const chooseBranches = values[2] as ChooseBranchesValue
+
+				return {
+					type: 'ChooseExpression',
+					branches: chooseBranches.branches,
+					defaultValue: chooseBranches.defaultValue,
+				} satisfies ChooseExpressionNode
+			}
+		case 'ChooseBranches -> ChooseBranchList Comma ChooseDefaultBranch ChooseTrailingCommaOpt':
+			return values => ({
+				branches: values[0] as ConditionalBranchNode[],
+				defaultValue: ensureExpression(values[2], 'choose default value'),
+			} satisfies ChooseBranchesValue)
+		case 'ChooseBranches -> ChooseDefaultBranch ChooseTrailingCommaOpt':
+			return values => ({
+				branches: [],
+				defaultValue: ensureExpression(values[0], 'choose default value'),
+			} satisfies ChooseBranchesValue)
+		case 'ChooseTrailingCommaOpt -> Comma':
+		case 'ChooseTrailingCommaOpt -> ε':
+			return () => null
+		case 'ChooseBranchList -> ChooseBranchList Comma ChooseBranch':
+			return values => [...(values[0] as ConditionalBranchNode[]), values[2] as ConditionalBranchNode]
+		case 'ChooseBranchList -> ChooseBranch':
+			return values => [values[0] as ConditionalBranchNode]
+		case 'ChooseBranch -> AssignmentExpression Arrow Expression':
+			return values => ({
+				condition: ensureExpression(values[0], 'choose condition'),
+				value: ensureExpression(values[2], 'choose branch value'),
+			} satisfies ConditionalBranchNode)
+		case 'ChooseDefaultBranch -> Underscore Arrow Expression':
+			return values => ensureExpression(values[2], 'choose default value')
+		case 'CollectExpression -> Collect LeftBrace CollectBranchListOpt RightBrace':
+			return values => ({
+				type: 'CollectExpression',
+				branches: values[2] as ConditionalBranchNode[],
+			} satisfies CollectExpressionNode)
+		case 'CollectBranchListOpt -> CollectBranchList CollectTrailingCommaOpt':
+			return values => values[0]
+		case 'CollectBranchListOpt -> ε':
+			return () => []
+		case 'CollectTrailingCommaOpt -> Comma':
+		case 'CollectTrailingCommaOpt -> ε':
+			return () => null
+		case 'CollectBranchList -> CollectBranchList Comma CollectBranch':
+			return values => [...(values[0] as ConditionalBranchNode[]), values[2] as ConditionalBranchNode]
+		case 'CollectBranchList -> CollectBranch':
+			return values => [values[0] as ConditionalBranchNode]
+		case 'CollectBranch -> AssignmentExpression Arrow Expression':
+			return values => ({
+				condition: ensureExpression(values[0], 'collect condition'),
+				value: ensureExpression(values[2], 'collect branch value'),
+			} satisfies ConditionalBranchNode)
+		case 'MatchExpression -> Match Expression LeftBrace MatchValueBranches RightBrace':
+			return values => {
+				const matchBranches = values[3] as MatchValueBranchesValue
+
+				return {
+					type: 'MatchExpression',
+					subject: ensureExpression(values[1], 'match subject'),
+					branches: matchBranches.branches,
+					defaultValue: matchBranches.defaultValue,
+				} satisfies MatchExpressionNode
+			}
+		case 'MatchExpression -> Match Expression By Identifier LeftBrace MatchByBranches RightBrace':
+			return values => {
+				const matchBranches = values[5] as MatchByBranchesValue
+
+				return {
+					type: 'MatchByExpression',
+					subject: ensureExpression(values[1], 'match subject'),
+					discriminant: tokenLexeme(values[3]),
+					branches: matchBranches.branches,
+					defaultValue: matchBranches.defaultValue,
+				} satisfies MatchByExpressionNode
+			}
+		case 'MatchTrailingCommaOpt -> Comma':
+		case 'MatchTrailingCommaOpt -> ε':
+			return () => null
+		case 'MatchValueBranches -> MatchValueBranchList Comma MatchValueDefaultBranch MatchTrailingCommaOpt':
+			return values => ({
+				branches: values[0] as MatchValueBranchNode[],
+				defaultValue: ensureExpression(values[2], 'match default value'),
+			} satisfies MatchValueBranchesValue)
+		case 'MatchValueBranches -> MatchValueDefaultBranch MatchTrailingCommaOpt':
+			return values => ({
+				branches: [],
+				defaultValue: ensureExpression(values[0], 'match default value'),
+			} satisfies MatchValueBranchesValue)
+		case 'MatchValueBranchList -> MatchValueBranchList Comma MatchValueBranch':
+			return values => [...(values[0] as MatchValueBranchNode[]), values[2] as MatchValueBranchNode]
+		case 'MatchValueBranchList -> MatchValueBranch':
+			return values => [values[0] as MatchValueBranchNode]
+		case 'MatchValueBranch -> AssignmentExpression Arrow Expression':
+			return values => ({
+				pattern: ensureExpression(values[0], 'match pattern'),
+				value: ensureExpression(values[2], 'match branch value'),
+			} satisfies MatchValueBranchNode)
+		case 'MatchValueDefaultBranch -> Underscore Arrow Expression':
+			return values => ensureExpression(values[2], 'match default value')
+		case 'MatchByBranches -> MatchByBranchList Comma MatchByDefaultBranch MatchTrailingCommaOpt':
+			return values => ({
+				branches: values[0] as MatchByBranchNode[],
+				defaultValue: ensureExpression(values[2], 'match-by default value'),
+			} satisfies MatchByBranchesValue)
+		case 'MatchByBranches -> MatchByDefaultBranch MatchTrailingCommaOpt':
+			return values => ({
+				branches: [],
+				defaultValue: ensureExpression(values[0], 'match-by default value'),
+			} satisfies MatchByBranchesValue)
+		case 'MatchByBranchList -> MatchByBranchList Comma MatchByBranch':
+			return values => [...(values[0] as MatchByBranchNode[]), values[2] as MatchByBranchNode]
+		case 'MatchByBranchList -> MatchByBranch':
+			return values => [values[0] as MatchByBranchNode]
+		case 'MatchByBranch -> MatchByPattern Arrow Expression':
+			return values => ({
+				pattern: values[0] as MatchByPatternNode,
+				value: ensureExpression(values[2], 'match-by branch value'),
+			} satisfies MatchByBranchNode)
+		case 'MatchByPattern -> Identifier':
+			return values => ({
+				value: tokenLexeme(values[0]),
+			} satisfies MatchByPatternNode)
+		case 'MatchByPattern -> Number':
+			return values => ({
+				value: Number(tokenLexeme(values[0])),
+			} satisfies MatchByPatternNode)
+		case 'MatchByPattern -> String':
+			return values => ({
+				value: unquoteString(tokenLexeme(values[0])),
+			} satisfies MatchByPatternNode)
+		case 'MatchByPattern -> True':
+			return () => ({
+				value: true,
+			} satisfies MatchByPatternNode)
+		case 'MatchByPattern -> False':
+			return () => ({
+				value: false,
+			} satisfies MatchByPatternNode)
+		case 'MatchByPattern -> Null':
+			return () => ({
+				value: null,
+			} satisfies MatchByPatternNode)
+		case 'MatchByDefaultBranch -> Underscore Arrow Expression':
+			return values => ensureExpression(values[2], 'match-by default value')
 		case 'ArrayElementsOpt -> ε':
 			return () => []
 		case 'ArrayTrailingCommaOpt -> Comma':

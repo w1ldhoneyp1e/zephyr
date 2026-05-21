@@ -18,12 +18,42 @@ ArgumentList -> ArgumentList ',' Expression | Expression
 PrimaryExpression -> false
 PrimaryExpression -> true
 PrimaryExpression -> null
+PrimaryExpression -> ChooseExpression
+PrimaryExpression -> CollectExpression
+PrimaryExpression -> MatchExpression
 PrimaryExpression -> Number
 PrimaryExpression -> String
 PrimaryExpression -> Identifier
 PrimaryExpression -> super
 PrimaryExpression -> '(' Expression ')'
 PrimaryExpression -> '[' ArrayElementsOpt ']'
+
+ChooseExpression -> choose '{' ChooseBranches '}'
+ChooseBranches -> ChooseBranchList ',' ChooseDefaultBranch ChooseTrailingCommaOpt | ChooseDefaultBranch ChooseTrailingCommaOpt
+ChooseTrailingCommaOpt -> ',' | ε
+ChooseBranchList -> ChooseBranchList ',' ChooseBranch | ChooseBranch
+ChooseBranch -> AssignmentExpression '=>' Expression
+ChooseDefaultBranch -> Underscore '=>' Expression
+
+CollectExpression -> collect '{' CollectBranchListOpt '}'
+CollectBranchListOpt -> CollectBranchList CollectTrailingCommaOpt | ε
+CollectTrailingCommaOpt -> ',' | ε
+CollectBranchList -> CollectBranchList ',' CollectBranch | CollectBranch
+CollectBranch -> AssignmentExpression '=>' Expression
+
+MatchExpression -> match Expression '{' MatchValueBranches '}'
+MatchExpression -> match Expression by Identifier '{' MatchByBranches '}'
+MatchTrailingCommaOpt -> ',' | ε
+MatchValueBranches -> MatchValueBranchList ',' MatchValueDefaultBranch MatchTrailingCommaOpt | MatchValueDefaultBranch MatchTrailingCommaOpt
+MatchValueBranchList -> MatchValueBranchList ',' MatchValueBranch | MatchValueBranch
+MatchValueBranch -> AssignmentExpression '=>' Expression
+MatchValueDefaultBranch -> Underscore '=>' Expression
+MatchByBranches -> MatchByBranchList ',' MatchByDefaultBranch MatchTrailingCommaOpt | MatchByDefaultBranch MatchTrailingCommaOpt
+MatchByBranchList -> MatchByBranchList ',' MatchByBranch | MatchByBranch
+MatchByBranch -> MatchByPattern '=>' Expression
+MatchByPattern -> Identifier | Number | String | true | false | null
+MatchByDefaultBranch -> Underscore '=>' Expression
+
 LambdaExpression -> '(' ParameterListOpt ')' '=>' LambdaBody
 LambdaBody -> BlockStatement | Expression
 ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt | ε

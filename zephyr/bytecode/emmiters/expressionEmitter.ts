@@ -102,6 +102,90 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 			state.emitNumArg(Opcode.CreateArr, expression.elements.length)
 			break
 		}
+		case 'ChooseExpression': {
+			const endJumps: number[] = []
+			for (const branch of expression.branches) {
+				emitExpression(state, generator, branch.condition)
+				const nextBranchJump = state.emitJump(Opcode.JumpIfFalse)
+				emitExpression(state, generator, branch.value)
+				endJumps.push(state.emitJump(Opcode.Jump))
+				state.patchJump(nextBranchJump, state.getInstructions().length)
+			}
+			emitExpression(state, generator, expression.defaultValue)
+			for (const endJump of endJumps) {
+				state.patchJump(endJump, state.getInstructions().length)
+			}
+			break
+		}
+		case 'CollectExpression': {
+			state.enterScope()
+			const resultSlot = state.declareInternalLocal('collect_result')
+			const countSlot = state.declareInternalLocal('collect_count')
+			state.emitNumArg(Opcode.CreateArr, 0)
+			state.emitNumArg(Opcode.SetLocal, resultSlot)
+			const zeroIndex = state.addConstant(0)
+			state.emitNumArg(Opcode.Const, zeroIndex)
+			state.emitNumArg(Opcode.SetLocal, countSlot)
+			for (const branch of expression.branches) {
+				emitExpression(state, generator, branch.condition)
+				const nextBranchJump = state.emitJump(Opcode.JumpIfFalse)
+				emitExpression(state, generator, branch.value)
+				state.emitNumArg(Opcode.GetLocal, resultSlot)
+				state.emitNumArg(Opcode.GetLocal, countSlot)
+				state.emitNoArg(Opcode.SetEl)
+				state.emitNumArg(Opcode.IncLocal, countSlot)
+				state.patchJump(nextBranchJump, state.getInstructions().length)
+			}
+			state.emitNumArg(Opcode.GetLocal, resultSlot)
+			state.leaveScope()
+			break
+		}
+		case 'MatchExpression': {
+			state.enterScope()
+			const subjectSlot = state.declareInternalLocal('match_subject')
+			emitExpression(state, generator, expression.subject)
+			state.emitNumArg(Opcode.SetLocal, subjectSlot)
+			const endJumps: number[] = []
+			for (const branch of expression.branches) {
+				state.emitNumArg(Opcode.GetLocal, subjectSlot)
+				emitExpression(state, generator, branch.pattern)
+				state.emitNoArg(Opcode.Eq)
+				const nextBranchJump = state.emitJump(Opcode.JumpIfFalse)
+				emitExpression(state, generator, branch.value)
+				endJumps.push(state.emitJump(Opcode.Jump))
+				state.patchJump(nextBranchJump, state.getInstructions().length)
+			}
+			emitExpression(state, generator, expression.defaultValue)
+			for (const endJump of endJumps) {
+				state.patchJump(endJump, state.getInstructions().length)
+			}
+			state.leaveScope()
+			break
+		}
+		case 'MatchByExpression': {
+			state.enterScope()
+			const subjectSlot = state.declareInternalLocal('match_by_subject')
+			emitExpression(state, generator, expression.subject)
+			state.emitNumArg(Opcode.SetLocal, subjectSlot)
+			const discriminantNameIndex = state.addConstant(expression.discriminant)
+			const endJumps: number[] = []
+			for (const branch of expression.branches) {
+				state.emitNumArg(Opcode.GetLocal, subjectSlot)
+				state.emitNumArg(Opcode.GetProp, discriminantNameIndex)
+				emitLiteralValue(state, branch.pattern.value)
+				state.emitNoArg(Opcode.Eq)
+				const nextBranchJump = state.emitJump(Opcode.JumpIfFalse)
+				emitExpression(state, generator, branch.value)
+				endJumps.push(state.emitJump(Opcode.Jump))
+				state.patchJump(nextBranchJump, state.getInstructions().length)
+			}
+			emitExpression(state, generator, expression.defaultValue)
+			for (const endJump of endJumps) {
+				state.patchJump(endJump, state.getInstructions().length)
+			}
+			state.leaveScope()
+			break
+		}
 		case 'IndexExpression': {
 			emitExpression(state, generator, expression.object)
 			emitExpression(state, generator, expression.index)
@@ -156,6 +240,23 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 		default:
 			throw new Error(`Неподдерживаемое выражение: ${(expression as {type: string}).type}`)
 	}
+}
+
+function emitLiteralValue(state: CompilerState, value: Value): void {
+	if (value === null) {
+		state.emitNoArg(Opcode.Nil)
+		return
+	}
+	if (value === true) {
+		state.emitNoArg(Opcode.True)
+		return
+	}
+	if (value === false) {
+		state.emitNoArg(Opcode.False)
+		return
+	}
+	const idx = state.addConstant(value)
+	state.emitNumArg(Opcode.Const, idx)
 }
 
 export {

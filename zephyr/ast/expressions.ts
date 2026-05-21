@@ -34,6 +34,25 @@ interface ArrayExpressionNode {
 	elements: ExpressionNode[],
 }
 
+interface ConditionalBranchNode {
+	condition: ExpressionNode,
+	value: ExpressionNode,
+}
+
+interface MatchValueBranchNode {
+	pattern: ExpressionNode,
+	value: ExpressionNode,
+}
+
+interface MatchByPatternNode {
+	value: string | number | boolean | null,
+}
+
+interface MatchByBranchNode {
+	pattern: MatchByPatternNode,
+	value: ExpressionNode,
+}
+
 interface IndexExpressionNode {
 	type: 'IndexExpression',
 	object: ExpressionNode,
@@ -82,6 +101,32 @@ interface LambdaExpressionNode {
 	body: ExpressionNode | BlockStatementNode,
 }
 
+interface ChooseExpressionNode {
+	type: 'ChooseExpression',
+	branches: ConditionalBranchNode[],
+	defaultValue: ExpressionNode,
+}
+
+interface CollectExpressionNode {
+	type: 'CollectExpression',
+	branches: ConditionalBranchNode[],
+}
+
+interface MatchExpressionNode {
+	type: 'MatchExpression',
+	subject: ExpressionNode,
+	branches: MatchValueBranchNode[],
+	defaultValue: ExpressionNode,
+}
+
+interface MatchByExpressionNode {
+	type: 'MatchByExpression',
+	subject: ExpressionNode,
+	discriminant: string,
+	branches: MatchByBranchNode[],
+	defaultValue: ExpressionNode,
+}
+
 type AssignmentTargetNode = IdentifierTargetNode | IndexTargetNode | MemberTargetNode
 
 type ExpressionNode =
@@ -96,12 +141,19 @@ type ExpressionNode =
 	| OptionalMemberExpressionNode
 	| CallExpressionNode
 	| LambdaExpressionNode
+	| ChooseExpressionNode
+	| CollectExpressionNode
+	| MatchExpressionNode
+	| MatchByExpressionNode
 
 export {
 	type ArrayExpressionNode,
 	type AssignmentTargetNode,
 	type BinaryExpressionNode,
 	type CallExpressionNode,
+	type ChooseExpressionNode,
+	type CollectExpressionNode,
+	type ConditionalBranchNode,
 	type ExpressionNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
@@ -109,6 +161,11 @@ export {
 	type IndexTargetNode,
 	type LambdaExpressionNode,
 	type LiteralExpressionNode,
+	type MatchByBranchNode,
+	type MatchByExpressionNode,
+	type MatchByPatternNode,
+	type MatchExpressionNode,
+	type MatchValueBranchNode,
 	type MemberExpressionNode,
 	type MemberTargetNode,
 	type OptionalIndexExpressionNode,

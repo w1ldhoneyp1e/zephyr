@@ -340,6 +340,31 @@ class Resolver {
 					this.resolveExpression(element)
 				}
 				return
+			case 'ChooseExpression':
+			case 'CollectExpression':
+				for (const branch of expression.branches) {
+					this.resolveExpression(branch.condition)
+					this.resolveExpression(branch.value)
+				}
+				if (expression.type === 'ChooseExpression') {
+					this.resolveExpression(expression.defaultValue)
+				}
+				return
+			case 'MatchExpression':
+				this.resolveExpression(expression.subject)
+				for (const branch of expression.branches) {
+					this.resolveExpression(branch.pattern)
+					this.resolveExpression(branch.value)
+				}
+				this.resolveExpression(expression.defaultValue)
+				return
+			case 'MatchByExpression':
+				this.resolveExpression(expression.subject)
+				for (const branch of expression.branches) {
+					this.resolveExpression(branch.value)
+				}
+				this.resolveExpression(expression.defaultValue)
+				return
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
 			case 'MemberExpression':

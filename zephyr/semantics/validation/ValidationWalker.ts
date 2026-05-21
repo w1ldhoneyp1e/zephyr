@@ -79,6 +79,31 @@ class ValidationWalker {
 					this.validateExpression(element)
 				}
 				break
+			case 'ChooseExpression':
+			case 'CollectExpression':
+				for (const branch of expression.branches) {
+					this.validateExpression(branch.condition)
+					this.validateExpression(branch.value)
+				}
+				if (expression.type === 'ChooseExpression') {
+					this.validateExpression(expression.defaultValue)
+				}
+				break
+			case 'MatchExpression':
+				this.validateExpression(expression.subject)
+				for (const branch of expression.branches) {
+					this.validateExpression(branch.pattern)
+					this.validateExpression(branch.value)
+				}
+				this.validateExpression(expression.defaultValue)
+				break
+			case 'MatchByExpression':
+				this.validateExpression(expression.subject)
+				for (const branch of expression.branches) {
+					this.validateExpression(branch.value)
+				}
+				this.validateExpression(expression.defaultValue)
+				break
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
 			case 'MemberExpression':

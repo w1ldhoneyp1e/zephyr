@@ -1,0 +1,8 @@
+var value: number = 6;
+var items: number[] = collect {
+	value > 0 => 1,
+	value % 2 == 0 => 2,
+	value > 10 => 3,
+};
+
+return items[0] + items[1];

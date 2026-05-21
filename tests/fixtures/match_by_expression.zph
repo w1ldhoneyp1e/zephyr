@@ -1,0 +1,17 @@
+class Tagged {
+	kind: string;
+	value: number;
+
+	constructor(kind: string, value: number) {
+		self.kind = kind;
+		self.value = value;
+	}
+}
+
+var tagged: Tagged = Tagged("beta", 7);
+
+return match tagged by kind {
+	alpha => 1,
+	beta => tagged.value,
+	_ => 0,
+};

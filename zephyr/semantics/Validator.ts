@@ -160,7 +160,22 @@ class Validator {
 			case 'UnaryExpression':
 			case 'BinaryExpression':
 			case 'ArrayExpression':
+			case 'MatchExpression':
+			case 'MatchByExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
+				return
+			case 'ChooseExpression':
+			case 'CollectExpression':
+				this.getValidationWalker().walkExpressionChildren(expression)
+				for (const branch of expression.branches) {
+					this.getTypeAnalyzer().assertTypeAssignable(
+						primitiveType('boolean'),
+						this.getTypeAnalyzer().inferExpressionType(branch.condition),
+						expression.type === 'ChooseExpression'
+							? 'условие choose'
+							: 'условие collect',
+					)
+				}
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)

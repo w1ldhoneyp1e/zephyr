@@ -6,9 +6,12 @@ import {
 	type BlockStatementNode,
 	type BreakStatementNode,
 	type CallExpressionNode,
+	type ChooseExpressionNode,
 	type ClassDeclarationNode,
 	type ClassFieldNode,
 	type ClassMemberVisibility,
+	type CollectExpressionNode,
+	type ConditionalBranchNode,
 	type ConstructorDeclarationNode,
 	type ContinueStatementNode,
 	type ExportStatementNode,
@@ -24,6 +27,11 @@ import {
 	type IndexTargetNode,
 	type LambdaExpressionNode,
 	type LiteralExpressionNode,
+	type MatchByBranchNode,
+	type MatchByExpressionNode,
+	type MatchByPatternNode,
+	type MatchExpressionNode,
+	type MatchValueBranchNode,
 	type MemberExpressionNode,
 	type MemberTargetNode,
 	type MethodDeclarationNode,
@@ -45,11 +53,23 @@ import {type Production} from '../grammar'
 type SemanticValue =
 	| null
 	| string
+	| number
+	| boolean
 	| ParameterNode[]
 	| ClassFieldNode
 	| ParameterNode
 	| TypeName[]
 	| ExpressionNode[]
+	| ConditionalBranchNode
+	| ConditionalBranchNode[]
+	| MatchValueBranchNode
+	| MatchValueBranchNode[]
+	| MatchByBranchNode
+	| MatchByBranchNode[]
+	| MatchByPatternNode
+	| ChooseBranchesValue
+	| MatchValueBranchesValue
+	| MatchByBranchesValue
 	| StructMemberListValue
 	| ProgramNode
 	| ExpressionNode
@@ -67,6 +87,21 @@ interface PendingAssignmentNode {
 	type: 'PendingAssignment',
 	target: ExpressionNode,
 	value: ExpressionNode,
+}
+
+interface ChooseBranchesValue {
+	branches: ConditionalBranchNode[],
+	defaultValue: ExpressionNode,
+}
+
+interface MatchValueBranchesValue {
+	branches: MatchValueBranchNode[],
+	defaultValue: ExpressionNode,
+}
+
+interface MatchByBranchesValue {
+	branches: MatchByBranchNode[],
+	defaultValue: ExpressionNode,
 }
 
 interface StructMemberListValue {
@@ -193,9 +228,13 @@ function isExpressionNodeType(type: string): boolean {
 		|| type === 'IndexExpression'
 		|| type === 'OptionalIndexExpression'
 		|| type === 'MemberExpression'
-		|| type === 'OptionalMemberExpression'
-		|| type === 'CallExpression'
-		|| type === 'LambdaExpression'
+	|| type === 'OptionalMemberExpression'
+	|| type === 'CallExpression'
+	|| type === 'LambdaExpression'
+		|| type === 'ChooseExpression'
+		|| type === 'CollectExpression'
+		|| type === 'MatchExpression'
+		|| type === 'MatchByExpression'
 }
 
 function productionKey(production: Production): string {
@@ -213,8 +252,11 @@ export {
 	type ClassMemberVisibility,
 	type ClassFieldNode,
 	type ClassDeclarationNode,
+	type ChooseExpressionNode,
+	type CollectExpressionNode,
 	type ContinueStatementNode,
 	type ConstructorDeclarationNode,
+	type ConditionalBranchNode,
 	type ExportStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
@@ -228,12 +270,20 @@ export {
 	type LambdaExpressionNode,
 	type MemberExpressionNode,
 	type MethodDeclarationNode,
+	type MatchByBranchNode,
+	type MatchByBranchesValue,
+	type MatchByExpressionNode,
+	type MatchByPatternNode,
+	type MatchExpressionNode,
+	type MatchValueBranchesValue,
+	type MatchValueBranchNode,
 	type NamedExportStatementNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,
 	type ParameterNode,
 	type ProgramNode,
+	type ChooseBranchesValue,
 	type ReturnStatementNode,
 	type SemanticValue,
 	type SemanticValueAction,
