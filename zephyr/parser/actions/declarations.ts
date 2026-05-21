@@ -157,14 +157,23 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'VariableInitializerOpt -> ε':
 			return () => null
 
-		case 'FunctionDeclaration -> Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
+		case 'FunctionDeclaration -> Fn Identifier TypeParameterListOpt LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
 			return values => ({
 				type: 'FunctionDeclaration',
 				name: tokenLexeme(values[1]),
-				params: values[3] as ParameterNode[],
-				returnTypeName: createTypeName(values[5]),
-				body: values[6] as BlockStatementNode,
+				typeParams: values[2] as string[],
+				params: values[4] as ParameterNode[],
+				returnTypeName: createTypeName(values[6]),
+				body: values[7] as BlockStatementNode,
 			} satisfies FunctionDeclarationNode)
+		case 'TypeParameterListOpt -> Less TypeParameterList Greater':
+			return values => values[1]
+		case 'TypeParameterListOpt -> ε':
+			return () => []
+		case 'TypeParameterList -> TypeParameterList Comma Identifier':
+			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
+		case 'TypeParameterList -> Identifier':
+			return values => [tokenLexeme(values[0])]
 		case 'MethodDeclaration -> VisibilityOpt Fn Identifier LeftParen ParameterListOpt RightParen ReturnTypeOpt BlockStatement':
 			return values => ({
 				type: 'MethodDeclaration',

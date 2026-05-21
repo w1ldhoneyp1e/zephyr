@@ -1,0 +1,9 @@
+fn first<T>(items: T[]): T {
+	return items[0];
+}
+
+var numbers: number[] = [7, 8];
+var words: string[] = ["a", "b"];
+var word: string = first(words);
+
+return first(numbers) + 1;

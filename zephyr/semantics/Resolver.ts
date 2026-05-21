@@ -25,6 +25,7 @@ import {
 import {
 	parseSemanticType,
 	removeNullFromType,
+	typeParameterType,
 	unionType,
 } from './SemanticType'
 
@@ -44,6 +45,7 @@ class Resolver {
 	private captures = new Map<CallableDeclarationNode, Set<SemanticBinding>>()
 	private typeAliasDeclarations = new Map<string, TypeAliasDeclarationNode>()
 	private resolvingTypeAliases = new Set<string>()
+	private functionTypeParameterScopes: string[][] = []
 	private model: SemanticModel = {
 		identifierBindings: new WeakMap(),
 		assignmentTargetBindings: new WeakMap(),
@@ -80,6 +82,7 @@ class Resolver {
 		this.captures = new Map()
 		this.typeAliasDeclarations = new Map()
 		this.resolvingTypeAliases = new Set()
+		this.functionTypeParameterScopes = []
 		this.model = {
 			identifierBindings: new WeakMap(),
 			assignmentTargetBindings: new WeakMap(),
@@ -305,6 +308,9 @@ class Resolver {
 	): void {
 		this.captures.set(statement, new Set())
 		this.enterFunction(statement)
+		if (statement.type === 'FunctionDeclaration') {
+			this.functionTypeParameterScopes.push(statement.typeParams)
+		}
 		this.enterScope()
 		const parameterBindings: SemanticBinding[] = []
 		if (selfName !== undefined) {
@@ -363,6 +369,9 @@ class Resolver {
 			}
 		}
 		this.leaveScope()
+		if (statement.type === 'FunctionDeclaration') {
+			this.functionTypeParameterScopes.pop()
+		}
 		this.leaveFunction(statement)
 	}
 
@@ -800,14 +809,19 @@ class Resolver {
 	private resolveTypeName(typeName: string): ReturnType<typeof parseSemanticType> {
 		return parseSemanticType(
 			typeName,
-			name => this.model.typeAliasNames.has(name)
-				? this.resolveTypeAliasByName(name)
-				: null,
+			name => this.isCurrentFunctionTypeParameter(name)
+				? typeParameterType(name)
+				: this.model.typeAliasNames.has(name)
+					? this.resolveTypeAliasByName(name)
+					: null,
 			name => this.isKnownTypeName(name),
 		)
 	}
 
 	private isKnownTypeName(name: string): boolean {
+		if (this.isCurrentFunctionTypeParameter(name)) {
+			return true
+		}
 		if (this.model.classNames.has(name)) {
 			return true
 		}
@@ -816,6 +830,10 @@ class Resolver {
 		}
 		this.resolveTypeAliasByName(name)
 		return true
+	}
+
+	private isCurrentFunctionTypeParameter(name: string): boolean {
+		return this.functionTypeParameterScopes.some(scope => scope.includes(name))
 	}
 
 	private resolveTypeAliasByName(name: string): ReturnType<typeof parseSemanticType> {

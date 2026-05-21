@@ -1,4 +1,8 @@
-import {type ExpressionNode, type StatementNode} from '../../ast'
+import {
+	type ExpressionNode,
+	type FunctionDeclarationNode,
+	type StatementNode,
+} from '../../ast'
 import {match} from '../../utils'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
@@ -10,10 +14,11 @@ import {
 	formatSemanticType,
 	functionType,
 	hasNullType,
+	parseSemanticType,
 	primitiveType,
 	removeNullFromType,
-	resolveSemanticType,
 	semanticTypesEqual,
+	typeParameterType,
 	unionType,
 } from '../SemanticType'
 
@@ -117,7 +122,7 @@ class TypeAnalyzer {
 						return binding.selfBinding.type
 					}
 					if (binding?.kind === 'function') {
-						return this.resolveTypeName(binding.declaration.returnTypeName)
+						return this.inferFunctionCallReturnType(binding.declaration, expression.args)
 					}
 				}
 				if (expression.callee.type === 'MemberExpression') {
@@ -149,11 +154,20 @@ class TypeAnalyzer {
 		this.assertTypeAssignable(targetType, this.inferExpressionType(expression, targetType), context)
 	}
 
-	resolveTypeName(typeName: string): SemanticType {
-		return resolveSemanticType(
+	resolveTypeName(typeName: string, typeParams: string[] = []): SemanticType {
+		return parseSemanticType(
 			typeName,
-			this.model.typeAliases,
-			name => this.model.classNames.has(name) || this.model.typeAliasNames.has(name),
+			name => typeParams.includes(name)
+				? typeParameterType(name)
+				: this.model.typeAliases.get(name) ?? null,
+			name => typeParams.includes(name) || this.model.classNames.has(name) || this.model.typeAliasNames.has(name),
+		)
+	}
+
+	getFunctionParameterTypes(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType[] {
+		const substitutions = this.inferTypeParameterSubstitutions(declaration, args)
+		return declaration.params.map(param =>
+			this.substituteTypeParameters(this.resolveTypeName(param.typeName, declaration.typeParams), substitutions),
 		)
 	}
 
@@ -212,8 +226,10 @@ class TypeAnalyzer {
 			variable: value => this.resolveTypeName(value.declaration.typeName),
 			class: value => classType(value.declaration.name),
 			function: value => functionType(
-				value.declaration.params.map(param => this.resolveTypeName(param.typeName)),
-				this.resolveTypeName(value.declaration.returnTypeName),
+				value.declaration.params.map(param =>
+					this.resolveTypeName(param.typeName, value.declaration.typeParams),
+				),
+				this.resolveTypeName(value.declaration.returnTypeName, value.declaration.typeParams),
 			),
 			narrowed: value => value.type,
 			parameter: value => this.contextualParameterTypes.get(value) ?? value.type,
@@ -245,6 +261,64 @@ class TypeAnalyzer {
 				...expression.branches.map(branch => this.inferExpressionType(branch.value, expectedType)),
 				this.inferExpressionType(expression.defaultValue, expectedType),
 			]
+	}
+
+	private inferFunctionCallReturnType(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType {
+		const substitutions = this.inferTypeParameterSubstitutions(declaration, args)
+		return this.substituteTypeParameters(
+			this.resolveTypeName(declaration.returnTypeName, declaration.typeParams),
+			substitutions,
+		)
+	}
+
+	private inferTypeParameterSubstitutions(
+		declaration: FunctionDeclarationNode,
+		args: ExpressionNode[],
+	): Map<string, SemanticType> {
+		const substitutions = new Map<string, SemanticType>()
+		for (const [index, param] of declaration.params.entries()) {
+			const arg = args[index]
+			if (arg !== undefined) {
+				this.collectTypeParameterSubstitutions(
+					this.resolveTypeName(param.typeName, declaration.typeParams),
+					this.inferExpressionType(arg),
+					substitutions,
+				)
+			}
+		}
+		return substitutions
+	}
+
+	private collectTypeParameterSubstitutions(
+		expectedType: SemanticType,
+		actualType: SemanticType,
+		substitutions: Map<string, SemanticType>,
+	): void {
+		if (expectedType.kind === 'typeParameter') {
+			substitutions.set(expectedType.name, actualType)
+			return
+		}
+		if (expectedType.kind === 'array' && actualType.kind === 'array') {
+			this.collectTypeParameterSubstitutions(expectedType.elementType, actualType.elementType, substitutions)
+		}
+	}
+
+	private substituteTypeParameters(type: SemanticType, substitutions: Map<string, SemanticType>): SemanticType {
+		switch (type.kind) {
+			case 'typeParameter':
+				return substitutions.get(type.name) ?? type
+			case 'array':
+				return arrayType(this.substituteTypeParameters(type.elementType, substitutions))
+			case 'function':
+				return functionType(
+					type.paramTypes.map(paramType => this.substituteTypeParameters(paramType, substitutions)),
+					this.substituteTypeParameters(type.returnType, substitutions),
+				)
+			case 'union':
+				return unionType(type.types.map(item => this.substituteTypeParameters(item, substitutions)))
+			default:
+				return type
+		}
 	}
 
 	private inferLambdaExpressionType(

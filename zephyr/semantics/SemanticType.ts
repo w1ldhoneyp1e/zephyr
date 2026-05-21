@@ -14,6 +14,11 @@ interface ClassSemanticType {
 	name: string,
 }
 
+interface TypeParameterSemanticType {
+	kind: 'typeParameter',
+	name: string,
+}
+
 interface ArraySemanticType {
 	kind: 'array',
 	elementType: SemanticType,
@@ -39,6 +44,7 @@ type SemanticType =
 	| AnySemanticType
 	| PrimitiveSemanticType
 	| ClassSemanticType
+	| TypeParameterSemanticType
 	| ArraySemanticType
 	| FunctionSemanticType
 	| UnionSemanticType
@@ -62,6 +68,13 @@ function primitiveType(name: PrimitiveTypeName): SemanticType {
 function classType(name: string): SemanticType {
 	return {
 		kind: 'class',
+		name,
+	}
+}
+
+function typeParameterType(name: string): SemanticType {
+	return {
+		kind: 'typeParameter',
 		name,
 	}
 }
@@ -135,6 +148,8 @@ function formatSemanticType(type: SemanticType): string {
 			return type.name
 		case 'class':
 			return type.name
+		case 'typeParameter':
+			return type.name
 		case 'array':
 			return `${formatAtomicSemanticType(type.elementType)}[]`
 		case 'function':
@@ -166,6 +181,8 @@ function semanticTypesEqual(left: SemanticType, right: SemanticType): boolean {
 			return left.name === (right as PrimitiveSemanticType).name
 		case 'class':
 			return left.name === (right as ClassSemanticType).name
+		case 'typeParameter':
+			return left.name === (right as TypeParameterSemanticType).name
 		case 'array':
 			return semanticTypesEqual(left.elementType, (right as ArraySemanticType).elementType)
 		case 'function': {
@@ -418,5 +435,6 @@ export {
 	resolveSemanticType,
 	type SemanticType,
 	semanticTypesEqual,
+	typeParameterType,
 	unionType,
 }

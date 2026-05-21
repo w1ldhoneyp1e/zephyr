@@ -30,7 +30,9 @@ TypeSuffixList -> TypeSuffixList TypeSuffix | TypeSuffix
 TypeSuffix -> '[' ']'
 VariableInitializerOpt -> '=' Expression | ε
 
-FunctionDeclaration -> fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+FunctionDeclaration -> fn Identifier TypeParameterListOpt '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
+TypeParameterListOpt -> '<' TypeParameterList '>' | ε
+TypeParameterList -> TypeParameterList ',' Identifier | Identifier
 MethodDeclaration -> VisibilityOpt fn Identifier '(' ParameterListOpt ')' ReturnTypeOpt BlockStatement
 ConstructorDeclaration -> constructor '(' ParameterListOpt ')' BlockStatement
 ReturnTypeOpt -> ':' TypeExpression | ε

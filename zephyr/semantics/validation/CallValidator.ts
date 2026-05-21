@@ -18,7 +18,7 @@ class CallValidator {
 			if (binding?.kind === 'function') {
 				this.validateCallArguments(
 					expression.args,
-					binding.declaration.params.map(param => this.typeAnalyzer.resolveTypeName(param.typeName)),
+					this.typeAnalyzer.getFunctionParameterTypes(binding.declaration, expression.args),
 					`вызов функции ${binding.declaration.name}`,
 				)
 				return

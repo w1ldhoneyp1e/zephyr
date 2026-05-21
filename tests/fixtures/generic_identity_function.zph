@@ -1,0 +1,8 @@
+fn identity<T>(value: T): T {
+	return value;
+}
+
+var numberValue: number = identity(42);
+var stringValue: string = identity("ok");
+
+return numberValue;

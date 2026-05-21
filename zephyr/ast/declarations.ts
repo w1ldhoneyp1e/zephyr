@@ -37,6 +37,7 @@ interface ClassFieldNode {
 interface FunctionDeclarationNode {
 	type: 'FunctionDeclaration',
 	name: string,
+	typeParams: string[],
 	params: ParameterNode[],
 	returnTypeName: TypeName,
 	body: BlockStatementNode,

@@ -94,7 +94,12 @@ class Validator {
 							return
 						}
 						this.getTypeAnalyzer().assertExpressionAssignable(
-							this.getTypeAnalyzer().resolveTypeName(owner.returnTypeName),
+							this.getTypeAnalyzer().resolveTypeName(
+								owner.returnTypeName,
+								owner.type === 'FunctionDeclaration'
+									? owner.typeParams
+									: [],
+							),
 							statement.value,
 							`return в ${this.describeCallable(owner)}`,
 						)

@@ -246,6 +246,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '41',
 	},
 	{
+		name: 'generic_identity_function',
+		file: 'generic_identity_function.zph',
+		expectedReturn: '42',
+	},
+	{
+		name: 'generic_first_function',
+		file: 'generic_first_function.zph',
+		expectedReturn: '8',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',
