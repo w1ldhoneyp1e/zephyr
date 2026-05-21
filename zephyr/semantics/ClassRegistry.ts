@@ -73,18 +73,18 @@ class ClassRegistry {
 		subjectType: SemanticType,
 		discriminant: string,
 	): ClassDiscriminantVariant[] {
-		const variants = new Map<string, ClassDiscriminantVariant>()
+		const variants: ClassDiscriminantVariant[] = []
 		for (const className of this.getDiscriminantCandidateClassNames(subjectType)) {
 			const value = this.getDiscriminantValue(className, discriminant)
 			if (value === undefined) {
 				continue
 			}
-			variants.set(this.getDiscriminantVariantKey(value), {
+			variants.push({
 				className,
 				value,
 			})
 		}
-		return [...variants.values()]
+		return variants
 	}
 
 	private getDiscriminantCandidateClassNames(subjectType: SemanticType): string[] {
@@ -290,9 +290,6 @@ class ClassRegistry {
 			: this.getDiscriminantValue(baseClassName, discriminant)
 	}
 
-	private getDiscriminantVariantKey(value: string | number | boolean | null): string {
-		return `${typeof value}:${String(value)}`
-	}
 }
 
 export {

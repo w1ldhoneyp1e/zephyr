@@ -196,11 +196,15 @@ class Validator {
 	}
 
 	private validateMatchByExhaustiveness(expression: MatchByExpressionNode): void {
+		const subjectType = this.getTypeAnalyzer().inferExpressionType(expression.subject)
+		const variants = this.getClassRegistry().getDiscriminantVariants(subjectType, expression.discriminant)
+		this.assertNoDuplicateMatchByBranches(expression)
+		if (variants.length > 0) {
+			this.assertNoImpossibleMatchByBranches(expression, variants)
+		}
 		if (expression.defaultValue !== null) {
 			return
 		}
-		const subjectType = this.getTypeAnalyzer().inferExpressionType(expression.subject)
-		const variants = this.getClassRegistry().getDiscriminantVariants(subjectType, expression.discriminant)
 		if (variants.length === 0) {
 			throw new Error(`match by ${expression.discriminant} без _ не может быть проверен на полноту`)
 		}
@@ -212,6 +216,31 @@ class Validator {
 			.filter(value => !coveredValues.has(this.getMatchByPatternKey(value)))
 		if (missingValues.length > 0) {
 			throw new Error(`match by ${expression.discriminant} не покрывает варианты: ${missingValues.map(String).join(', ')}`)
+		}
+	}
+
+	private assertNoDuplicateMatchByBranches(expression: MatchByExpressionNode): void {
+		const seenValues = new Set<string>()
+		for (const branch of expression.branches) {
+			const key = this.getMatchByPatternKey(branch.pattern.value)
+			if (seenValues.has(key)) {
+				throw new Error(`match by ${expression.discriminant} содержит дублирующую ветку: ${String(branch.pattern.value)}`)
+			}
+			seenValues.add(key)
+		}
+	}
+
+	private assertNoImpossibleMatchByBranches(
+		expression: MatchByExpressionNode,
+		variants: {
+			value: string | number | boolean | null,
+		}[],
+	): void {
+		const possibleValues = new Set(variants.map(variant => this.getMatchByPatternKey(variant.value)))
+		for (const branch of expression.branches) {
+			if (!possibleValues.has(this.getMatchByPatternKey(branch.pattern.value))) {
+				throw new Error(`match by ${expression.discriminant} содержит невозможную ветку: ${String(branch.pattern.value)}`)
+			}
 		}
 	}
 

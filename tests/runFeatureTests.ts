@@ -166,6 +166,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '13',
 	},
 	{
+		name: 'match_by_ambiguous_discriminant',
+		file: 'match_by_ambiguous_discriminant.zph',
+		expectedReturn: '1',
+	},
+	{
 		name: 'type_alias_union',
 		file: 'type_alias_union.zph',
 		expectedReturn: '17',
@@ -289,6 +294,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'match_by_union_exhaustive_error',
 		file: 'match_by_union_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',
+	},
+	{
+		name: 'match_by_duplicate_branch_error',
+		file: 'match_by_duplicate_branch_error.zph',
+		expectedError: 'match by kind содержит дублирующую ветку: dog',
+	},
+	{
+		name: 'match_by_impossible_branch_error',
+		file: 'match_by_impossible_branch_error.zph',
+		expectedError: 'match by kind содержит невозможную ветку: bird',
 	},
 	{
 		name: 'type_alias_mismatch_error',
