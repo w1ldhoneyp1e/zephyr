@@ -100,13 +100,24 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => tokenLexeme(values[0]) as TypeName
 		case 'PrimaryTypeExpression -> Null':
 			return () => 'null'
-		case 'PrimaryTypeExpression -> FunctionTypeExpression':
+		case 'PrimaryTypeExpression -> ParenthesizedTypeExpression':
 			return values => createTypeName(values[0])
-		case 'FunctionTypeExpression -> LeftParen TypeArgumentListOpt RightParen Arrow TypeExpression':
-			return values => createFunctionTypeName(
-				values[1] as TypeName[],
-				createTypeName(values[4]),
-			)
+		case 'ParenthesizedTypeExpression -> LeftParen TypeArgumentListOpt RightParen ParenthesizedTypeContinuation':
+			return values => {
+				const types = values[1] as TypeName[]
+				const returnTypeName = values[3] as TypeName | null
+				if (returnTypeName !== null) {
+					return createFunctionTypeName(types, returnTypeName)
+				}
+				if (types.length !== 1) {
+					throw new Error('В скобках типа без => ожидается ровно один тип')
+				}
+				return `(${createTypeName(types[0])})`
+			}
+		case 'ParenthesizedTypeContinuation -> Arrow TypeExpression':
+			return values => createTypeName(values[1])
+		case 'ParenthesizedTypeContinuation -> ε':
+			return () => null
 		case 'TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt':
 			return values => values[0]
 		case 'TypeArgumentListOpt -> ε':

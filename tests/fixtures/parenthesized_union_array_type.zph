@@ -1,0 +1,27 @@
+class Dog {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn score(): number {
+		return self.value;
+	}
+}
+
+class Cat {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn score(): number {
+		return self.value;
+	}
+}
+
+var animals: (Dog | Cat)[] = [Dog(2), Cat(5)];
+
+return animals[0].score() + animals[1].score();

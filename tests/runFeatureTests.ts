@@ -176,6 +176,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '12',
 	},
 	{
+		name: 'parenthesized_union_array_type',
+		file: 'parenthesized_union_array_type.zph',
+		expectedReturn: '7',
+	},
+	{
+		name: 'parenthesized_function_array_type',
+		file: 'parenthesized_function_array_type.zph',
+		expectedReturn: '12',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',

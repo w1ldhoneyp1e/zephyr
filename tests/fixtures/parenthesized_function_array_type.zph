@@ -1,0 +1,6 @@
+var handlers: ((number) => number)[] = [
+	(value: number) => value + 1,
+	(value: number) => value + 3,
+];
+
+return handlers[0](4) + handlers[1](4);
