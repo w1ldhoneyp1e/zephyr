@@ -39,6 +39,7 @@ type SemanticType =
 	| UnionSemanticType
 
 const ANY_TYPE: SemanticType = {kind: 'any'}
+type TypeAliasResolver = (name: string) => SemanticType | null
 
 function anyType(): SemanticType {
 	return ANY_TYPE
@@ -171,7 +172,11 @@ function semanticTypesEqual(left: SemanticType, right: SemanticType): boolean {
 	}
 }
 
-function parseSemanticType(typeName: string): SemanticType {
+function resolveSemanticType(typeName: string, aliases: Map<string, SemanticType>): SemanticType {
+	return parseSemanticType(typeName, name => aliases.get(name) ?? null)
+}
+
+function parseSemanticType(typeName: string, resolveAlias?: TypeAliasResolver): SemanticType {
 	const normalized = typeName.trim()
 	if (normalized === '' || normalized === 'any') {
 		return anyType()
@@ -185,13 +190,13 @@ function parseSemanticType(typeName: string): SemanticType {
 		const returnSource = current.slice(arrowIndex + 2).trim()
 		const paramTypes = paramsSource === ''
 			? []
-			: splitTopLevel(paramsSource, ',').map(part => parseSemanticType(part))
-		return functionType(paramTypes, parseSemanticType(returnSource))
+			: splitTopLevel(paramsSource, ',').map(part => parseSemanticType(part, resolveAlias))
+		return functionType(paramTypes, parseSemanticType(returnSource, resolveAlias))
 	}
 
 	const unionParts = splitTopLevel(current, '|')
 	if (unionParts.length > 1) {
-		return unionType(unionParts.map(part => parseSemanticType(part)))
+		return unionType(unionParts.map(part => parseSemanticType(part, resolveAlias)))
 	}
 
 	let arrayDepth = 0
@@ -202,10 +207,13 @@ function parseSemanticType(typeName: string): SemanticType {
 
 	let baseType: SemanticType
 	if (isWrappedInParens(current)) {
-		baseType = parseSemanticType(current.slice(1, -1))
+		baseType = parseSemanticType(current.slice(1, -1), resolveAlias)
 	}
 	else if (current === 'number' || current === 'string' || current === 'boolean' || current === 'null') {
 		baseType = primitiveType(current)
+	}
+	else if (resolveAlias !== undefined) {
+		baseType = resolveAlias(current) ?? classType(current)
 	}
 	else {
 		baseType = classType(current)
@@ -287,6 +295,7 @@ export {
 	parseSemanticType,
 	primitiveType,
 	removeNullFromType,
+	resolveSemanticType,
 	type SemanticType,
 	semanticTypesEqual,
 	unionType,

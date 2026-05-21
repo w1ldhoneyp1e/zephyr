@@ -22,6 +22,12 @@ interface VariableDeclarationNode {
 	initializer: ExpressionNode | null,
 }
 
+interface TypeAliasDeclarationNode {
+	type: 'TypeAliasDeclaration',
+	name: string,
+	typeName: TypeName,
+}
+
 interface ClassFieldNode {
 	name: string,
 	typeName: TypeName,
@@ -69,6 +75,7 @@ export {
 	type MethodDeclarationNode,
 	type ParameterNode,
 	type ProgramNode,
+	type TypeAliasDeclarationNode,
 	type TypeName,
 	type VariableDeclarationNode,
 }

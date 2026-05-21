@@ -166,6 +166,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '13',
 	},
 	{
+		name: 'type_alias_union',
+		file: 'type_alias_union.zph',
+		expectedReturn: '17',
+	},
+	{
+		name: 'type_alias_callback',
+		file: 'type_alias_callback.zph',
+		expectedReturn: '12',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',
@@ -254,6 +264,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'match_by_union_exhaustive_error',
 		file: 'match_by_union_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',
+	},
+	{
+		name: 'type_alias_mismatch_error',
+		file: 'type_alias_mismatch_error.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
 	},
 ]
 

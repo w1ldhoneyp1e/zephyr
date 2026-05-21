@@ -5,6 +5,7 @@ Program -> StatementList
 StatementList -> StatementList Statement | ε
 
 Statement -> VariableDeclaration
+Statement -> TypeAliasDeclaration
 Statement -> FunctionDeclaration
 Statement -> ClassDeclaration
 Statement -> ImportStatement

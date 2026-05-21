@@ -1,0 +1,5 @@
+type Id = number | string;
+
+var value: Id = true;
+
+return 0;

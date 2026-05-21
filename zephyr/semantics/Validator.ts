@@ -7,7 +7,7 @@ import {
 import {match} from '../utils'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
-import {parseSemanticType, primitiveType} from './SemanticType'
+import {primitiveType} from './SemanticType'
 import {AssignmentValidator} from './validation/AssignmentValidator'
 import {CallValidator} from './validation/CallValidator'
 import {ClassValidator} from './validation/ClassValidator'
@@ -55,11 +55,13 @@ class Validator {
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer)
 					this.getTypeAnalyzer().assertTypeAssignable(
-						parseSemanticType(statement.typeName),
+						this.getTypeAnalyzer().resolveTypeName(statement.typeName),
 						this.getTypeAnalyzer().inferExpressionType(statement.initializer),
 						`инициализатор переменной ${statement.name}`,
 					)
 				}
+				return
+			case 'TypeAliasDeclaration':
 				return
 			case 'FunctionDeclaration':
 				this.validateCallableBody(statement)
@@ -91,7 +93,7 @@ class Validator {
 							return
 						}
 						this.getTypeAnalyzer().assertTypeAssignable(
-							parseSemanticType(owner.returnTypeName),
+							this.getTypeAnalyzer().resolveTypeName(owner.returnTypeName),
 							this.getTypeAnalyzer().inferExpressionType(statement.value),
 							`return в ${this.describeCallable(owner)}`,
 						)

@@ -1,12 +1,14 @@
 import {
 	type ClassDeclarationNode,
 	type FunctionDeclarationNode,
+	type TypeAliasDeclarationNode,
 	type VariableDeclarationNode,
 } from './declarations'
 import {type AssignmentTargetNode, type ExpressionNode} from './expressions'
 
 type ExportableStatementNode =
 	| VariableDeclarationNode
+	| TypeAliasDeclarationNode
 	| FunctionDeclarationNode
 	| ClassDeclarationNode
 
@@ -80,6 +82,7 @@ interface AssignmentStatementNode {
 type StatementNode =
 	| BlockStatementNode
 	| VariableDeclarationNode
+	| TypeAliasDeclarationNode
 	| FunctionDeclarationNode
 	| ClassDeclarationNode
 	| ImportStatementNode
@@ -108,5 +111,6 @@ export {
 	type IfStatementNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type TypeAliasDeclarationNode,
 	type WhileStatementNode,
 }

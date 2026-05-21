@@ -1,10 +1,12 @@
 VariableDeclaration -> var Identifier TypeAnnotationOpt VariableInitializerOpt ';'
 VariableDeclaration -> const Identifier TypeAnnotationOpt VariableInitializerOpt ';'
+TypeAliasDeclaration -> type Identifier '=' TypeExpression ';'
 ImportStatement -> import '{' ImportNameListOpt '}' from String ';'
 ImportNameListOpt -> ImportNameList ImportTrailingCommaOpt | ε
 ImportTrailingCommaOpt -> ',' | ε
 ImportNameList -> ImportNameList ',' Identifier | Identifier
 ExportStatement -> export VariableDeclaration
+ExportStatement -> export TypeAliasDeclaration
 ExportStatement -> export FunctionDeclaration
 ExportStatement -> export ClassDeclaration
 ExportStatement -> export '{' ImportNameListOpt '}' ExportFromOpt ';'

@@ -7,6 +7,7 @@ import {
 	type IdentifierTargetNode,
 	type LambdaExpressionNode,
 	type MethodDeclarationNode,
+	type TypeAliasDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {
@@ -212,7 +213,7 @@ class CompilerState {
 	}
 
 	getDeclarationBinding(
-		name: VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
+		name: VariableDeclarationNode | TypeAliasDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
 	): SemanticBinding {
 		const binding = this.model.declarationBindings.get(name)
 		if (binding === undefined) {

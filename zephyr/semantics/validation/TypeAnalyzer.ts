@@ -10,9 +10,9 @@ import {
 	formatSemanticType,
 	functionType,
 	hasNullType,
-	parseSemanticType,
 	primitiveType,
 	removeNullFromType,
+	resolveSemanticType,
 	semanticTypesEqual,
 	unionType,
 } from '../SemanticType'
@@ -115,7 +115,7 @@ class TypeAnalyzer {
 						return binding.selfBinding.type
 					}
 					if (binding?.kind === 'function') {
-						return parseSemanticType(binding.declaration.returnTypeName)
+						return this.resolveTypeName(binding.declaration.returnTypeName)
 					}
 				}
 				if (expression.callee.type === 'MemberExpression') {
@@ -129,7 +129,7 @@ class TypeAnalyzer {
 				return anyType()
 			case 'LambdaExpression':
 				return functionType(
-					expression.params.map(param => parseSemanticType(param.typeName)),
+					expression.params.map(param => this.resolveTypeName(param.typeName)),
 					expression.body.type === 'BlockStatement'
 						? this.inferBlockReturnType(expression.body.statements)
 						: this.inferExpressionType(expression.body),
@@ -144,6 +144,10 @@ class TypeAnalyzer {
 			return
 		}
 		throw new Error(`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}`)
+	}
+
+	resolveTypeName(typeName: string): SemanticType {
+		return resolveSemanticType(typeName, this.model.typeAliases)
 	}
 
 	isTypeAssignable(targetType: SemanticType, sourceType: SemanticType): boolean {
@@ -169,11 +173,11 @@ class TypeAnalyzer {
 
 	getBindingType(binding: SemanticBinding): SemanticType {
 		return match(binding, 'kind', {
-			variable: value => parseSemanticType(value.declaration.typeName),
+			variable: value => this.resolveTypeName(value.declaration.typeName),
 			class: value => classType(value.declaration.name),
 			function: value => functionType(
-				value.declaration.params.map(param => parseSemanticType(param.typeName)),
-				parseSemanticType(value.declaration.returnTypeName),
+				value.declaration.params.map(param => this.resolveTypeName(param.typeName)),
+				this.resolveTypeName(value.declaration.returnTypeName),
 			),
 			narrowed: value => value.type,
 			parameter: value => value.type,

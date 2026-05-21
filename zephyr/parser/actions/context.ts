@@ -42,6 +42,7 @@ import {
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type TypeAliasDeclarationNode,
 	type TypeName,
 	type UnaryExpressionNode,
 	type VariableDeclarationNode,
@@ -76,6 +77,7 @@ type SemanticValue =
 	| LambdaExpressionNode
 	| MethodDeclarationNode
 	| ConstructorDeclarationNode
+	| TypeAliasDeclarationNode
 	| StatementNode
 	| StatementNode[]
 	| PendingAssignmentNode
@@ -289,6 +291,7 @@ export {
 	type SemanticValueAction,
 	type StatementNode,
 	type StructMemberListValue,
+	type TypeAliasDeclarationNode,
 	type TypeName,
 	type VariableDeclarationNode,
 	type WhileStatementNode,

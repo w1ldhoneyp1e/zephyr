@@ -39,6 +39,8 @@ function emitStatement(
 			state.emitNumArg(Opcode.SetLocal, slot)
 			break
 		}
+		case 'TypeAliasDeclaration':
+			break
 		case 'AssignmentStatement':
 			emitAssignment(state, generator, statement)
 			break

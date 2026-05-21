@@ -1,0 +1,38 @@
+class Dog {
+	kind: string;
+	value: number;
+
+	constructor(value: number) {
+		self.kind = "dog";
+		self.value = value;
+	}
+
+	fn bark(): number {
+		return self.value;
+	}
+}
+
+class Cat {
+	kind: string;
+	value: number;
+
+	constructor(value: number) {
+		self.kind = "cat";
+		self.value = value;
+	}
+
+	fn meow(): number {
+		return self.value;
+	}
+}
+
+type Animal = Dog | Cat;
+
+fn speak(animal: Animal): number {
+	return match animal by kind {
+		dog => animal.bark(),
+		cat => animal.meow(),
+	};
+}
+
+return speak(Dog(17));

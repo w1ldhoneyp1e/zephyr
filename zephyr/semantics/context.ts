@@ -11,6 +11,7 @@ import {
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type TypeAliasDeclarationNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 } from '../ast'
@@ -93,7 +94,7 @@ interface SemanticModel {
 	assignmentTargetBindings: WeakMap<IdentifierTargetNode, SemanticBinding>,
 	statementLoopOwners: WeakMap<StatementNode, SemanticLoopOwner | null>,
 	declarationBindings: WeakMap<
-		VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
+		VariableDeclarationNode | TypeAliasDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
 		SemanticBinding
 	>,
 	functionParameterBindings: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
@@ -111,6 +112,7 @@ interface SemanticModel {
 	classMethodVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
 	classBaseBindings: WeakMap<ClassDeclarationNode, ClassSemanticBinding | null>,
 	classDiscriminantValues: Map<string, Map<string, string | number | boolean | null>>,
+	typeAliases: Map<string, SemanticType>,
 }
 
 function getBindingName(binding: SemanticBinding): string {

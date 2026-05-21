@@ -20,6 +20,7 @@ function createSharedAction(production: Production): SemanticValueAction | null 
 			return () => []
 
 		case 'Statement -> VariableDeclaration':
+		case 'Statement -> TypeAliasDeclaration':
 		case 'Statement -> FunctionDeclaration':
 		case 'Statement -> ClassDeclaration':
 		case 'Statement -> ImportStatement':

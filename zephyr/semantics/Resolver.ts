@@ -10,6 +10,7 @@ import {
 	type MethodDeclarationNode,
 	type ProgramNode,
 	type StatementNode,
+	type TypeAliasDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
@@ -24,6 +25,7 @@ import {
 import {
 	parseSemanticType,
 	removeNullFromType,
+	resolveSemanticType,
 	unionType,
 } from './SemanticType'
 
@@ -61,6 +63,7 @@ class Resolver {
 		classMethodVisibilities: new Map(),
 		classBaseBindings: new WeakMap(),
 		classDiscriminantValues: new Map(),
+		typeAliases: new Map(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -92,6 +95,7 @@ class Resolver {
 			classMethodVisibilities: new Map(),
 			classBaseBindings: new WeakMap(),
 			classDiscriminantValues: new Map(),
+			typeAliases: new Map(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -116,6 +120,9 @@ class Resolver {
 				if (statement.initializer !== null) {
 					this.resolveExpression(statement.initializer)
 				}
+				return
+			case 'TypeAliasDeclaration':
+				this.resolveTypeAliasDeclaration(statement)
 				return
 			case 'FunctionDeclaration':
 				this.resolveFunctionDeclaration(statement)
@@ -184,6 +191,16 @@ class Resolver {
 		this.resolveCallableDeclaration(statement)
 	}
 
+	private resolveTypeAliasDeclaration(statement: TypeAliasDeclarationNode): void {
+		this.model.typeAliases.set(statement.name, this.resolveTypeName(statement.typeName))
+		const binding: SemanticBinding = {
+			kind: 'builtin',
+			name: statement.name,
+		}
+		this.declare(statement.name, binding)
+		this.model.declarationBindings.set(statement, binding)
+	}
+
 	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
 		const binding = this.createClassBinding(statement)
 		this.declare(statement.name, binding)
@@ -200,7 +217,7 @@ class Resolver {
 		)
 		this.model.classFieldTypes.set(
 			statement.name,
-			new Map(statement.fields.map(field => [field.name, parseSemanticType(field.typeName)])),
+			new Map(statement.fields.map(field => [field.name, this.resolveTypeName(field.typeName)])),
 		)
 		this.model.classFieldVisibilities.set(
 			statement.name,
@@ -208,17 +225,17 @@ class Resolver {
 		)
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
-			statement.constructorDeclaration?.params.map(param => parseSemanticType(param.typeName)) ?? [],
+			statement.constructorDeclaration?.params.map(param => this.resolveTypeName(param.typeName)) ?? [],
 		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
-			new Map(statement.methods.map(method => [method.name, parseSemanticType(method.returnTypeName)])),
+			new Map(statement.methods.map(method => [method.name, this.resolveTypeName(method.returnTypeName)])),
 		)
 		this.model.classMethodParameterTypes.set(
 			statement.name,
 			new Map(statement.methods.map(method => [
 				method.name,
-				method.params.map(param => parseSemanticType(param.typeName)),
+				method.params.map(param => this.resolveTypeName(param.typeName)),
 			])),
 		)
 		this.model.classMethodVisibilities.set(
@@ -303,7 +320,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: index + parameterBindings.length,
 				name: param.name,
-				type: parseSemanticType(param.typeName),
+				type: this.resolveTypeName(param.typeName),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
@@ -425,7 +442,7 @@ class Resolver {
 				callableDeclaration: expression,
 				index,
 				name: param.name,
-				type: parseSemanticType(param.typeName),
+				type: this.resolveTypeName(param.typeName),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
@@ -613,7 +630,7 @@ class Resolver {
 			return null
 		}
 
-		return unionType(matchingClasses.map(className => parseSemanticType(className)))
+		return unionType(matchingClasses.map(className => this.resolveTypeName(className)))
 	}
 
 	private getMatchByCandidateClassNames(type: ReturnType<typeof parseSemanticType>): string[] {
@@ -634,16 +651,20 @@ class Resolver {
 	private getBindingDeclaredType(binding: SemanticBinding): ReturnType<typeof parseSemanticType> {
 		switch (binding.kind) {
 			case 'variable':
-				return parseSemanticType(binding.declaration.typeName)
+				return this.resolveTypeName(binding.declaration.typeName)
 			case 'parameter':
 				return binding.type
 			case 'class':
-				return parseSemanticType(binding.declaration.name)
+				return this.resolveTypeName(binding.declaration.name)
 			case 'narrowed':
 				return binding.type
 			default:
 				return parseSemanticType('any')
 		}
+	}
+
+	private resolveTypeName(typeName: string): ReturnType<typeof parseSemanticType> {
+		return resolveSemanticType(typeName, this.model.typeAliases)
 	}
 
 	private getDiscriminantValue(

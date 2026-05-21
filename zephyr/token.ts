@@ -39,6 +39,7 @@ enum TokenType {
 	String = 'String',
 	Var = 'Var',
 	Const = 'Const',
+	Type = 'Type',
 	Fn = 'Fn',
 	Constructor = 'Constructor',
 	If = 'If',
@@ -78,6 +79,7 @@ interface Token {
 const KEYWORDS = new Map<string, TokenType>([
 	['var', TokenType.Var],
 	['const', TokenType.Const],
+	['type', TokenType.Type],
 	['fn', TokenType.Fn],
 	['constructor', TokenType.Constructor],
 	['if', TokenType.If],

@@ -51,6 +51,7 @@ export type {
 	MethodDeclarationNode,
 	ParameterNode,
 	ProgramNode,
+	TypeAliasDeclarationNode,
 	TypeName,
 	VariableDeclarationNode,
 } from './declarations'

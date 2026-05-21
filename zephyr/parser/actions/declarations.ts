@@ -14,6 +14,7 @@ import {
 	type ParameterNode,
 	type SemanticValueAction,
 	type StructMemberListValue,
+	type TypeAliasDeclarationNode,
 	type TypeName,
 	type VariableDeclarationNode,
 	createFunctionTypeName,
@@ -40,6 +41,12 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				createTypeName(values[2]),
 				values[3] as ExpressionNode | null,
 			)
+		case 'TypeAliasDeclaration -> Type Identifier Equal TypeExpression Semicolon':
+			return values => ({
+				type: 'TypeAliasDeclaration',
+				name: tokenLexeme(values[1]),
+				typeName: createTypeName(values[3]),
+			} satisfies TypeAliasDeclarationNode)
 		case 'ImportStatement -> Import LeftBrace ImportNameListOpt RightBrace From String Semicolon':
 			return values => ({
 				type: 'ImportStatement',
@@ -58,11 +65,15 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ImportNameList -> Identifier':
 			return values => [tokenLexeme(values[0])]
 		case 'ExportStatement -> Export VariableDeclaration':
+		case 'ExportStatement -> Export TypeAliasDeclaration':
 		case 'ExportStatement -> Export FunctionDeclaration':
 		case 'ExportStatement -> Export ClassDeclaration':
 			return values => ({
 				type: 'ExportStatement',
-				statement: values[1] as VariableDeclarationNode | FunctionDeclarationNode | ClassDeclarationNode,
+				statement: values[1] as VariableDeclarationNode
+					| TypeAliasDeclarationNode
+					| FunctionDeclarationNode
+					| ClassDeclarationNode,
 			} satisfies ExportStatementNode)
 		case 'ExportStatement -> Export LeftBrace ImportNameListOpt RightBrace ExportFromOpt Semicolon':
 			return values => ({
