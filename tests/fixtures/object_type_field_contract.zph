@@ -1,0 +1,17 @@
+type Named = {
+	name: string;
+};
+
+class User {
+	name: string;
+
+	constructor(name: string) {
+		self.name = name;
+	}
+}
+
+fn getName(item: Named): string {
+	return item.name;
+}
+
+return getName(User("Ada"));

@@ -165,8 +165,21 @@ class TypeAnalyzer {
 		if (targetType.kind === 'union') {
 			return targetType.types.some(type => this.isTypeAssignable(type, sourceType))
 		}
+		if (targetType.kind === 'object') {
+			return this.isObjectTypeAssignable(targetType, sourceType)
+		}
 		return semanticTypesEqual(targetType, sourceType)
 			|| this.classRegistry.isSubclassOf(sourceType, targetType)
+	}
+
+	private isObjectTypeAssignable(targetType: Extract<SemanticType, {kind: 'object'}>, sourceType: SemanticType): boolean {
+		for (const [propertyName, propertyType] of targetType.properties.entries()) {
+			const sourcePropertyType = this.classRegistry.getPropertyType(sourceType, propertyName)
+			if (sourcePropertyType.kind === 'any' || !this.isTypeAssignable(propertyType, sourcePropertyType)) {
+				return false
+			}
+		}
+		return true
 	}
 
 	getIndexedElementType(containerType: SemanticType): SemanticType {

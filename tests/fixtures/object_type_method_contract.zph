@@ -1,0 +1,21 @@
+type Scored = {
+	score: () => number;
+};
+
+class Dog {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn score(): number {
+		return self.value;
+	}
+}
+
+fn readScore(item: Scored): number {
+	return item.score();
+}
+
+return readScore(Dog(21));

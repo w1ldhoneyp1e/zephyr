@@ -132,6 +132,9 @@ class ClassRegistry {
 	}
 
 	getPropertyType(classType: SemanticType, property: string): SemanticType {
+		if (classType.kind === 'object') {
+			return classType.properties.get(property) ?? anyType()
+		}
 		const fieldType = this.getFieldType(classType, property)
 		if (fieldType.kind !== 'any') {
 			return fieldType
@@ -140,6 +143,12 @@ class ClassRegistry {
 	}
 
 	getMethodReturnType(classType: SemanticType, methodName: string): SemanticType {
+		if (classType.kind === 'object') {
+			const propertyType = classType.properties.get(methodName)
+			return propertyType?.kind === 'function'
+				? propertyType.returnType
+				: anyType()
+		}
 		if (classType.kind === 'any') {
 			return anyType()
 		}
@@ -163,6 +172,12 @@ class ClassRegistry {
 	}
 
 	getMethodParameterTypes(classType: SemanticType, methodName: string): SemanticType[] {
+		if (classType.kind === 'object') {
+			const propertyType = classType.properties.get(methodName)
+			return propertyType?.kind === 'function'
+				? propertyType.paramTypes
+				: []
+		}
 		if (classType.kind === 'any') {
 			return []
 		}

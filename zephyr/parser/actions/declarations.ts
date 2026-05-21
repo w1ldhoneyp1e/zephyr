@@ -101,6 +101,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'PrimaryTypeExpression -> Null':
 			return () => 'null'
 		case 'PrimaryTypeExpression -> ParenthesizedTypeExpression':
+		case 'PrimaryTypeExpression -> ObjectTypeExpression':
 			return values => createTypeName(values[0])
 		case 'ParenthesizedTypeExpression -> LeftParen TypeArgumentListOpt RightParen ParenthesizedTypeContinuation':
 			return values => {
@@ -118,6 +119,18 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => createTypeName(values[1])
 		case 'ParenthesizedTypeContinuation -> ε':
 			return () => null
+		case 'ObjectTypeExpression -> LeftBrace ObjectTypeMemberListOpt RightBrace':
+			return values => `{${(values[1] as TypeName[]).join('')}}`
+		case 'ObjectTypeMemberListOpt -> ObjectTypeMemberList':
+			return values => values[0]
+		case 'ObjectTypeMemberListOpt -> ε':
+			return () => []
+		case 'ObjectTypeMemberList -> ObjectTypeMemberList ObjectTypeMember':
+			return values => [...(values[0] as TypeName[]), createTypeName(values[1])]
+		case 'ObjectTypeMemberList -> ObjectTypeMember':
+			return values => [createTypeName(values[0])]
+		case 'ObjectTypeMember -> Identifier Colon TypeExpression Semicolon':
+			return values => `${tokenLexeme(values[0])}: ${createTypeName(values[2])};`
 		case 'TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt':
 			return values => values[0]
 		case 'TypeArgumentListOpt -> ε':

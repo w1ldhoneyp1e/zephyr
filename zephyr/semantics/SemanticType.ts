@@ -30,6 +30,11 @@ interface UnionSemanticType {
 	types: SemanticType[],
 }
 
+interface ObjectSemanticType {
+	kind: 'object',
+	properties: Map<string, SemanticType>,
+}
+
 type SemanticType =
 	| AnySemanticType
 	| PrimitiveSemanticType
@@ -37,6 +42,7 @@ type SemanticType =
 	| ArraySemanticType
 	| FunctionSemanticType
 	| UnionSemanticType
+	| ObjectSemanticType
 
 const ANY_TYPE: SemanticType = {kind: 'any'}
 type TypeAliasResolver = (name: string) => SemanticType | null
@@ -72,6 +78,13 @@ function functionType(paramTypes: SemanticType[], returnType: SemanticType): Sem
 		kind: 'function',
 		paramTypes,
 		returnType,
+	}
+}
+
+function objectType(properties: Map<string, SemanticType>): SemanticType {
+	return {
+		kind: 'object',
+		properties,
 	}
 }
 
@@ -128,11 +141,15 @@ function formatSemanticType(type: SemanticType): string {
 			return `(${type.paramTypes.map(formatSemanticType).join(', ')}) => ${formatSemanticType(type.returnType)}`
 		case 'union':
 			return type.types.map(formatSemanticType).join(' | ')
+		case 'object':
+			return `{ ${[...type.properties.entries()]
+				.map(([name, propertyType]) => `${name}: ${formatSemanticType(propertyType)}`)
+				.join('; ')} }`
 	}
 }
 
 function formatAtomicSemanticType(type: SemanticType): string {
-	return type.kind === 'function' || type.kind === 'union'
+	return type.kind === 'function' || type.kind === 'union' || type.kind === 'object'
 		? `(${formatSemanticType(type)})`
 		: formatSemanticType(type)
 }
@@ -170,6 +187,14 @@ function semanticTypesEqual(left: SemanticType, right: SemanticType): boolean {
 					rightUnion.types.some(rightType => semanticTypesEqual(leftType, rightType)),
 				)
 		}
+		case 'object': {
+			const rightObject = right as ObjectSemanticType
+			return left.properties.size === rightObject.properties.size
+				&& [...left.properties.entries()].every(([name, type]) => {
+					const rightType = rightObject.properties.get(name)
+					return rightType !== undefined && semanticTypesEqual(type, rightType)
+				})
+		}
 	}
 }
 
@@ -192,6 +217,10 @@ function parseSemanticType(
 	}
 
 	let current = normalized
+	if (isObjectTypeSource(current)) {
+		return parseObjectSemanticType(current, resolveAlias, isKnownTypeName)
+	}
+
 	const arrowIndex = findTopLevelArrow(current)
 	if (arrowIndex !== -1) {
 		const paramsEnd = current.lastIndexOf(')', arrowIndex)
@@ -235,6 +264,32 @@ function parseSemanticType(
 	return baseType
 }
 
+function isObjectTypeSource(source: string): boolean {
+	return source.startsWith('{') && source.endsWith('}') && isWrapped(source, '{', '}')
+}
+
+function parseObjectSemanticType(
+	source: string,
+	resolveAlias?: TypeAliasResolver,
+	isKnownTypeName?: TypeNameValidator,
+): SemanticType {
+	const properties = new Map<string, SemanticType>()
+	const body = source.slice(1, -1).trim()
+	if (body === '') {
+		return objectType(properties)
+	}
+	for (const member of splitTopLevel(body, ';')) {
+		const colonIndex = findTopLevelDelimiter(member, ':')
+		if (colonIndex === -1) {
+			throw new Error(`Некорректное поле object type: ${member}`)
+		}
+		const name = member.slice(0, colonIndex).trim()
+		const typeSource = member.slice(colonIndex + 1).trim()
+		properties.set(name, parseSemanticType(typeSource, resolveAlias, isKnownTypeName))
+	}
+	return objectType(properties)
+}
+
 function createNamedType(name: string, isKnownTypeName?: TypeNameValidator): SemanticType {
 	if (isKnownTypeName !== undefined && !isKnownTypeName(name)) {
 		throw new Error(`Неизвестный тип: ${name}`)
@@ -243,16 +298,20 @@ function createNamedType(name: string, isKnownTypeName?: TypeNameValidator): Sem
 }
 
 function isWrappedInParens(source: string): boolean {
-	if (!source.startsWith('(') || !source.endsWith(')')) {
+	return isWrapped(source, '(', ')')
+}
+
+function isWrapped(source: string, open: string, close: string): boolean {
+	if (!source.startsWith(open) || !source.endsWith(close)) {
 		return false
 	}
 	let depth = 0
 	for (let index = 0; index < source.length; index++) {
 		const char = source[index]
-		if (char === '(') {
+		if (char === open) {
 			depth++
 		}
-		else if (char === ')') {
+		else if (char === close) {
 			depth--
 			if (depth === 0 && index !== source.length - 1) {
 				return false
@@ -263,16 +322,23 @@ function isWrappedInParens(source: string): boolean {
 }
 
 function findTopLevelArrow(source: string): number {
-	let depth = 0
+	let parenDepth = 0
+	let braceDepth = 0
 	for (let index = 0; index < source.length - 1; index++) {
 		const char = source[index]
 		if (char === '(') {
-			depth++
+			parenDepth++
 		}
 		else if (char === ')') {
-			depth--
+			parenDepth--
 		}
-		else if (char === '=' && source[index + 1] === '>' && depth === 0) {
+		else if (char === '{') {
+			braceDepth++
+		}
+		else if (char === '}') {
+			braceDepth--
+		}
+		else if (char === '=' && source[index + 1] === '>' && parenDepth === 0 && braceDepth === 0) {
 			return index
 		}
 	}
@@ -281,23 +347,60 @@ function findTopLevelArrow(source: string): number {
 
 function splitTopLevel(source: string, delimiter: string): string[] {
 	const parts: string[] = []
-	let depth = 0
+	let parenDepth = 0
+	let braceDepth = 0
 	let start = 0
 	for (let index = 0; index < source.length; index++) {
 		const char = source[index]
 		if (char === '(') {
-			depth++
+			parenDepth++
 		}
 		else if (char === ')') {
-			depth--
+			parenDepth--
 		}
-		else if (char === delimiter && depth === 0) {
+		else if (char === '{') {
+			braceDepth++
+		}
+		else if (char === '}') {
+			braceDepth--
+		}
+		else if (char === delimiter && parenDepth === 0 && braceDepth === 0) {
 			parts.push(source.slice(start, index).trim())
 			start = index + 1
 		}
 	}
 	parts.push(source.slice(start).trim())
 	return parts.filter(Boolean)
+}
+
+function findTopLevelDelimiter(source: string, delimiter: string): number {
+	return splitTopLevelWithPositions(source, delimiter)[0]?.delimiterIndex ?? -1
+}
+
+function splitTopLevelWithPositions(source: string, delimiter: string): {
+	delimiterIndex: number,
+}[] {
+	let parenDepth = 0
+	let braceDepth = 0
+	for (let index = 0; index < source.length; index++) {
+		const char = source[index]
+		if (char === '(') {
+			parenDepth++
+		}
+		else if (char === ')') {
+			parenDepth--
+		}
+		else if (char === '{') {
+			braceDepth++
+		}
+		else if (char === '}') {
+			braceDepth--
+		}
+		else if (char === delimiter && parenDepth === 0 && braceDepth === 0) {
+			return [{delimiterIndex: index}]
+		}
+	}
+	return []
 }
 
 export {
@@ -308,6 +411,7 @@ export {
 	formatSemanticType,
 	functionType,
 	hasNullType,
+	objectType,
 	parseSemanticType,
 	primitiveType,
 	removeNullFromType,

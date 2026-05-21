@@ -15,9 +15,13 @@ TypeAnnotationOpt -> ':' TypeExpression | ε
 TypeExpression -> UnionTypeExpression
 UnionTypeExpression -> UnionTypeExpression '|' ArrayTypeExpression | ArrayTypeExpression
 ArrayTypeExpression -> PrimaryTypeExpression TypeSuffixListOpt
-PrimaryTypeExpression -> Identifier | null | ParenthesizedTypeExpression
+PrimaryTypeExpression -> Identifier | null | ParenthesizedTypeExpression | ObjectTypeExpression
 ParenthesizedTypeExpression -> '(' TypeArgumentListOpt ')' ParenthesizedTypeContinuation
 ParenthesizedTypeContinuation -> '=>' TypeExpression | ε
+ObjectTypeExpression -> '{' ObjectTypeMemberListOpt '}'
+ObjectTypeMemberListOpt -> ObjectTypeMemberList | ε
+ObjectTypeMemberList -> ObjectTypeMemberList ObjectTypeMember | ObjectTypeMember
+ObjectTypeMember -> Identifier ':' TypeExpression ';'
 TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt | ε
 TypeTrailingCommaOpt -> ',' | ε
 TypeArgumentList -> TypeArgumentList ',' TypeExpression | TypeExpression

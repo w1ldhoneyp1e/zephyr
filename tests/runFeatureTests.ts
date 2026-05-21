@@ -186,6 +186,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '19',
 	},
 	{
+		name: 'object_type_method_contract',
+		file: 'object_type_method_contract.zph',
+		expectedReturn: '21',
+	},
+	{
+		name: 'object_type_field_contract',
+		file: 'object_type_field_contract.zph',
+		expectedReturn: 'Ada',
+	},
+	{
 		name: 'parenthesized_union_array_type',
 		file: 'parenthesized_union_array_type.zph',
 		expectedReturn: '7',
@@ -334,6 +344,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'contextual_array_element_error',
 		file: 'contextual_array_element_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной values: ожидалось number[], получено (number | string)[]',
+	},
+	{
+		name: 'object_type_contract_error',
+		file: 'object_type_contract_error.zph',
+		expectedError: 'Несовместимые типы в вызов функции readScore, аргумент 1',
 	},
 ]
 

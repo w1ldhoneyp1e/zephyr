@@ -1,0 +1,17 @@
+type Scored = {
+	score: () => number;
+};
+
+class Cat {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+}
+
+fn readScore(item: Scored): number {
+	return item.score();
+}
+
+return readScore(Cat(3));
