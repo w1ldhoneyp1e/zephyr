@@ -275,6 +275,11 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				branches: values[0] as MatchValueBranchNode[],
 				defaultValue: ensureExpression(values[2], 'match default value'),
 			} satisfies MatchValueBranchesValue)
+		case 'MatchValueBranches -> MatchValueBranchList MatchTrailingCommaOpt':
+			return values => ({
+				branches: values[0] as MatchValueBranchNode[],
+				defaultValue: null,
+			} satisfies MatchValueBranchesValue)
 		case 'MatchValueBranches -> MatchValueDefaultBranch MatchTrailingCommaOpt':
 			return values => ({
 				branches: [],
@@ -295,6 +300,11 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 			return values => ({
 				branches: values[0] as MatchByBranchNode[],
 				defaultValue: ensureExpression(values[2], 'match-by default value'),
+			} satisfies MatchByBranchesValue)
+		case 'MatchByBranches -> MatchByBranchList MatchTrailingCommaOpt':
+			return values => ({
+				branches: values[0] as MatchByBranchNode[],
+				defaultValue: null,
 			} satisfies MatchByBranchesValue)
 		case 'MatchByBranches -> MatchByDefaultBranch MatchTrailingCommaOpt':
 			return values => ({

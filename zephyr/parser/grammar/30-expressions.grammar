@@ -46,11 +46,11 @@ CollectBranch -> AssignmentExpression '=>' Expression
 MatchExpression -> match Expression '{' MatchValueBranches '}'
 MatchExpression -> match Expression by Identifier '{' MatchByBranches '}'
 MatchTrailingCommaOpt -> ',' | ε
-MatchValueBranches -> MatchValueBranchList ',' MatchValueDefaultBranch MatchTrailingCommaOpt | MatchValueDefaultBranch MatchTrailingCommaOpt
+MatchValueBranches -> MatchValueBranchList ',' MatchValueDefaultBranch MatchTrailingCommaOpt | MatchValueBranchList MatchTrailingCommaOpt | MatchValueDefaultBranch MatchTrailingCommaOpt
 MatchValueBranchList -> MatchValueBranchList ',' MatchValueBranch | MatchValueBranch
 MatchValueBranch -> AssignmentExpression '=>' Expression
 MatchValueDefaultBranch -> Underscore '=>' Expression
-MatchByBranches -> MatchByBranchList ',' MatchByDefaultBranch MatchTrailingCommaOpt | MatchByDefaultBranch MatchTrailingCommaOpt
+MatchByBranches -> MatchByBranchList ',' MatchByDefaultBranch MatchTrailingCommaOpt | MatchByBranchList MatchTrailingCommaOpt | MatchByDefaultBranch MatchTrailingCommaOpt
 MatchByBranchList -> MatchByBranchList ',' MatchByBranch | MatchByBranch
 MatchByBranch -> MatchByPattern '=>' Expression
 MatchByPattern -> Identifier | Number | String | true | false | null

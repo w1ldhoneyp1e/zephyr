@@ -22,6 +22,11 @@ interface ClassInfo {
 	methodVisibilities: Map<string, ClassMemberVisibility>,
 }
 
+interface ClassDiscriminantVariant {
+	className: string,
+	value: string | number | boolean | null,
+}
+
 class ClassRegistry {
 	constructor(private readonly model: SemanticModel) {
 	}
@@ -70,6 +75,33 @@ class ClassRegistry {
 			kind: 'class',
 			name: matchingClasses[0],
 		}
+	}
+
+	getDiscriminantVariants(
+		subjectType: SemanticType,
+		discriminant: string,
+	): ClassDiscriminantVariant[] {
+		if (subjectType.kind !== 'class') {
+			return []
+		}
+		const variants = new Map<string, ClassDiscriminantVariant>()
+		for (const className of this.model.classFieldTypes.keys()) {
+			if (!this.isSubclassOf({
+				kind: 'class',
+				name: className,
+			}, subjectType)) {
+				continue
+			}
+			const value = this.getDiscriminantValue(className, discriminant)
+			if (value === undefined) {
+				continue
+			}
+			variants.set(this.getDiscriminantVariantKey(value), {
+				className,
+				value,
+			})
+		}
+		return [...variants.values()]
 	}
 
 	getConstructorParameterTypes(className: string): SemanticType[] {
@@ -257,10 +289,15 @@ class ClassRegistry {
 			? undefined
 			: this.getDiscriminantValue(baseClassName, discriminant)
 	}
+
+	private getDiscriminantVariantKey(value: string | number | boolean | null): string {
+		return `${typeof value}:${String(value)}`
+	}
 }
 
 export {
 	type ClassInfo,
+	type ClassDiscriminantVariant,
 	type ClassMemberInfo,
 	ClassRegistry,
 }

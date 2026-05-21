@@ -1,0 +1,28 @@
+class Animal {
+	kind: string;
+
+	constructor() {
+	}
+}
+
+class Dog extends Animal {
+	constructor() {
+		super();
+		self.kind = "dog";
+	}
+}
+
+class Cat extends Animal {
+	constructor() {
+		super();
+		self.kind = "cat";
+	}
+}
+
+fn speak(animal: Animal): number {
+	return match animal by kind {
+		dog => 1,
+	};
+}
+
+return speak(Dog());

@@ -95,14 +95,18 @@ class ValidationWalker {
 					this.validateExpression(branch.pattern)
 					this.validateExpression(branch.value)
 				}
-				this.validateExpression(expression.defaultValue)
+				if (expression.defaultValue !== null) {
+					this.validateExpression(expression.defaultValue)
+				}
 				break
 			case 'MatchByExpression':
 				this.validateExpression(expression.subject)
 				for (const branch of expression.branches) {
 					this.validateExpression(branch.value)
 				}
-				this.validateExpression(expression.defaultValue)
+				if (expression.defaultValue !== null) {
+					this.validateExpression(expression.defaultValue)
+				}
 				break
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':

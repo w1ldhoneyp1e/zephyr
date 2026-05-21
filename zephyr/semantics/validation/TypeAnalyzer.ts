@@ -84,15 +84,9 @@ class TypeAnalyzer {
 					expression.branches.map(branch => this.inferExpressionType(branch.value)),
 				))
 			case 'MatchExpression':
-				return this.inferCommonType([
-					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
-					this.inferExpressionType(expression.defaultValue),
-				])
+				return this.inferCommonType(this.inferMatchResultTypes(expression))
 			case 'MatchByExpression':
-				return this.inferCommonType([
-					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
-					this.inferExpressionType(expression.defaultValue),
-				])
+				return this.inferCommonType(this.inferMatchResultTypes(expression))
 			case 'IndexExpression':
 				return this.getIndexedElementType(this.inferExpressionType(expression.object))
 			case 'OptionalIndexExpression':
@@ -195,6 +189,17 @@ class TypeAnalyzer {
 		return arrayType(this.inferCommonType(
 			expression.elements.map(element => this.inferExpressionType(element)),
 		))
+	}
+
+	private inferMatchResultTypes(
+		expression: Extract<ExpressionNode, {type: 'MatchExpression' | 'MatchByExpression'}>,
+	): SemanticType[] {
+		return expression.defaultValue === null
+			? expression.branches.map(branch => this.inferExpressionType(branch.value))
+			: [
+				...expression.branches.map(branch => this.inferExpressionType(branch.value)),
+				this.inferExpressionType(expression.defaultValue),
+			]
 	}
 
 	private inferBlockReturnType(statements: StatementNode[]): SemanticType {

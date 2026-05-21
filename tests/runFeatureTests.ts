@@ -156,6 +156,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '9',
 	},
 	{
+		name: 'match_by_exhaustive',
+		file: 'match_by_exhaustive.zph',
+		expectedReturn: '11',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',
@@ -234,6 +239,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'class_private_access_error',
 		file: 'class_private_access_error.zph',
 		expectedError: 'Нельзя обращаться к private-члену Counter.value вне класса Counter',
+	},
+	{
+		name: 'match_by_exhaustive_error',
+		file: 'match_by_exhaustive_error.zph',
+		expectedError: 'match by kind не покрывает варианты: cat',
 	},
 ]
 

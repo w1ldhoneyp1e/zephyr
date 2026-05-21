@@ -111,7 +111,12 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 				endJumps.push(state.emitJump(Opcode.Jump))
 				state.patchJump(nextBranchJump, state.getInstructions().length)
 			}
-			emitExpression(state, generator, expression.defaultValue)
+			if (expression.defaultValue === null) {
+				state.emitNoArg(Opcode.Nil)
+			}
+			else {
+				emitExpression(state, generator, expression.defaultValue)
+			}
 			for (const endJump of endJumps) {
 				state.patchJump(endJump, state.getInstructions().length)
 			}
@@ -155,7 +160,12 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 				endJumps.push(state.emitJump(Opcode.Jump))
 				state.patchJump(nextBranchJump, state.getInstructions().length)
 			}
-			emitExpression(state, generator, expression.defaultValue)
+			if (expression.defaultValue === null) {
+				state.emitNoArg(Opcode.Nil)
+			}
+			else {
+				emitExpression(state, generator, expression.defaultValue)
+			}
 			for (const endJump of endJumps) {
 				state.patchJump(endJump, state.getInstructions().length)
 			}
@@ -179,7 +189,12 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 				endJumps.push(state.emitJump(Opcode.Jump))
 				state.patchJump(nextBranchJump, state.getInstructions().length)
 			}
-			emitExpression(state, generator, expression.defaultValue)
+			if (expression.defaultValue === null) {
+				state.emitNoArg(Opcode.Nil)
+			}
+			else {
+				emitExpression(state, generator, expression.defaultValue)
+			}
 			for (const endJump of endJumps) {
 				state.patchJump(endJump, state.getInstructions().length)
 			}

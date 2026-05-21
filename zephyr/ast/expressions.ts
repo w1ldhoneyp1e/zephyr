@@ -116,7 +116,7 @@ interface MatchExpressionNode {
 	type: 'MatchExpression',
 	subject: ExpressionNode,
 	branches: MatchValueBranchNode[],
-	defaultValue: ExpressionNode,
+	defaultValue: ExpressionNode | null,
 }
 
 interface MatchByExpressionNode {
@@ -124,7 +124,7 @@ interface MatchByExpressionNode {
 	subject: ExpressionNode,
 	discriminant: string,
 	branches: MatchByBranchNode[],
-	defaultValue: ExpressionNode,
+	defaultValue: ExpressionNode | null,
 }
 
 type AssignmentTargetNode = IdentifierTargetNode | IndexTargetNode | MemberTargetNode

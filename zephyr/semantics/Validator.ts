@@ -1,5 +1,6 @@
 import {
 	type ExpressionNode,
+	type MatchByExpressionNode,
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
@@ -162,9 +163,17 @@ class Validator {
 			case 'UnaryExpression':
 			case 'BinaryExpression':
 			case 'ArrayExpression':
+				this.getValidationWalker().walkExpressionChildren(expression)
+				return
 			case 'MatchExpression':
+				this.getValidationWalker().walkExpressionChildren(expression)
+				if (expression.defaultValue === null) {
+					throw new Error('match без ветки _ пока поддерживается только для exhaustive match by')
+				}
+				return
 			case 'MatchByExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
+				this.validateMatchByExhaustiveness(expression)
 				return
 			case 'ChooseExpression':
 			case 'CollectExpression':
@@ -182,6 +191,30 @@ class Validator {
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
 		}
+	}
+
+	private validateMatchByExhaustiveness(expression: MatchByExpressionNode): void {
+		if (expression.defaultValue !== null) {
+			return
+		}
+		const subjectType = this.getTypeAnalyzer().inferExpressionType(expression.subject)
+		const variants = this.getClassRegistry().getDiscriminantVariants(subjectType, expression.discriminant)
+		if (variants.length === 0) {
+			throw new Error(`match by ${expression.discriminant} без _ не может быть проверен на полноту`)
+		}
+		const coveredValues = new Set(expression.branches.map(branch =>
+			this.getMatchByPatternKey(branch.pattern.value),
+		))
+		const missingValues = variants
+			.map(variant => variant.value)
+			.filter(value => !coveredValues.has(this.getMatchByPatternKey(value)))
+		if (missingValues.length > 0) {
+			throw new Error(`match by ${expression.discriminant} не покрывает варианты: ${missingValues.map(String).join(', ')}`)
+		}
+	}
+
+	private getMatchByPatternKey(value: string | number | boolean | null): string {
+		return `${typeof value}:${String(value)}`
 	}
 
 	private getCurrentClassName(): string | null {

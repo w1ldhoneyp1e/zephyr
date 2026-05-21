@@ -96,12 +96,12 @@ interface ChooseBranchesValue {
 
 interface MatchValueBranchesValue {
 	branches: MatchValueBranchNode[],
-	defaultValue: ExpressionNode,
+	defaultValue: ExpressionNode | null,
 }
 
 interface MatchByBranchesValue {
 	branches: MatchByBranchNode[],
-	defaultValue: ExpressionNode,
+	defaultValue: ExpressionNode | null,
 }
 
 interface StructMemberListValue {

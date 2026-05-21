@@ -374,14 +374,18 @@ class Resolver {
 					this.resolveExpression(branch.pattern)
 					this.resolveExpression(branch.value)
 				}
-				this.resolveExpression(expression.defaultValue)
+				if (expression.defaultValue !== null) {
+					this.resolveExpression(expression.defaultValue)
+				}
 				return
 			case 'MatchByExpression':
 				this.resolveExpression(expression.subject)
 				for (const branch of expression.branches) {
 					this.resolveMatchByBranchValue(expression, branch.pattern.value, branch.value)
 				}
-				this.resolveExpression(expression.defaultValue)
+				if (expression.defaultValue !== null) {
+					this.resolveExpression(expression.defaultValue)
+				}
 				return
 			case 'IndexExpression':
 			case 'OptionalIndexExpression':
