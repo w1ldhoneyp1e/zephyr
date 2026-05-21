@@ -142,12 +142,12 @@ class Resolver {
 				this.resolveExpression(statement.condition)
 				this.resolveConditionBlock(
 					statement.thenBranch.statements,
-					this.getConditionNarrowing(statement.condition, true),
+					this.getConditionNarrowings(statement.condition, true),
 				)
 				if (statement.elseBranch !== null) {
 					this.resolveConditionBlock(
 						statement.elseBranch.statements,
-						this.getConditionNarrowing(statement.condition, false),
+						this.getConditionNarrowings(statement.condition, false),
 					)
 				}
 				return
@@ -520,15 +520,10 @@ class Resolver {
 		this.leaveScope()
 	}
 
-	private resolveConditionBlock(statements: StatementNode[], narrowing: ConditionNarrowing | null): void {
+	private resolveConditionBlock(statements: StatementNode[], narrowings: ConditionNarrowing[]): void {
 		this.enterScope()
-		if (narrowing !== null) {
-			this.declare(narrowing.name, {
-				kind: 'narrowed',
-				original: narrowing.binding,
-				name: narrowing.name,
-				type: narrowing.type,
-			})
+		for (const narrowing of this.mergeConditionNarrowings(narrowings)) {
+			this.applyConditionNarrowing(narrowing)
 		}
 		for (const statement of statements) {
 			this.resolveStatement(statement)
@@ -536,7 +531,54 @@ class Resolver {
 		this.leaveScope()
 	}
 
-	private getConditionNarrowing(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing | null {
+	private mergeConditionNarrowings(narrowings: ConditionNarrowing[]): ConditionNarrowing[] {
+		const byName = new Map<string, ConditionNarrowing>()
+		for (const narrowing of narrowings) {
+			byName.set(narrowing.name, narrowing)
+		}
+		return [...byName.values()]
+	}
+
+	private applyConditionNarrowing(narrowing: ConditionNarrowing): void {
+		this.declare(narrowing.name, {
+			kind: 'narrowed',
+			original: narrowing.binding,
+			name: narrowing.name,
+			type: narrowing.type,
+		})
+	}
+
+	private getConditionNarrowings(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing[] {
+		if (condition.type === 'BinaryExpression') {
+			if (condition.operator === '&&' && truthyBranch) {
+				return this.getSequentialConditionNarrowings(condition.left, condition.right, true)
+			}
+			if (condition.operator === '||' && !truthyBranch) {
+				return this.getSequentialConditionNarrowings(condition.left, condition.right, false)
+			}
+		}
+		const narrowing = this.getAtomicConditionNarrowing(condition, truthyBranch)
+		return narrowing === null
+			? []
+			: [narrowing]
+	}
+
+	private getSequentialConditionNarrowings(
+		left: ExpressionNode,
+		right: ExpressionNode,
+		truthyBranch: boolean,
+	): ConditionNarrowing[] {
+		const leftNarrowings = this.getConditionNarrowings(left, truthyBranch)
+		this.enterScope()
+		for (const narrowing of leftNarrowings) {
+			this.applyConditionNarrowing(narrowing)
+		}
+		const rightNarrowings = this.getConditionNarrowings(right, truthyBranch)
+		this.leaveScope()
+		return [...leftNarrowings, ...rightNarrowings]
+	}
+
+	private getAtomicConditionNarrowing(condition: ExpressionNode, truthyBranch: boolean): ConditionNarrowing | null {
 		return this.getNullCheckNarrowing(condition, truthyBranch)
 			?? this.getDiscriminantCheckNarrowing(condition, truthyBranch)
 	}

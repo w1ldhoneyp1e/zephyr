@@ -236,6 +236,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '31',
 	},
 	{
+		name: 'if_and_nullable_discriminant_narrowing',
+		file: 'if_and_nullable_discriminant_narrowing.zph',
+		expectedReturn: '37',
+	},
+	{
+		name: 'if_or_else_nullable_discriminant_narrowing',
+		file: 'if_or_else_nullable_discriminant_narrowing.zph',
+		expectedReturn: '41',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',

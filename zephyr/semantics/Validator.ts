@@ -7,7 +7,7 @@ import {
 import {match} from '../utils'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
-import {primitiveType} from './SemanticType'
+import {primitiveType, removeNullFromType} from './SemanticType'
 import {AssignmentValidator} from './validation/AssignmentValidator'
 import {CallValidator} from './validation/CallValidator'
 import {ClassValidator} from './validation/ClassValidator'
@@ -22,6 +22,7 @@ class Validator {
 	private callValidator: CallValidator | null = null
 	private assignmentValidator: AssignmentValidator | null = null
 	private validationWalker: ValidationWalker | null = null
+	private nullableGuards: string[] = []
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
 		this.classRegistry = new ClassRegistry(model)
@@ -142,7 +143,7 @@ class Validator {
 				if ('property' in expression) {
 					if (expression.type === 'MemberExpression') {
 						this.getClassValidator().assertClassMemberAccessible(
-							this.getTypeAnalyzer().inferExpressionType(expression.object),
+							this.getMemberObjectType(expression.object),
 							expression.property,
 						)
 					}
@@ -163,9 +164,11 @@ class Validator {
 				this.getValidationWalker().walkExpressionChildren(expression)
 				return
 			case 'UnaryExpression':
-			case 'BinaryExpression':
 			case 'ArrayExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
+				return
+			case 'BinaryExpression':
+				this.validateBinaryExpression(expression)
 				return
 			case 'MatchExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
@@ -217,6 +220,62 @@ class Validator {
 		if (missingValues.length > 0) {
 			throw new Error(`match by ${expression.discriminant} не покрывает варианты: ${missingValues.map(String).join(', ')}`)
 		}
+	}
+
+	private validateBinaryExpression(expression: Extract<ExpressionNode, {type: 'BinaryExpression'}>): void {
+		this.validateExpression(expression.left)
+		const guard = this.getShortCircuitNullableGuard(expression)
+		if (guard !== null) {
+			this.nullableGuards.push(guard)
+			this.validateExpression(expression.right)
+			this.nullableGuards.pop()
+			return
+		}
+		this.validateExpression(expression.right)
+	}
+
+	private getShortCircuitNullableGuard(
+		expression: Extract<ExpressionNode, {type: 'BinaryExpression'}>,
+	): string | null {
+		if (expression.operator !== '&&' && expression.operator !== '||') {
+			return null
+		}
+		const left = expression.left
+		if (left.type !== 'BinaryExpression') {
+			return null
+		}
+		const identifierName = this.getNullCheckIdentifierName(left)
+		if (identifierName === null) {
+			return null
+		}
+		if (expression.operator === '&&' && left.operator === '!=') {
+			return identifierName
+		}
+		if (expression.operator === '||' && left.operator === '==') {
+			return identifierName
+		}
+		return null
+	}
+
+	private getNullCheckIdentifierName(expression: Extract<ExpressionNode, {type: 'BinaryExpression'}>): string | null {
+		if (expression.left.type === 'IdentifierExpression' && this.isNullLiteral(expression.right)) {
+			return expression.left.name
+		}
+		if (expression.right.type === 'IdentifierExpression' && this.isNullLiteral(expression.left)) {
+			return expression.right.name
+		}
+		return null
+	}
+
+	private isNullLiteral(expression: ExpressionNode): boolean {
+		return expression.type === 'LiteralExpression' && expression.value === null
+	}
+
+	private getMemberObjectType(object: ExpressionNode): ReturnType<TypeAnalyzer['inferExpressionType']> {
+		const type = this.getTypeAnalyzer().inferExpressionType(object)
+		return object.type === 'IdentifierExpression' && this.nullableGuards.includes(object.name)
+			? removeNullFromType(type)
+			: type
 	}
 
 	private assertNoDuplicateMatchByBranches(expression: MatchByExpressionNode): void {
