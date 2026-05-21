@@ -1,4 +1,5 @@
 import {type ExpressionNode, type StatementNode} from '../../ast'
+import {match} from '../../utils'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
 import {
@@ -133,28 +134,18 @@ class TypeAnalyzer {
 	}
 
 	getBindingType(binding: SemanticBinding): SemanticType {
-		return this.resolveBindingType(binding)
-	}
-
-	private resolveBindingType(binding: SemanticBinding): SemanticType {
-		switch (binding.kind) {
-			case 'variable':
-				return parseSemanticType(binding.declaration.typeName)
-			case 'class':
-				return classType(binding.declaration.name)
-			case 'function':
-				return functionType(
-					binding.declaration.params.map(param => parseSemanticType(param.typeName)),
-					parseSemanticType(binding.declaration.returnTypeName),
-				)
-			case 'parameter':
-				return binding.type
-			case 'super':
-				return classType(binding.baseClassBinding.declaration.name)
-			case 'iterator':
-			case 'builtin':
-				return anyType()
-		}
+		return match(binding, 'kind', {
+			variable: value => parseSemanticType(value.declaration.typeName),
+			class: value => classType(value.declaration.name),
+			function: value => functionType(
+				value.declaration.params.map(param => parseSemanticType(param.typeName)),
+				parseSemanticType(value.declaration.returnTypeName),
+			),
+			parameter: value => value.type,
+			super: value => classType(value.baseClassBinding.declaration.name),
+			iterator: anyType(),
+			builtin: anyType(),
+		})
 	}
 
 	private inferArrayExpressionType(

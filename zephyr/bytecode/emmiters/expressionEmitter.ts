@@ -1,4 +1,5 @@
 import {Opcode} from '../../../vm/types'
+import {match} from '../../utils'
 import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {
@@ -35,16 +36,14 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 				break
 			}
 			const resolved = state.resolveExpressionBinding(binding)
-			if (resolved.kind === 'local') {
-				state.emitNumArg(Opcode.GetLocal, resolved.slot)
-			}
-			else if (resolved.kind === 'upvalue') {
-				state.emitNumArg(Opcode.GetUpvalue, resolved.index)
-			}
-			else {
-				const nameConstant = state.addConstant(resolved.name)
-				state.emitNumArg(Opcode.GetGlobal, nameConstant)
-			}
+			match(resolved, 'kind', {
+				local: value => state.emitNumArg(Opcode.GetLocal, value.slot),
+				upvalue: value => state.emitNumArg(Opcode.GetUpvalue, value.index),
+				global: value => {
+					const nameConstant = state.addConstant(value.name)
+					state.emitNumArg(Opcode.GetGlobal, nameConstant)
+				},
+			})
 			break
 		}
 		case 'UnaryExpression': {

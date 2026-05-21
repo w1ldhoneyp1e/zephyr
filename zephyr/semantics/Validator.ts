@@ -3,6 +3,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
+import {match} from '../utils'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
 import {parseSemanticType, primitiveType} from './SemanticType'
@@ -221,16 +222,12 @@ class Validator {
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {
-		if (callable.type === 'FunctionDeclaration') {
-			return `функции ${callable.name}`
-		}
-		if (callable.type === 'MethodDeclaration') {
-			return `методе ${callable.name}`
-		}
-		if (callable.type === 'ConstructorDeclaration') {
-			return 'constructor'
-		}
-		return 'лямбде'
+		return match(callable, 'type', {
+			FunctionDeclaration: value => `функции ${value.name}`,
+			MethodDeclaration: value => `методе ${value.name}`,
+			ConstructorDeclaration: 'constructor',
+			LambdaExpression: 'лямбде',
+		})
 	}
 }
 

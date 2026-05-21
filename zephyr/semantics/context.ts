@@ -14,6 +14,7 @@ import {
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 } from '../ast'
+import {match} from '../utils'
 import {type SemanticType} from './SemanticType'
 
 interface SemanticScope {
@@ -104,35 +105,27 @@ interface SemanticModel {
 }
 
 function getBindingName(binding: SemanticBinding): string {
-	switch (binding.kind) {
-		case 'variable':
-		case 'function':
-		case 'class':
-			return binding.declaration.name
-		case 'parameter':
-		case 'iterator':
-		case 'super':
-		case 'builtin':
-			return binding.kind === 'super'
-				? 'super'
-				: binding.name
-	}
+	return match(binding, 'kind', {
+		variable: value => value.declaration.name,
+		function: value => value.declaration.name,
+		class: value => value.declaration.name,
+		parameter: value => value.name,
+		iterator: value => value.name,
+		super: 'super',
+		builtin: value => value.name,
+	})
 }
 
 function isBindingMutable(binding: SemanticBinding): boolean {
-	switch (binding.kind) {
-		case 'variable':
-			return binding.declaration.kind === 'var'
-		case 'parameter':
-		case 'iterator':
-			return true
-		case 'super':
-			return false
-		case 'function':
-		case 'class':
-		case 'builtin':
-			return false
-	}
+	return match(binding, 'kind', {
+		variable: value => value.declaration.kind === 'var',
+		parameter: true,
+		iterator: true,
+		super: false,
+		function: false,
+		class: false,
+		builtin: false,
+	})
 }
 
 export {

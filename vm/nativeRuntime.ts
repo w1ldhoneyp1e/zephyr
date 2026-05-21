@@ -79,25 +79,19 @@ function isNative(value: Value): value is VmNative {
 }
 
 function assertNativeArity(nativeFn: VmNative, argc: number): void {
-	const exactArityError = choose(
+	const arityError = choose(
 		[
 			nativeFn.arity !== null && argc !== nativeFn.arity,
 			`call ${nativeFn.name}: ожидалось ${nativeFn.arity} аргументов, получено ${argc}`,
 		],
-		null,
-	)
-	if (exactArityError !== null) {
-		throw new Error(exactArityError)
-	}
-	const minArityError = choose(
 		[
 			argc < nativeFn.minArity,
 			`call ${nativeFn.name}: ожидалось минимум ${nativeFn.minArity} аргументов, получено ${argc}`,
 		],
 		null,
 	)
-	if (minArityError !== null) {
-		throw new Error(minArityError)
+	if (arityError !== null) {
+		throw new Error(arityError)
 	}
 }
 
