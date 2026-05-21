@@ -160,6 +160,7 @@ class TypeAnalyzer {
 				value.declaration.params.map(param => parseSemanticType(param.typeName)),
 				parseSemanticType(value.declaration.returnTypeName),
 			),
+			narrowed: value => value.type,
 			parameter: value => value.type,
 			super: value => classType(value.baseClassBinding.declaration.name),
 			iterator: anyType(),

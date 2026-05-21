@@ -136,6 +136,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '7',
 	},
 	{
+		name: 'match_by_narrowing',
+		file: 'match_by_narrowing.zph',
+		expectedReturn: '9',
+	},
+	{
 		name: 'modules_basic',
 		file: 'modules/main.zph',
 		expectedReturn: '8',

@@ -36,6 +36,13 @@ interface ClassSemanticBinding {
 	declaration: ClassDeclarationNode,
 }
 
+interface NarrowedSemanticBinding {
+	kind: 'narrowed',
+	original: SemanticBinding,
+	name: string,
+	type: SemanticType,
+}
+
 interface ParameterSemanticBinding {
 	kind: 'parameter',
 	callableDeclaration: CallableDeclarationNode,
@@ -66,6 +73,7 @@ type SemanticBinding =
 	| VariableSemanticBinding
 	| FunctionSemanticBinding
 	| ClassSemanticBinding
+	| NarrowedSemanticBinding
 	| ParameterSemanticBinding
 	| SuperSemanticBinding
 	| IteratorSemanticBinding
@@ -102,6 +110,7 @@ interface SemanticModel {
 	classMethodParameterTypes: Map<string, Map<string, SemanticType[]>>,
 	classMethodVisibilities: Map<string, Map<string, ClassMemberVisibility>>,
 	classBaseBindings: WeakMap<ClassDeclarationNode, ClassSemanticBinding | null>,
+	classDiscriminantValues: Map<string, Map<string, string | number | boolean | null>>,
 }
 
 function getBindingName(binding: SemanticBinding): string {
@@ -109,6 +118,7 @@ function getBindingName(binding: SemanticBinding): string {
 		variable: value => value.declaration.name,
 		function: value => value.declaration.name,
 		class: value => value.declaration.name,
+		narrowed: value => value.name,
 		parameter: value => value.name,
 		iterator: value => value.name,
 		super: 'super',
@@ -119,6 +129,7 @@ function getBindingName(binding: SemanticBinding): string {
 function isBindingMutable(binding: SemanticBinding): boolean {
 	return match(binding, 'kind', {
 		variable: value => value.declaration.kind === 'var',
+		narrowed: value => isBindingMutable(value.original),
 		parameter: true,
 		iterator: true,
 		super: false,
@@ -136,6 +147,7 @@ export {
 	getBindingName,
 	isBindingMutable,
 	type IteratorSemanticBinding,
+	type NarrowedSemanticBinding,
 	type OwnedSemanticBinding,
 	type ParameterSemanticBinding,
 	type SemanticBinding,

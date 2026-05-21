@@ -123,6 +123,9 @@ class CompilerState {
 	}
 
 	resolve(binding: SemanticBinding): ResolvedBinding {
+		if (binding.kind === 'narrowed') {
+			return this.resolve(binding.original)
+		}
 		const slot = this.resolveLocal(binding)
 		if (slot !== -1) {
 			return {
@@ -141,6 +144,9 @@ class CompilerState {
 	}
 
 	resolveExpressionBinding(binding: SemanticBinding): ResolvedExpressionBinding {
+		if (binding.kind === 'narrowed') {
+			return this.resolveExpressionBinding(binding.original)
+		}
 		if (binding.kind === 'builtin') {
 			return {
 				kind: 'global',

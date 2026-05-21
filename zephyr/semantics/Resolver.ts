@@ -50,6 +50,7 @@ class Resolver {
 		classMethodParameterTypes: new Map(),
 		classMethodVisibilities: new Map(),
 		classBaseBindings: new WeakMap(),
+		classDiscriminantValues: new Map(),
 	}
 
 	resolveProgram(program: ProgramNode): {
@@ -80,6 +81,7 @@ class Resolver {
 			classMethodParameterTypes: new Map(),
 			classMethodVisibilities: new Map(),
 			classBaseBindings: new WeakMap(),
+			classDiscriminantValues: new Map(),
 		}
 		this.enterScope()
 		for (const statement of program.body) {
@@ -206,6 +208,10 @@ class Resolver {
 		this.model.classMethodVisibilities.set(
 			statement.name,
 			new Map(statement.methods.map(method => [method.name, method.visibility])),
+		)
+		this.model.classDiscriminantValues.set(
+			statement.name,
+			this.collectDiscriminantAssignments(statement),
 		)
 		if (statement.constructorDeclaration !== null) {
 			this.resolveConstructorDeclaration(statement.constructorDeclaration, binding, baseBinding)
@@ -361,7 +367,7 @@ class Resolver {
 			case 'MatchByExpression':
 				this.resolveExpression(expression.subject)
 				for (const branch of expression.branches) {
-					this.resolveExpression(branch.value)
+					this.resolveMatchByBranchValue(expression, branch.pattern.value, branch.value)
 				}
 				this.resolveExpression(expression.defaultValue)
 				return
@@ -416,6 +422,37 @@ class Resolver {
 		}
 		this.leaveScope()
 		this.leaveFunction(expression)
+	}
+
+	private resolveMatchByBranchValue(
+		expression: Extract<ExpressionNode, {type: 'MatchByExpression'}>,
+		patternValue: string | number | boolean | null,
+		branchValue: ExpressionNode,
+	): void {
+		if (expression.subject.type !== 'IdentifierExpression') {
+			this.resolveExpression(branchValue)
+			return
+		}
+		const originalBinding = this.model.identifierBindings.get(expression.subject)
+		if (originalBinding === undefined) {
+			this.resolveExpression(branchValue)
+			return
+		}
+		const narrowedType = this.inferMatchByNarrowedType(originalBinding, expression.discriminant, patternValue)
+		if (narrowedType === null) {
+			this.resolveExpression(branchValue)
+			return
+		}
+
+		this.enterScope()
+		this.declare(expression.subject.name, {
+			kind: 'narrowed',
+			original: originalBinding,
+			name: expression.subject.name,
+			type: narrowedType,
+		})
+		this.resolveExpression(branchValue)
+		this.leaveScope()
 	}
 
 	private resolveBlock(statements: StatementNode[]): void {
@@ -481,6 +518,100 @@ class Resolver {
 		this.recordBindingOwner(binding)
 
 		return binding
+	}
+
+	private inferMatchByNarrowedType(
+		binding: SemanticBinding,
+		discriminant: string,
+		patternValue: string | number | boolean | null,
+	): ReturnType<typeof parseSemanticType> | null {
+		const bindingType = this.getBindingDeclaredType(binding)
+		if (bindingType.kind !== 'class') {
+			return null
+		}
+
+		const matchingClasses = [...this.model.classFieldTypes.keys()].filter(className =>
+			this.isSubclassOrSame(className, bindingType.name)
+			&& this.getDiscriminantValue(className, discriminant) === patternValue,
+		)
+
+		if (matchingClasses.length !== 1) {
+			return null
+		}
+
+		return parseSemanticType(matchingClasses[0])
+	}
+
+	private getBindingDeclaredType(binding: SemanticBinding): ReturnType<typeof parseSemanticType> {
+		switch (binding.kind) {
+			case 'variable':
+				return parseSemanticType(binding.declaration.typeName)
+			case 'parameter':
+				return binding.type
+			case 'class':
+				return parseSemanticType(binding.declaration.name)
+			case 'narrowed':
+				return binding.type
+			default:
+				return parseSemanticType('any')
+		}
+	}
+
+	private getDiscriminantValue(
+		className: string,
+		discriminant: string,
+	): string | number | boolean | null | undefined {
+		const ownValue = this.model.classDiscriminantValues.get(className)?.get(discriminant)
+		if (ownValue !== undefined) {
+			return ownValue
+		}
+		const baseName = this.model.classBaseNames.get(className) ?? null
+		return baseName === null
+			? undefined
+			: this.getDiscriminantValue(baseName, discriminant)
+	}
+
+	private isSubclassOrSame(className: string, targetBaseName: string): boolean {
+		if (className === targetBaseName) {
+			return true
+		}
+		let current = this.model.classBaseNames.get(className) ?? null
+		while (current !== null) {
+			if (current === targetBaseName) {
+				return true
+			}
+			current = this.model.classBaseNames.get(current) ?? null
+		}
+		return false
+	}
+
+	private collectDiscriminantAssignments(
+		statement: ClassDeclarationNode,
+	): Map<string, string | number | boolean | null> {
+		const assignments = new Map<string, string | number | boolean | null>()
+		const constructorDeclaration = statement.constructorDeclaration
+		if (constructorDeclaration === null) {
+			return assignments
+		}
+		for (const bodyStatement of constructorDeclaration.body.statements) {
+			if (bodyStatement.type !== 'AssignmentStatement') {
+				continue
+			}
+			if (bodyStatement.target.type !== 'MemberTarget') {
+				continue
+			}
+			if (
+				bodyStatement.target.object.type !== 'IdentifierExpression'
+				|| bodyStatement.target.object.name !== 'self'
+			) {
+				continue
+			}
+			if (bodyStatement.value.type !== 'LiteralExpression') {
+				continue
+			}
+			assignments.set(bodyStatement.target.property, bodyStatement.value.value)
+		}
+		return assignments
 	}
 
 	private recordBindingOwner(binding: OwnedSemanticBinding): void {

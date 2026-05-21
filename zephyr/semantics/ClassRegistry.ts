@@ -48,6 +48,30 @@ class ClassRegistry {
 		return this.getClassInfo(className)?.baseClassName ?? null
 	}
 
+	getNarrowedTypeByDiscriminant(
+		subjectType: SemanticType,
+		discriminant: string,
+		patternValue: string | number | boolean | null,
+	): SemanticType | null {
+		if (subjectType.kind !== 'class') {
+			return null
+		}
+		const matchingClasses = [...this.model.classFieldTypes.keys()].filter(className =>
+			this.isSubclassOf({
+				kind: 'class',
+				name: className,
+			}, subjectType)
+			&& this.getDiscriminantValue(className, discriminant) === patternValue,
+		)
+		if (matchingClasses.length !== 1) {
+			return null
+		}
+		return {
+			kind: 'class',
+			name: matchingClasses[0],
+		}
+	}
+
 	getConstructorParameterTypes(className: string): SemanticType[] {
 		return this.getClassInfo(className)?.constructorParameterTypes ?? []
 	}
@@ -218,6 +242,20 @@ class ClassRegistry {
 			current = this.getBaseClassName(current)
 		}
 		return false
+	}
+
+	private getDiscriminantValue(
+		className: string,
+		discriminant: string,
+	): string | number | boolean | null | undefined {
+		const ownValue = this.model.classDiscriminantValues.get(className)?.get(discriminant)
+		if (ownValue !== undefined) {
+			return ownValue
+		}
+		const baseClassName = this.getBaseClassName(className)
+		return baseClassName === null
+			? undefined
+			: this.getDiscriminantValue(baseClassName, discriminant)
 	}
 }
 
