@@ -37,6 +37,10 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 	switch (productionKey(production)) {
 		case 'Expression -> AssignmentExpression':
 		case 'Expression -> LambdaExpression':
+		case 'Expression -> PipelineExpression':
+		case 'PipelineExpression -> AssignmentExpression':
+		case 'PipelineStage -> LambdaExpression':
+		case 'PipelineStage -> PostfixExpression':
 		case 'AssignmentExpression -> CoalesceExpression':
 		case 'CoalesceExpression -> OrExpression':
 		case 'OrExpression -> AndExpression':
@@ -51,6 +55,8 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 		case 'ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt':
 			return values => values[0]
 
+		case 'PipelineExpression -> PipelineExpression ThinArrow PipelineStage':
+			return values => createPipelineCall(values[0], values[2])
 		case 'AssignmentExpression -> PostfixExpression Equal AssignmentExpression':
 			return values => ({
 				type: 'PendingAssignment',
@@ -342,6 +348,25 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 
 		default:
 			return null
+	}
+}
+
+function createPipelineCall(left: unknown, stage: unknown): CallExpressionNode {
+	const input = ensureExpression(left as ExpressionNode, 'pipeline input')
+	const target = ensureExpression(stage as ExpressionNode, 'pipeline stage')
+
+	if (target.type === 'CallExpression') {
+		return {
+			type: 'CallExpression',
+			callee: target.callee,
+			args: [input, ...target.args],
+		}
+	}
+
+	return {
+		type: 'CallExpression',
+		callee: target,
+		args: [input],
 	}
 }
 

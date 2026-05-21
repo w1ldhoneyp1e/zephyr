@@ -255,6 +255,7 @@ const TERMINAL_ALIASES = new Map<string, TokenType>([
 	[':', TokenType.Colon],
 	['+', TokenType.Plus],
 	['-', TokenType.Minus],
+	['->', TokenType.ThinArrow],
 	['*', TokenType.Star],
 	['/', TokenType.Slash],
 	['%', TokenType.Percent],

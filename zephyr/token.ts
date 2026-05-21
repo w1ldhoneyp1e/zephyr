@@ -11,6 +11,7 @@ enum TokenType {
 	Colon = 'Colon',
 	Plus = 'Plus',
 	Minus = 'Minus',
+	ThinArrow = 'ThinArrow',
 	Star = 'Star',
 	Slash = 'Slash',
 	Percent = 'Percent',

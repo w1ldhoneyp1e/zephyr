@@ -141,6 +141,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '9',
 	},
 	{
+		name: 'pipeline_expression',
+		file: 'pipeline_expression.zph',
+		expectedReturn: '18',
+	},
+	{
+		name: 'pipeline_lambda_expression',
+		file: 'pipeline_lambda_expression.zph',
+		expectedReturn: '28',
+	},
+	{
 		name: 'modules_basic',
 		file: 'modules/main.zph',
 		expectedReturn: '8',

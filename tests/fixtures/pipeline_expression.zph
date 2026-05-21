@@ -1,0 +1,11 @@
+fn inc(x: number): number {
+	return x + 1;
+}
+
+fn mul(x: number, y: number): number {
+	return x * y;
+}
+
+return 5
+	-> inc
+	-> mul(3);

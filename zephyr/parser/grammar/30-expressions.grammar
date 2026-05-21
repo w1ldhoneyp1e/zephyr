@@ -1,6 +1,8 @@
 ExpressionStatement -> Expression ';'
 
-Expression -> LambdaExpression | AssignmentExpression
+Expression -> LambdaExpression | PipelineExpression
+PipelineExpression -> PipelineExpression '->' PipelineStage | AssignmentExpression
+PipelineStage -> LambdaExpression | PostfixExpression
 AssignmentExpression -> PostfixExpression '=' AssignmentExpression | CoalesceExpression
 CoalesceExpression -> CoalesceExpression '??' OrExpression | OrExpression
 OrExpression -> OrExpression '||' AndExpression | AndExpression

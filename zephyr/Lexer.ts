@@ -124,7 +124,9 @@ class Lexer {
 				this.addToken(TokenType.Plus)
 				break
 			case '-':
-				this.addToken(TokenType.Minus)
+				this.addToken(this.match('>')
+					? TokenType.ThinArrow
+					: TokenType.Minus)
 				break
 			case '*':
 				this.addToken(TokenType.Star)
