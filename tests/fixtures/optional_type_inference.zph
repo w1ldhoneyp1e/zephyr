@@ -1,0 +1,18 @@
+class Box {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn get(): number {
+		return self.value;
+	}
+}
+
+var box: Box | null = Box(4);
+var values: number[] | null = [1, 2, 3];
+var fromBox: number = box?.get() ?? 0;
+var fromArray: number = values?[1] ?? 0;
+
+return fromBox + fromArray;

@@ -9,8 +9,10 @@ import {
 	classType,
 	formatSemanticType,
 	functionType,
+	hasNullType,
 	parseSemanticType,
 	primitiveType,
+	removeNullFromType,
 	semanticTypesEqual,
 	unionType,
 } from '../SemanticType'
@@ -57,7 +59,9 @@ class TypeAnalyzer {
 					const rightType = this.inferExpressionType(expression.right)
 					return leftType.kind === 'primitive' && leftType.name === 'null'
 						? rightType
-						: leftType
+						: hasNullType(leftType)
+							? unionType([removeNullFromType(leftType), rightType])
+							: leftType
 				}
 				if (expression.operator === '+') {
 					const leftType = this.inferExpressionType(expression.left)
@@ -90,15 +94,22 @@ class TypeAnalyzer {
 					this.inferExpressionType(expression.defaultValue),
 				])
 			case 'IndexExpression':
-			case 'OptionalIndexExpression':
 				return this.getIndexedElementType(this.inferExpressionType(expression.object))
+			case 'OptionalIndexExpression':
+				return unionType([
+					this.getIndexedElementType(removeNullFromType(this.inferExpressionType(expression.object))),
+					primitiveType('null'),
+				])
 			case 'MemberExpression': {
 				const objectType = this.inferExpressionType(expression.object)
 				return this.classRegistry.getPropertyType(objectType, expression.property)
 			}
 			case 'OptionalMemberExpression': {
-				const objectType = this.inferExpressionType(expression.object)
-				return this.classRegistry.getPropertyType(objectType, expression.property)
+				const objectType = removeNullFromType(this.inferExpressionType(expression.object))
+				return unionType([
+					this.classRegistry.getPropertyType(objectType, expression.property),
+					primitiveType('null'),
+				])
 			}
 			case 'CallExpression':
 				if (expression.callee.type === 'IdentifierExpression') {

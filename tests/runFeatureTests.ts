@@ -78,6 +78,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '3',
 	},
 	{
+		name: 'optional_type_inference',
+		file: 'optional_type_inference.zph',
+		expectedReturn: '6',
+	},
+	{
 		name: 'loop_control',
 		file: 'loop_control.zph',
 		expectedReturn: '8',
@@ -214,6 +219,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'null_member_access_error',
 		file: 'null_member_access_error.zph',
 		expectedError: 'Нельзя обращаться к члену get у nullable-типа Box | null',
+	},
+	{
+		name: 'optional_member_type_error',
+		file: 'optional_member_type_error.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number, получено number | null',
 	},
 	{
 		name: 'break_outside_loop_error',

@@ -107,6 +107,11 @@ function removeNullFromType(type: SemanticType): SemanticType {
 	))
 }
 
+function hasNullType(type: SemanticType): boolean {
+	return (type.kind === 'primitive' && type.name === 'null')
+		|| (type.kind === 'union' && type.types.some(hasNullType))
+}
+
 function formatSemanticType(type: SemanticType): string {
 	switch (type.kind) {
 		case 'any':
@@ -278,6 +283,7 @@ export {
 	classType,
 	formatSemanticType,
 	functionType,
+	hasNullType,
 	parseSemanticType,
 	primitiveType,
 	removeNullFromType,
