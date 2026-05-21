@@ -61,9 +61,9 @@ class CallValidator {
 		}
 
 		for (const [index, arg] of args.entries()) {
-			this.typeAnalyzer.assertTypeAssignable(
+			this.typeAnalyzer.assertExpressionAssignable(
 				expectedTypes[index],
-				this.typeAnalyzer.inferExpressionType(arg),
+				arg,
 				`${context}, аргумент ${index + 1}`,
 			)
 		}

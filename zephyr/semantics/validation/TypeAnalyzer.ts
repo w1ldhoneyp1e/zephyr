@@ -18,13 +18,15 @@ import {
 } from '../SemanticType'
 
 class TypeAnalyzer {
+	private readonly contextualParameterTypes = new WeakMap<SemanticBinding, SemanticType>()
+
 	constructor(
 		private readonly model: SemanticModel,
 		private readonly classRegistry: ClassRegistry,
 	) {
 	}
 
-	inferExpressionType(expression: ExpressionNode): SemanticType {
+	inferExpressionType(expression: ExpressionNode, expectedType: SemanticType | null = null): SemanticType {
 		switch (expression.type) {
 			case 'LiteralExpression':
 				if (expression.value === null) {
@@ -73,20 +75,20 @@ class TypeAnalyzer {
 				}
 				return primitiveType('number')
 			case 'ArrayExpression':
-				return this.inferArrayExpressionType(expression)
+				return this.inferArrayExpressionType(expression, expectedType)
 			case 'ChooseExpression':
 				return this.inferCommonType([
-					...expression.branches.map(branch => this.inferExpressionType(branch.value)),
-					this.inferExpressionType(expression.defaultValue),
+					...expression.branches.map(branch => this.inferExpressionType(branch.value, expectedType)),
+					this.inferExpressionType(expression.defaultValue, expectedType),
 				])
 			case 'CollectExpression':
 				return arrayType(this.inferCommonType(
 					expression.branches.map(branch => this.inferExpressionType(branch.value)),
 				))
 			case 'MatchExpression':
-				return this.inferCommonType(this.inferMatchResultTypes(expression))
+				return this.inferCommonType(this.inferMatchResultTypes(expression, expectedType))
 			case 'MatchByExpression':
-				return this.inferCommonType(this.inferMatchResultTypes(expression))
+				return this.inferCommonType(this.inferMatchResultTypes(expression, expectedType))
 			case 'IndexExpression':
 				return this.getIndexedElementType(this.inferExpressionType(expression.object))
 			case 'OptionalIndexExpression':
@@ -128,12 +130,7 @@ class TypeAnalyzer {
 				}
 				return anyType()
 			case 'LambdaExpression':
-				return functionType(
-					expression.params.map(param => this.resolveTypeName(param.typeName)),
-					expression.body.type === 'BlockStatement'
-						? this.inferBlockReturnType(expression.body.statements)
-						: this.inferExpressionType(expression.body),
-				)
+				return this.inferLambdaExpressionType(expression, expectedType)
 			default:
 				return anyType()
 		}
@@ -144,6 +141,10 @@ class TypeAnalyzer {
 			return
 		}
 		throw new Error(`Несовместимые типы в ${context}: ожидалось ${formatSemanticType(targetType)}, получено ${formatSemanticType(sourceType)}`)
+	}
+
+	assertExpressionAssignable(targetType: SemanticType, expression: ExpressionNode, context: string): void {
+		this.assertTypeAssignable(targetType, this.inferExpressionType(expression, targetType), context)
 	}
 
 	resolveTypeName(typeName: string): SemanticType {
@@ -180,7 +181,7 @@ class TypeAnalyzer {
 				this.resolveTypeName(value.declaration.returnTypeName),
 			),
 			narrowed: value => value.type,
-			parameter: value => value.type,
+			parameter: value => this.contextualParameterTypes.get(value) ?? value.type,
 			super: value => classType(value.baseClassBinding.declaration.name),
 			iterator: anyType(),
 			builtin: anyType(),
@@ -189,21 +190,76 @@ class TypeAnalyzer {
 
 	private inferArrayExpressionType(
 		expression: Extract<ExpressionNode, {type: 'ArrayExpression'}>,
+		expectedType: SemanticType | null,
 	): SemanticType {
-		return arrayType(this.inferCommonType(
-			expression.elements.map(element => this.inferExpressionType(element)),
-		))
+		if (expectedType?.kind === 'array') {
+			return arrayType(this.inferCommonType(
+				expression.elements.map(element => this.inferExpressionType(element, expectedType.elementType)),
+			))
+		}
+		return arrayType(this.inferCommonType(expression.elements.map(element => this.inferExpressionType(element))))
 	}
 
 	private inferMatchResultTypes(
 		expression: Extract<ExpressionNode, {type: 'MatchExpression' | 'MatchByExpression'}>,
+		expectedType: SemanticType | null,
 	): SemanticType[] {
 		return expression.defaultValue === null
-			? expression.branches.map(branch => this.inferExpressionType(branch.value))
+			? expression.branches.map(branch => this.inferExpressionType(branch.value, expectedType))
 			: [
-				...expression.branches.map(branch => this.inferExpressionType(branch.value)),
-				this.inferExpressionType(expression.defaultValue),
+				...expression.branches.map(branch => this.inferExpressionType(branch.value, expectedType)),
+				this.inferExpressionType(expression.defaultValue, expectedType),
 			]
+	}
+
+	private inferLambdaExpressionType(
+		expression: Extract<ExpressionNode, {type: 'LambdaExpression'}>,
+		expectedType: SemanticType | null,
+	): SemanticType {
+		const expectedFunctionType = expectedType?.kind === 'function'
+			? expectedType
+			: null
+		const parameterTypes = expression.params.map((param, index) => {
+			const explicitType = this.resolveTypeName(param.typeName)
+			return explicitType.kind === 'any'
+				? expectedFunctionType?.paramTypes[index] ?? explicitType
+				: explicitType
+		})
+		return this.withContextualParameterTypes(expression, parameterTypes, () => functionType(
+			parameterTypes,
+			expression.body.type === 'BlockStatement'
+				? this.inferBlockReturnType(expression.body.statements)
+				: this.inferExpressionType(expression.body, expectedFunctionType?.returnType ?? null),
+		))
+	}
+
+	private withContextualParameterTypes<TResult>(
+		expression: Extract<ExpressionNode, {type: 'LambdaExpression'}>,
+		types: SemanticType[],
+		callback: () => TResult,
+	): TResult {
+		const bindings = this.model.functionParameterBindings.get(expression) ?? []
+		const previousTypes = new Map<SemanticBinding, SemanticType | null>()
+		for (const [index, binding] of bindings.entries()) {
+			previousTypes.set(binding, this.contextualParameterTypes.get(binding) ?? null)
+			const type = types[index]
+			if (type !== undefined) {
+				this.contextualParameterTypes.set(binding, type)
+			}
+		}
+		try {
+			return callback()
+		}
+		finally {
+			for (const [binding, type] of previousTypes.entries()) {
+				if (type === null) {
+					this.contextualParameterTypes.delete(binding)
+				}
+				else {
+					this.contextualParameterTypes.set(binding, type)
+				}
+			}
+		}
 	}
 
 	private inferBlockReturnType(statements: StatementNode[]): SemanticType {

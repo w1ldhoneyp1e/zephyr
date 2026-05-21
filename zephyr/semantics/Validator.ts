@@ -54,9 +54,9 @@ class Validator {
 			case 'VariableDeclaration':
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer)
-					this.getTypeAnalyzer().assertTypeAssignable(
+					this.getTypeAnalyzer().assertExpressionAssignable(
 						this.getTypeAnalyzer().resolveTypeName(statement.typeName),
-						this.getTypeAnalyzer().inferExpressionType(statement.initializer),
+						statement.initializer,
 						`инициализатор переменной ${statement.name}`,
 					)
 				}
@@ -92,9 +92,9 @@ class Validator {
 						if (owner.type === 'LambdaExpression') {
 							return
 						}
-						this.getTypeAnalyzer().assertTypeAssignable(
+						this.getTypeAnalyzer().assertExpressionAssignable(
 							this.getTypeAnalyzer().resolveTypeName(owner.returnTypeName),
-							this.getTypeAnalyzer().inferExpressionType(statement.value),
+							statement.value,
 							`return в ${this.describeCallable(owner)}`,
 						)
 					}

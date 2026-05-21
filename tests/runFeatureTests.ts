@@ -186,6 +186,21 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '12',
 	},
 	{
+		name: 'contextual_lambda_argument',
+		file: 'contextual_lambda_argument.zph',
+		expectedReturn: '12',
+	},
+	{
+		name: 'contextual_lambda_variable',
+		file: 'contextual_lambda_variable.zph',
+		expectedReturn: '11',
+	},
+	{
+		name: 'contextual_lambda_return',
+		file: 'contextual_lambda_return.zph',
+		expectedReturn: '12',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',
@@ -279,6 +294,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'type_alias_mismatch_error',
 		file: 'type_alias_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
+	},
+	{
+		name: 'contextual_array_element_error',
+		file: 'contextual_array_element_error.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной values: ожидалось number[], получено (number | string)[]',
 	},
 ]
 

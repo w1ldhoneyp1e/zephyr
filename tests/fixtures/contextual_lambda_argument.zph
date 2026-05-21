@@ -1,0 +1,7 @@
+type Mapper = (number) => number;
+
+fn apply(value: number, mapper: Mapper): number {
+	return mapper(value);
+}
+
+return apply(8, (value) => value + 4);

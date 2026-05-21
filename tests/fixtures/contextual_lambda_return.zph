@@ -1,0 +1,7 @@
+fn createMapper(): (number) => number {
+	return (value) => value + 9;
+}
+
+var mapper: (number) => number = createMapper();
+
+return mapper(3);

@@ -1,0 +1,3 @@
+var mapper = (value) => value + 6;
+
+return mapper(5);
