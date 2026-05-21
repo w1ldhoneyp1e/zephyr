@@ -58,6 +58,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '3',
 	},
 	{
+		name: 'null_narrowing',
+		file: 'null_narrowing.zph',
+		expectedReturn: '12',
+	},
+	{
 		name: 'trailing_comma',
 		file: 'trailing_comma.zph',
 		expectedReturn: '4',

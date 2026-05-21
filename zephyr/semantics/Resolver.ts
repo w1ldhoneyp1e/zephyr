@@ -21,7 +21,13 @@ import {
 	type SemanticLoopOwner,
 	type SemanticModel,
 } from './context'
-import {parseSemanticType} from './SemanticType'
+import {parseSemanticType, removeNullFromType} from './SemanticType'
+
+interface NullCheckNarrowing {
+	name: string,
+	binding: SemanticBinding,
+	type: ReturnType<typeof parseSemanticType>,
+}
 
 class Resolver {
 	private scopes: {
@@ -115,9 +121,15 @@ class Resolver {
 				return
 			case 'IfStatement':
 				this.resolveExpression(statement.condition)
-				this.resolveBlock(statement.thenBranch.statements)
+				this.resolveConditionBlock(
+					statement.thenBranch.statements,
+					this.getNullCheckNarrowing(statement.condition, true),
+				)
 				if (statement.elseBranch !== null) {
-					this.resolveBlock(statement.elseBranch.statements)
+					this.resolveConditionBlock(
+						statement.elseBranch.statements,
+						this.getNullCheckNarrowing(statement.condition, false),
+					)
 				}
 				return
 			case 'WhileStatement':
@@ -461,6 +473,66 @@ class Resolver {
 			this.resolveStatement(statement)
 		}
 		this.leaveScope()
+	}
+
+	private resolveConditionBlock(statements: StatementNode[], narrowing: NullCheckNarrowing | null): void {
+		this.enterScope()
+		if (narrowing !== null) {
+			this.declare(narrowing.name, {
+				kind: 'narrowed',
+				original: narrowing.binding,
+				name: narrowing.name,
+				type: narrowing.type,
+			})
+		}
+		for (const statement of statements) {
+			this.resolveStatement(statement)
+		}
+		this.leaveScope()
+	}
+
+	private getNullCheckNarrowing(condition: ExpressionNode, truthyBranch: boolean): NullCheckNarrowing | null {
+		if (condition.type !== 'BinaryExpression') {
+			return null
+		}
+		if (condition.operator !== '!=' && condition.operator !== '==') {
+			return null
+		}
+		const identifier = this.getNullCheckIdentifier(condition.left, condition.right)
+		if (identifier === null) {
+			return null
+		}
+		const narrowsWhenTruthy = condition.operator === '!='
+		if (truthyBranch !== narrowsWhenTruthy) {
+			return null
+		}
+		const binding = this.model.identifierBindings.get(identifier)
+		if (binding === undefined) {
+			return null
+		}
+		const narrowedType = removeNullFromType(this.getBindingDeclaredType(binding))
+		return {
+			name: identifier.name,
+			binding,
+			type: narrowedType,
+		}
+	}
+
+	private getNullCheckIdentifier(
+		left: ExpressionNode,
+		right: ExpressionNode,
+	): IdentifierExpressionNode | null {
+		if (left.type === 'IdentifierExpression' && this.isNullLiteral(right)) {
+			return left
+		}
+		if (right.type === 'IdentifierExpression' && this.isNullLiteral(left)) {
+			return right
+		}
+		return null
+	}
+
+	private isNullLiteral(expression: ExpressionNode): boolean {
+		return expression.type === 'LiteralExpression' && expression.value === null
 	}
 
 	private resolveIdentifierExpression(expression: IdentifierExpressionNode): void {

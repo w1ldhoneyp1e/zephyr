@@ -1,0 +1,20 @@
+class Box {
+	value: number;
+
+	constructor(value: number) {
+		self.value = value;
+	}
+
+	fn get(): number {
+		return self.value;
+	}
+}
+
+fn readBox(box: Box | null): number {
+	if (box != null) {
+		return box.get();
+	}
+	return 0;
+}
+
+return readBox(Box(12));

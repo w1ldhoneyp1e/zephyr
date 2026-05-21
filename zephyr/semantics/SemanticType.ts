@@ -98,6 +98,15 @@ function unionType(types: SemanticType[]): SemanticType {
 		}
 }
 
+function removeNullFromType(type: SemanticType): SemanticType {
+	if (type.kind !== 'union') {
+		return type
+	}
+	return unionType(type.types.filter(item =>
+		!(item.kind === 'primitive' && item.name === 'null'),
+	))
+}
+
 function formatSemanticType(type: SemanticType): string {
 	switch (type.kind) {
 		case 'any':
@@ -271,6 +280,7 @@ export {
 	functionType,
 	parseSemanticType,
 	primitiveType,
+	removeNullFromType,
 	type SemanticType,
 	semanticTypesEqual,
 	unionType,
