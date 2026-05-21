@@ -58,16 +58,8 @@ class ClassRegistry {
 		discriminant: string,
 		patternValue: string | number | boolean | null,
 	): SemanticType | null {
-		if (subjectType.kind !== 'class') {
-			return null
-		}
-		const matchingClasses = [...this.model.classFieldTypes.keys()].filter(className =>
-			this.isSubclassOf({
-				kind: 'class',
-				name: className,
-			}, subjectType)
-			&& this.getDiscriminantValue(className, discriminant) === patternValue,
-		)
+		const matchingClasses = this.getDiscriminantCandidateClassNames(subjectType)
+			.filter(className => this.getDiscriminantValue(className, discriminant) === patternValue)
 		if (matchingClasses.length !== 1) {
 			return null
 		}
@@ -81,17 +73,8 @@ class ClassRegistry {
 		subjectType: SemanticType,
 		discriminant: string,
 	): ClassDiscriminantVariant[] {
-		if (subjectType.kind !== 'class') {
-			return []
-		}
 		const variants = new Map<string, ClassDiscriminantVariant>()
-		for (const className of this.model.classFieldTypes.keys()) {
-			if (!this.isSubclassOf({
-				kind: 'class',
-				name: className,
-			}, subjectType)) {
-				continue
-			}
+		for (const className of this.getDiscriminantCandidateClassNames(subjectType)) {
 			const value = this.getDiscriminantValue(className, discriminant)
 			if (value === undefined) {
 				continue
@@ -102,6 +85,23 @@ class ClassRegistry {
 			})
 		}
 		return [...variants.values()]
+	}
+
+	private getDiscriminantCandidateClassNames(subjectType: SemanticType): string[] {
+		if (subjectType.kind === 'class') {
+			return [...this.model.classFieldTypes.keys()].filter(className =>
+				this.isSubclassOf({
+					kind: 'class',
+					name: className,
+				}, subjectType),
+			)
+		}
+		if (subjectType.kind === 'union') {
+			return subjectType.types
+				.filter((type): type is Extract<SemanticType, {kind: 'class'}> => type.kind === 'class')
+				.map(type => type.name)
+		}
+		return []
 	}
 
 	getConstructorParameterTypes(className: string): SemanticType[] {

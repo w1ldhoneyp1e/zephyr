@@ -161,6 +161,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '11',
 	},
 	{
+		name: 'match_by_union_exhaustive',
+		file: 'match_by_union_exhaustive.zph',
+		expectedReturn: '13',
+	},
+	{
 		name: 'pipeline_expression',
 		file: 'pipeline_expression.zph',
 		expectedReturn: '18',
@@ -243,6 +248,11 @@ const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'match_by_exhaustive_error',
 		file: 'match_by_exhaustive_error.zph',
+		expectedError: 'match by kind не покрывает варианты: cat',
+	},
+	{
+		name: 'match_by_union_exhaustive_error',
+		file: 'match_by_union_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',
 	},
 ]

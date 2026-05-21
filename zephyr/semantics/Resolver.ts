@@ -21,7 +21,11 @@ import {
 	type SemanticLoopOwner,
 	type SemanticModel,
 } from './context'
-import {parseSemanticType, removeNullFromType} from './SemanticType'
+import {
+	parseSemanticType,
+	removeNullFromType,
+	unionType,
+} from './SemanticType'
 
 interface NullCheckNarrowing {
 	name: string,
@@ -602,20 +606,29 @@ class Resolver {
 		patternValue: string | number | boolean | null,
 	): ReturnType<typeof parseSemanticType> | null {
 		const bindingType = this.getBindingDeclaredType(binding)
-		if (bindingType.kind !== 'class') {
+		const matchingClasses = this.getMatchByCandidateClassNames(bindingType)
+			.filter(className => this.getDiscriminantValue(className, discriminant) === patternValue)
+
+		if (matchingClasses.length === 0) {
 			return null
 		}
 
-		const matchingClasses = [...this.model.classFieldTypes.keys()].filter(className =>
-			this.isSubclassOrSame(className, bindingType.name)
-			&& this.getDiscriminantValue(className, discriminant) === patternValue,
-		)
+		return unionType(matchingClasses.map(className => parseSemanticType(className)))
+	}
 
-		if (matchingClasses.length !== 1) {
-			return null
+	private getMatchByCandidateClassNames(type: ReturnType<typeof parseSemanticType>): string[] {
+		if (type.kind === 'class') {
+			return [...this.model.classFieldTypes.keys()].filter(className =>
+				this.isSubclassOrSame(className, type.name),
+			)
 		}
-
-		return parseSemanticType(matchingClasses[0])
+		if (type.kind === 'union') {
+			return type.types
+				.filter((item): item is Extract<ReturnType<typeof parseSemanticType>, {kind: 'class'}> =>
+					item.kind === 'class')
+				.map(item => item.name)
+		}
+		return []
 	}
 
 	private getBindingDeclaredType(binding: SemanticBinding): ReturnType<typeof parseSemanticType> {
