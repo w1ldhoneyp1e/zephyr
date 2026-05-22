@@ -94,36 +94,36 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'print_stdout',
-		file: 'print_stdout.zph',
+		file: './io/print_stdout.zph',
 		expectedReturn: '0',
 		expectedStdout: 'line\n',
 	},
 	{
 		name: 'print_values_stdout',
-		file: 'print_values_stdout.zph',
+		file: './io/print_values_stdout.zph',
 		expectedReturn: '0',
 		expectedStdout: 'hello\n42\ntrue\nnull\n',
 	},
 	{
 		name: 'read_stdin',
-		file: 'read_stdin.zph',
+		file: './io/read_stdin.zph',
 		expectedReturn: 'input-value',
 		stdin: 'input-value',
 	},
 	{
 		name: 'read_and_readf',
-		file: 'read_and_readf.zph',
+		file: './io/read_and_readf.zph',
 		expectedReturn: '105',
 		stdin: '5',
 	},
 	{
 		name: 'readf_file',
-		file: 'readf_file.zph',
+		file: './io/readf_file.zph',
 		expectedReturn: 'file-value',
 	},
 	{
 		name: 'printf_file',
-		file: 'printf_file.zph',
+		file: './io/printf_file.zph',
 		expectedReturn: null,
 		expectedFile: {
 			path: '/tmp/zephyr_printf_fixture.txt',
