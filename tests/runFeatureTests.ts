@@ -148,17 +148,17 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'lambda_callback',
-		file: 'lambda_callback.zph',
+		file: './functions/lambda_callback.zph',
 		expectedReturn: '7',
 	},
 	{
 		name: 'lambda_capture',
-		file: 'lambda_capture.zph',
+		file: './functions/lambda_capture.zph',
 		expectedReturn: '7',
 	},
 	{
 		name: 'lambda_block_body',
-		file: 'lambda_block_body.zph',
+		file: './functions/lambda_block_body.zph',
 		expectedReturn: '7',
 	},
 	{
@@ -238,17 +238,17 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'contextual_lambda_argument',
-		file: 'contextual_lambda_argument.zph',
+		file: './functions/contextual_lambda_argument.zph',
 		expectedReturn: '12',
 	},
 	{
 		name: 'contextual_lambda_variable',
-		file: 'contextual_lambda_variable.zph',
+		file: './functions/contextual_lambda_variable.zph',
 		expectedReturn: '11',
 	},
 	{
 		name: 'contextual_lambda_return',
-		file: 'contextual_lambda_return.zph',
+		file: './functions/contextual_lambda_return.zph',
 		expectedReturn: '12',
 	},
 	{
@@ -323,12 +323,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'call_argument_type_mismatch_error',
-		file: 'call_argument_type_mismatch_error.zph',
+		file: './functions/call_argument_type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в вызов функции add, аргумент 2: ожидалось number, получено string',
 	},
 	{
 		name: 'call_arity_mismatch_error',
-		file: 'call_arity_mismatch_error.zph',
+		file: './functions/call_arity_mismatch_error.zph',
 		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
 	},
 	{
