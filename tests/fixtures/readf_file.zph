@@ -1,0 +1,2 @@
+printf("/tmp/zephyr_readf_file_fixture.txt", "file-value");
+return readf("/tmp/zephyr_readf_file_fixture.txt");

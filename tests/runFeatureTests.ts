@@ -1,3 +1,4 @@
+import * as fs from 'fs'
 import * as path from 'path'
 import {formatValue, Vm} from '../vm'
 import {Compiler} from '../zephyr/Compiler'
@@ -9,6 +10,10 @@ interface FeatureTestCase {
 	expectedStdout?: string,
 	stdin?: string | null,
 	expectedError?: string,
+	expectedFile?: {
+		path: string,
+		content: string,
+	},
 }
 
 const TEST_CASES: FeatureTestCase[] = [
@@ -94,10 +99,36 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedStdout: 'line\n',
 	},
 	{
+		name: 'print_values_stdout',
+		file: 'print_values_stdout.zph',
+		expectedReturn: '0',
+		expectedStdout: 'hello\n42\ntrue\nnull\n',
+	},
+	{
+		name: 'read_stdin',
+		file: 'read_stdin.zph',
+		expectedReturn: 'input-value',
+		stdin: 'input-value',
+	},
+	{
 		name: 'read_and_readf',
 		file: 'read_and_readf.zph',
 		expectedReturn: '105',
 		stdin: '5',
+	},
+	{
+		name: 'readf_file',
+		file: 'readf_file.zph',
+		expectedReturn: 'file-value',
+	},
+	{
+		name: 'printf_file',
+		file: 'printf_file.zph',
+		expectedReturn: null,
+		expectedFile: {
+			path: '/tmp/zephyr_printf_fixture.txt',
+			content: 'file-output',
+		},
 	},
 	{
 		name: 'typed_variables_and_fields',
@@ -396,6 +427,9 @@ function runTestCase(testCase: FeatureTestCase): void {
 	const fixturePath = path.resolve(__dirname, 'fixtures', testCase.file)
 	const compiler = new Compiler()
 	const writes: string[] = []
+	if (testCase.expectedFile !== undefined && fs.existsSync(testCase.expectedFile.path)) {
+		fs.unlinkSync(testCase.expectedFile.path)
+	}
 
 	try {
 		const programs = compiler.compilePath(fixturePath)
@@ -422,6 +456,15 @@ function runTestCase(testCase: FeatureTestCase): void {
 		const actualStdout = writes.join('')
 		if (actualStdout !== (testCase.expectedStdout ?? '')) {
 			throw new Error(`Неверный stdout. Ожидалось: ${JSON.stringify(testCase.expectedStdout ?? '')}, получено: ${JSON.stringify(actualStdout)}`)
+		}
+
+		if (testCase.expectedFile !== undefined) {
+			const actualContent = fs.existsSync(testCase.expectedFile.path)
+				? fs.readFileSync(testCase.expectedFile.path, 'utf-8')
+				: null
+			if (actualContent !== testCase.expectedFile.content) {
+				throw new Error(`Неверный файл ${testCase.expectedFile.path}. Ожидалось: ${JSON.stringify(testCase.expectedFile.content)}, получено: ${JSON.stringify(actualContent)}`)
+			}
 		}
 	}
 	catch (error) {

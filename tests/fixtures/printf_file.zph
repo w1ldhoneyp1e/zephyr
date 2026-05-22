@@ -1,0 +1,1 @@
+printf("/tmp/zephyr_printf_fixture.txt", "file-output");
