@@ -173,32 +173,32 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'match_expression',
-		file: 'match_expression.zph',
+		file: './match/match_expression.zph',
 		expectedReturn: '20',
 	},
 	{
 		name: 'match_by_expression',
-		file: 'match_by_expression.zph',
+		file: './match/match_by_expression.zph',
 		expectedReturn: '7',
 	},
 	{
 		name: 'match_by_narrowing',
-		file: 'match_by_narrowing.zph',
+		file: './match/match_by_narrowing.zph',
 		expectedReturn: '9',
 	},
 	{
 		name: 'match_by_exhaustive',
-		file: 'match_by_exhaustive.zph',
+		file: './match/match_by_exhaustive.zph',
 		expectedReturn: '11',
 	},
 	{
 		name: 'match_by_union_exhaustive',
-		file: 'match_by_union_exhaustive.zph',
+		file: './match/match_by_union_exhaustive.zph',
 		expectedReturn: '13',
 	},
 	{
 		name: 'match_by_ambiguous_discriminant',
-		file: 'match_by_ambiguous_discriminant.zph',
+		file: './match/match_by_ambiguous_discriminant.zph',
 		expectedReturn: '1',
 	},
 	{
@@ -368,22 +368,22 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'match_by_exhaustive_error',
-		file: 'match_by_exhaustive_error.zph',
+		file: './match/match_by_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',
 	},
 	{
 		name: 'match_by_union_exhaustive_error',
-		file: 'match_by_union_exhaustive_error.zph',
+		file: './match/match_by_union_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',
 	},
 	{
 		name: 'match_by_duplicate_branch_error',
-		file: 'match_by_duplicate_branch_error.zph',
+		file: './match/match_by_duplicate_branch_error.zph',
 		expectedError: 'match by kind содержит дублирующую ветку: dog',
 	},
 	{
 		name: 'match_by_impossible_branch_error',
-		file: 'match_by_impossible_branch_error.zph',
+		file: './match/match_by_impossible_branch_error.zph',
 		expectedError: 'match by kind содержит невозможную ветку: bird',
 	},
 	{
