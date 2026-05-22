@@ -19,27 +19,27 @@ interface FeatureTestCase {
 const TEST_CASES: FeatureTestCase[] = [
 	{
 		name: 'class_method',
-		file: 'class_method.zph',
+		file: './class/class_method.zph',
 		expectedReturn: '5',
 	},
 	{
 		name: 'class_field_assignment',
-		file: 'class_field_assignment.zph',
+		file: './class/class_field_assignment.zph',
 		expectedReturn: '15',
 	},
 	{
 		name: 'class_private_access_ok',
-		file: 'class_private_access_ok.zph',
+		file: './class/class_private_access_ok.zph',
 		expectedReturn: '5',
 	},
 	{
 		name: 'class_inheritance',
-		file: 'class_inheritance.zph',
+		file: './class/class_inheritance.zph',
 		expectedReturn: '9',
 	},
 	{
 		name: 'class_super_method',
-		file: 'class_super_method.zph',
+		file: './class/class_super_method.zph',
 		expectedReturn: '6',
 	},
 	{
@@ -363,7 +363,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'class_private_access_error',
-		file: 'class_private_access_error.zph',
+		file: './class/class_private_access_error.zph',
 		expectedError: 'Нельзя обращаться к private-члену Counter.value вне класса Counter',
 	},
 	{
