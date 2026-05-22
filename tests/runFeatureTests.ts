@@ -44,12 +44,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'matrix_read',
-		file: 'matrix_read.zph',
+		file: './collections/matrix_read.zph',
 		expectedReturn: '4',
 	},
 	{
 		name: 'matrix_write',
-		file: 'matrix_write.zph',
+		file: './collections/matrix_write.zph',
 		expectedReturn: '9',
 	},
 	{
