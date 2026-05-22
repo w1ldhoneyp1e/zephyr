@@ -253,27 +253,27 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'if_discriminant_narrowing',
-		file: 'if_discriminant_narrowing.zph',
+		file: './if/if_discriminant_narrowing.zph',
 		expectedReturn: '23',
 	},
 	{
 		name: 'if_discriminant_else_narrowing',
-		file: 'if_discriminant_else_narrowing.zph',
+		file: './if/if_discriminant_else_narrowing.zph',
 		expectedReturn: '29',
 	},
 	{
 		name: 'if_discriminant_not_equal_narrowing',
-		file: 'if_discriminant_not_equal_narrowing.zph',
+		file: './if/if_discriminant_not_equal_narrowing.zph',
 		expectedReturn: '31',
 	},
 	{
 		name: 'if_and_nullable_discriminant_narrowing',
-		file: 'if_and_nullable_discriminant_narrowing.zph',
+		file: './if/if_and_nullable_discriminant_narrowing.zph',
 		expectedReturn: '37',
 	},
 	{
 		name: 'if_or_else_nullable_discriminant_narrowing',
-		file: 'if_or_else_nullable_discriminant_narrowing.zph',
+		file: './if/if_or_else_nullable_discriminant_narrowing.zph',
 		expectedReturn: '41',
 	},
 	{
