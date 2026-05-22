@@ -54,12 +54,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'typed_arrays',
-		file: 'typed_arrays.zph',
+		file: './typification/typed_arrays.zph',
 		expectedReturn: '11',
 	},
 	{
 		name: 'union_types',
-		file: 'union_types.zph',
+		file: './typification/union_types.zph',
 		expectedReturn: '3',
 	},
 	{
@@ -132,18 +132,18 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'typed_variables_and_fields',
-		file: 'typed_variables_and_fields.zph',
+		file: './typification/typed_variables_and_fields.zph',
 		expectedReturn: '17',
 	},
 	{
 		name: 'typed_parameters_and_returns',
-		file: 'typed_parameters_and_returns.zph',
+		file: './typification/typed_parameters_and_returns.zph',
 		expectedReturn: null,
 		expectedStdout: '17\n',
 	},
 	{
 		name: 'typed_callback',
-		file: 'typed_callback.zph',
+		file: './typification/typed_callback.zph',
 		expectedReturn: '5',
 	},
 	{
@@ -203,27 +203,27 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'type_alias_union',
-		file: 'type_alias_union.zph',
+		file: './typification/type_alias_union.zph',
 		expectedReturn: '17',
 	},
 	{
 		name: 'type_alias_callback',
-		file: 'type_alias_callback.zph',
+		file: './typification/type_alias_callback.zph',
 		expectedReturn: '12',
 	},
 	{
 		name: 'type_alias_forward_reference',
-		file: 'type_alias_forward_reference.zph',
+		file: './typification/type_alias_forward_reference.zph',
 		expectedReturn: '19',
 	},
 	{
 		name: 'object_type_method_contract',
-		file: 'object_type_method_contract.zph',
+		file: './typification/object_type_method_contract.zph',
 		expectedReturn: '21',
 	},
 	{
 		name: 'object_type_field_contract',
-		file: 'object_type_field_contract.zph',
+		file: './typification/object_type_field_contract.zph',
 		expectedReturn: 'Ada',
 	},
 	{
@@ -308,7 +308,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'type_mismatch_error',
-		file: 'type_mismatch_error.zph',
+		file: './typification/type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной a: ожидалось number, получено string',
 	},
 	{
@@ -318,7 +318,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'return_type_mismatch_error',
-		file: 'return_type_mismatch_error.zph',
+		file: './typification/return_type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в return в функции bad: ожидалось number, получено string',
 	},
 	{
@@ -333,17 +333,17 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'typed_callback_mismatch_error',
-		file: 'typed_callback_mismatch_error.zph',
+		file: './typification/typed_callback_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в вызов функции apply, аргумент 1: ожидалось (number) => number, получено (string) => number',
 	},
 	{
 		name: 'typed_array_element_mismatch_error',
-		file: 'typed_array_element_mismatch_error.zph',
+		file: './typification/typed_array_element_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
 	},
 	{
 		name: 'union_type_mismatch_error',
-		file: 'union_type_mismatch_error.zph',
+		file: './typification/union_type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
 	},
 	{
@@ -388,22 +388,22 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'type_alias_mismatch_error',
-		file: 'type_alias_mismatch_error.zph',
+		file: './typification/type_alias_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
 	},
 	{
 		name: 'unknown_type_error',
-		file: 'unknown_type_error.zph',
+		file: './typification/unknown_type_error.zph',
 		expectedError: 'Неизвестный тип: Numbre',
 	},
 	{
 		name: 'unknown_type_alias_error',
-		file: 'unknown_type_alias_error.zph',
+		file: './typification/unknown_type_alias_error.zph',
 		expectedError: 'Неизвестный тип: MissingType',
 	},
 	{
 		name: 'type_alias_cycle_error',
-		file: 'type_alias_cycle_error.zph',
+		file: './typification/type_alias_cycle_error.zph',
 		expectedError: 'Циклический type alias',
 	},
 	{
@@ -413,12 +413,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'object_type_contract_error',
-		file: 'object_type_contract_error.zph',
+		file: './typification/object_type_contract_error.zph',
 		expectedError: 'отсутствует член score',
 	},
 	{
 		name: 'object_type_member_type_error',
-		file: 'object_type_member_type_error.zph',
+		file: './typification/object_type_member_type_error.zph',
 		expectedError: 'член score: ожидалось () => number, получено () => string',
 	},
 ]
