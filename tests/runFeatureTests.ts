@@ -69,22 +69,22 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'trailing_comma',
-		file: 'trailing_comma.zph',
+		file: './syntax-sugar/trailing_comma.zph',
 		expectedReturn: '4',
 	},
 	{
 		name: 'nullish_coalescing',
-		file: 'nullish_coalescing.zph',
+		file: './syntax-sugar/nullish_coalescing.zph',
 		expectedReturn: '7',
 	},
 	{
 		name: 'optional_chaining',
-		file: 'optional_chaining.zph',
+		file: './syntax-sugar/optional_chaining.zph',
 		expectedReturn: '3',
 	},
 	{
 		name: 'optional_type_inference',
-		file: 'optional_type_inference.zph',
+		file: './syntax-sugar/optional_type_inference.zph',
 		expectedReturn: '6',
 	},
 	{
@@ -163,12 +163,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'choose_expression',
-		file: 'choose_expression.zph',
+		file: './syntax-sugar/choose_expression.zph',
 		expectedReturn: '4',
 	},
 	{
 		name: 'collect_expression',
-		file: 'collect_expression.zph',
+		file: './syntax-sugar/collect_expression.zph',
 		expectedReturn: '3',
 	},
 	{
@@ -228,12 +228,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'parenthesized_union_array_type',
-		file: 'parenthesized_union_array_type.zph',
+		file: './syntax-sugar/parenthesized_union_array_type.zph',
 		expectedReturn: '7',
 	},
 	{
 		name: 'parenthesized_function_array_type',
-		file: 'parenthesized_function_array_type.zph',
+		file: './syntax-sugar/parenthesized_function_array_type.zph',
 		expectedReturn: '12',
 	},
 	{
@@ -288,12 +288,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'pipeline_expression',
-		file: 'pipeline_expression.zph',
+		file: './syntax-sugar/pipeline_expression.zph',
 		expectedReturn: '18',
 	},
 	{
 		name: 'pipeline_lambda_expression',
-		file: 'pipeline_lambda_expression.zph',
+		file: './syntax-sugar/pipeline_lambda_expression.zph',
 		expectedReturn: '28',
 	},
 	{
@@ -348,12 +348,12 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'null_member_access_error',
-		file: 'null_member_access_error.zph',
+		file: './syntax-sugar/null_member_access_error.zph',
 		expectedError: 'Нельзя обращаться к члену get у nullable-типа Box | null',
 	},
 	{
 		name: 'optional_member_type_error',
-		file: 'optional_member_type_error.zph',
+		file: './syntax-sugar/optional_member_type_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number, получено number | null',
 	},
 	{
