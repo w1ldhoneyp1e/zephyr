@@ -89,7 +89,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'loop_control',
-		file: 'loop_control.zph',
+		file: './loop/loop_control.zph',
 		expectedReturn: '8',
 	},
 	{
@@ -358,7 +358,7 @@ const TEST_CASES: FeatureTestCase[] = [
 	},
 	{
 		name: 'break_outside_loop_error',
-		file: 'break_outside_loop_error.zph',
+		file: './loop/break_outside_loop_error.zph',
 		expectedError: 'Нельзя использовать break вне цикла',
 	},
 	{
