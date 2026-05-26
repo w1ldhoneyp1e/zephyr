@@ -28,9 +28,13 @@ class ModuleLoader {
 		const entryPath = path.resolve(filePath)
 		const statements = this.flattenModule(entryPath, new Set(), [])
 
+		return this.createProgram(statements)
+	}
+
+	private createProgram(statements: StatementNode[]): ProgramNode {
 		return {
 			type: 'Program',
-			body: statements,
+			body: this.normalizeStatements(statements),
 		}
 	}
 

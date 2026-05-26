@@ -183,7 +183,7 @@ function main(): void {
 	const options = parseArgs(process.argv.slice(2))
 	const filePath = resolveInputPath(options.inputPath)
 	const compiler = new Compiler()
-	const programs = compiler.compilePath(filePath)
+	const programs = compiler.run(filePath)
 	if (options.emitBytecode) {
 		const outPath = options.outputPath === null
 			? defaultBytecodePath(filePath)

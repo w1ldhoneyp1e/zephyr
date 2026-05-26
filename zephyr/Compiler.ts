@@ -7,22 +7,16 @@ import {LalrAstParser} from './parser/LalrAstParser'
 import {Resolver, Validator} from './semantics'
 
 class Compiler {
-	compile(source: string): VmProgram[] {
-		return this.compileProgram(this.parseSource(source))
-	}
-
-	compilePath(filePath: string): VmProgram[] {
-		const loader = new ModuleLoader(source => this.parseSource(source))
+	run(filePath: string): VmProgram[] {
+		const loader = new ModuleLoader(this.parseSource)
 		const program = loader.loadEntryProgram(filePath)
 
 		return this.compileProgram(program)
 	}
 
 	private compileProgram(program: ProgramNode): VmProgram[] {
-		const loader = new ModuleLoader(source => this.parseSource(source))
-		const normalizedProgram = loader.normalizeProgram(program)
 		const resolver = new Resolver()
-		const {program: resolvedProgram, model} = resolver.resolveProgram(normalizedProgram)
+		const {program: resolvedProgram, model} = resolver.resolveProgram(program)
 		const validator = new Validator()
 		const validatedProgram = validator.validateProgram(resolvedProgram, model)
 		const generator = new BytecodeGenerator()
