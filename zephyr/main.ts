@@ -4,17 +4,21 @@ import {formatValue, Vm} from '../vm'
 import {
 	type ConstantPoolItem,
 	type Instruction,
-	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
 } from '../vm/types'
 import {Compiler} from './Compiler'
+import {match} from './utils'
 
 interface CliOptions {
 	inputPath: string,
 	emitBytecode: boolean,
 	outputPath: string | null,
 	runProgram: boolean,
+}
+
+interface CliParseState extends CliOptions {
+	skipNext: boolean,
 }
 
 function resolveInputPath(rawPath: string): string {
@@ -36,50 +40,68 @@ function parseArgs(args: string[]): CliOptions {
 	if (args.length === 0) {
 		throw new Error('Не передан путь к файлу')
 	}
-	let inputPath = ''
-	let emitBytecode = false
-	let outputPath: string | null = null
-	let runProgram = true
-	let idx = 0
-	while (idx < args.length) {
-		const arg = args[idx]
-		if (arg === '--emit-bc') {
-			emitBytecode = true
-			idx++
-			continue
-		}
-		if (arg === '--no-run') {
-			runProgram = false
-			idx++
-			continue
-		}
-		if (arg === '--out') {
-			const nextArg = args[idx + 1]
-			if (nextArg === undefined) {
-				throw new Error('Ожидался путь после --out')
-			}
-			outputPath = nextArg
-			idx += 2
-			continue
-		}
-		if (arg.startsWith('--')) {
-			throw new Error(`Неизвестный флаг: ${arg}`)
-		}
-		if (inputPath.length > 0) {
-			throw new Error('Передано больше одного входного файла')
-		}
-		inputPath = arg
-		idx++
+	const initialOptions: CliParseState = {
+		inputPath: '',
+		emitBytecode: false,
+		outputPath: null,
+		runProgram: true,
+		skipNext: false,
 	}
-	if (inputPath.length === 0) {
+
+	const parsed = args.reduce<CliParseState>((acc, arg, index, arr) => {
+		if (acc.skipNext) {
+			return {
+				...acc,
+				skipNext: false,
+			}
+		}
+
+		return match(arg, {
+			'--emit-bc': {
+				...acc,
+				emitBytecode: true,
+			},
+			'--no-run': {
+				...acc,
+				runProgram: false,
+			},
+			'--out': (() => {
+				const nextArg = arr[index + 1]
+				if (nextArg === undefined) {
+					throw new Error('Ожидался путь после --out')
+				}
+
+				return {
+					...acc,
+					outputPath: nextArg,
+					skipNext: true,
+				}
+			}),
+			input: (() => {
+				if (arg.startsWith('--')) {
+					throw new Error(`Неизвестный флаг: ${arg}`)
+				}
+				if (acc.inputPath.length > 0) {
+					throw new Error('Передано больше одного входного файла')
+				}
+
+				return {
+					...acc,
+					inputPath: arg,
+				}
+			}),
+		})
+	}, initialOptions)
+
+	if (parsed.inputPath.length === 0) {
 		throw new Error('Не передан путь к файлу')
 	}
 
 	return {
-		inputPath,
-		emitBytecode,
-		outputPath,
-		runProgram,
+		inputPath: parsed.inputPath,
+		emitBytecode: parsed.emitBytecode,
+		outputPath: parsed.outputPath,
+		runProgram: parsed.runProgram,
 	}
 }
 
@@ -171,7 +193,6 @@ function main(): void {
 		console.log(`Bytecode: ${outPath}`)
 	}
 	if (!options.runProgram) {
-
 		return
 	}
 	const vm = new Vm()
