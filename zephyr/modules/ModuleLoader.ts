@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {type ProgramNode, type StatementNode} from '../ast'
+import {match} from '../utils'
 
 interface ModuleDependency {
 	names: string[],
@@ -38,13 +39,6 @@ class ModuleLoader {
 		}
 	}
 
-	normalizeProgram(program: ProgramNode): ProgramNode {
-		return {
-			type: 'Program',
-			body: this.normalizeStatements(program.body),
-		}
-	}
-
 	private flattenModule(
 		filePath: string,
 		emitted: Set<string>,
@@ -53,13 +47,8 @@ class ModuleLoader {
 		if (emitted.has(filePath)) {
 			return []
 		}
-		const cycleStart = active.indexOf(filePath)
-		if (cycleStart !== -1) {
-			const cycle = [...active.slice(cycleStart), filePath]
-				.map(currentPath => this.formatModulePath(currentPath))
-				.join(' -> ')
-			throw new Error(`Циклический импорт: ${cycle}`)
-		}
+
+		this.checkCycling(filePath, active)
 
 		active.push(filePath)
 		const loaded = this.loadModule(filePath)
@@ -100,46 +89,47 @@ class ModuleLoader {
 		const availableNames = new Set<string>()
 
 		for (const statement of program.body) {
-			if (statement.type === 'ImportStatement') {
-				dependencies.push({
-					kind: 'import',
-					names: statement.names,
-					resolvedPath: this.resolveImportPath(filePath, statement.source),
-				})
-				for (const name of statement.names) {
-					availableNames.add(name)
-				}
-				continue
-			}
-			if (statement.type === 'ExportStatement') {
-				exports.add(statement.statement.name)
-				availableNames.add(statement.statement.name)
-				continue
-			}
-			if (statement.type === 'NamedExportStatement') {
-				for (const name of statement.names) {
-					exports.add(name)
-				}
-				if (statement.source !== null) {
+			match(statement, 'type', {
+				ImportStatement: stmnt => {
 					dependencies.push({
-						kind: 'reexport',
-						names: statement.names,
-						resolvedPath: this.resolveImportPath(filePath, statement.source),
+						kind: 'import',
+						names: stmnt.names,
+						resolvedPath: this.resolveImportPath(filePath, stmnt.source),
 					})
-					continue
-				}
-				for (const name of statement.names) {
-					if (!availableNames.has(name)) {
-						throw new Error(
-							`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
-						)
+					for (const name of stmnt.names) {
+						availableNames.add(name)
 					}
-				}
-				continue
-			}
-			if ('name' in statement) {
-				availableNames.add(statement.name)
-			}
+				},
+				ExportStatement: stmnt => {
+					exports.add(stmnt.statement.name)
+					availableNames.add(stmnt.statement.name)
+				},
+				NamedExportStatement: stmnt => {
+					for (const name of stmnt.names) {
+						exports.add(name)
+					}
+					if (stmnt.source !== null) {
+						dependencies.push({
+							kind: 'reexport',
+							names: stmnt.names,
+							resolvedPath: this.resolveImportPath(filePath, stmnt.source),
+						})
+						return
+					}
+					for (const name of stmnt.names) {
+						if (!availableNames.has(name)) {
+							throw new Error(
+								`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
+							)
+						}
+					}
+				},
+				default: stmnt => {
+					if ('name' in stmnt) {
+						availableNames.add(stmnt.name)
+					}
+				},
+			})
 		}
 
 		const loaded: LoadedModule = {
@@ -193,6 +183,19 @@ class ModuleLoader {
 			: 'импортирует'
 
 		return `Модуль ${this.formatModulePath(fromFilePath)} ${action} ${name} из ${this.formatModulePath(dependencyPath)}, но этот модуль его не экспортирует`
+	}
+
+	private checkCycling(
+		filePath: string,
+		active: string[],
+	) {
+		const cycleStartIdx = active.indexOf(filePath)
+		if (cycleStartIdx !== -1) {
+			const cycle = [...active.slice(cycleStartIdx), filePath]
+				.map(this.formatModulePath)
+				.join(' -> ')
+			throw new Error(`Циклический импорт: ${cycle}`)
+		}
 	}
 
 	private formatModulePath(filePath: string): string {
