@@ -108,19 +108,23 @@ class ModuleLoader {
 					for (const name of stmnt.names) {
 						exports.add(name)
 					}
-					if (stmnt.source !== null) {
+					const src = stmnt.source
+					const reexporting = src !== null
+
+					if (reexporting) {
 						dependencies.push({
 							kind: 'reexport',
 							names: stmnt.names,
-							resolvedPath: this.resolveImportPath(filePath, stmnt.source),
+							resolvedPath: this.resolveImportPath(filePath, source),
 						})
-						return
 					}
-					for (const name of stmnt.names) {
-						if (!availableNames.has(name)) {
-							throw new Error(
-								`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
-							)
+					else {
+						for (const name of stmnt.names) {
+							if (!availableNames.has(name)) {
+								throw new Error(
+									`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
+								)
+							}
 						}
 					}
 				},
