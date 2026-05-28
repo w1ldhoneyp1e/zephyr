@@ -328,6 +328,7 @@ class LalrGenerator {
 					result.add(value)
 				}
 			}
+			// Если есть EPSILON, значит нужно искать FIRST в след. нетерминале
 			if (!symbolFirst.has(EPSILON)) {
 				return result
 			}
