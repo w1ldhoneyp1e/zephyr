@@ -50,8 +50,9 @@ interface LalrState {
 }
 
 class LalrGenerator {
-	constructor(private readonly grammar: Grammar) {
-	}
+	private firstSetsCache: Map<SymbolName, Set<SymbolName>> | null = null
+
+	constructor(private readonly grammar: Grammar) {}
 
 	buildParsingTables(): ParsingTables {
 		const canonicalStates = this.buildCanonicalCollection()
@@ -210,7 +211,7 @@ class LalrGenerator {
 	}
 
 	private closure(items: LR1Item[]): LR1Item[] {
-		const firstSets = this.computeFirstSets()
+		const firstSets = this.getFirstSets()
 		const result = new Map<string, LR1Item>()
 		const queue = [...items]
 		for (const item of items) {
@@ -265,6 +266,14 @@ class LalrGenerator {
 		return moved.length === 0
 			? []
 			: this.closure(moved)
+	}
+
+	private getFirstSets(): Map<SymbolName, Set<SymbolName>> {
+		if (this.firstSetsCache === null) {
+			this.firstSetsCache = this.computeFirstSets()
+		}
+
+		return this.firstSetsCache
 	}
 
 	private computeFirstSets(): Map<SymbolName, Set<SymbolName>> {
