@@ -77,7 +77,7 @@ function parseArgs(args: string[]): CliOptions {
 					skipNext: true,
 				}
 			}),
-			input: (() => {
+			default: (() => {
 				if (arg.startsWith('--')) {
 					throw new Error(`Неизвестный флаг: ${arg}`)
 				}

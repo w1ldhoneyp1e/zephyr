@@ -7,6 +7,10 @@ import {LalrAstParser} from './parser/LalrAstParser'
 import {Resolver, Validator} from './semantics'
 
 class Compiler {
+	compilePath(filePath: string): VmProgram[] {
+		return this.run(filePath)
+	}
+
 	run(filePath: string): VmProgram[] {
 		const loader = new ModuleLoader(this.parseSource)
 		const program = loader.loadEntryProgram(filePath)

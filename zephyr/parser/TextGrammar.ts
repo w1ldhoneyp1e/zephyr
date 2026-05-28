@@ -6,17 +6,15 @@ import {
 	createGrammar,
 } from './grammar'
 
-interface TextGrammarOptions {
-	start?: string,
-	eof?: string,
-}
+const LINE_SEPARATOR_PATTERN = /\r?\n/
+const WHITESPACE_PATTERN = /\s/
 
-function parseGrammarText(source: string, options: TextGrammarOptions = {}): GrammarDefinition {
+function parseGrammarText(source: string): GrammarDefinition {
 	const productions: ProductionDefinition[] = []
-	let start = options.start
-	let eof = options.eof
+	let start = undefined
+	let eof = undefined
 
-	const lines = source.split(/\r?\n/)
+	const lines = source.split(LINE_SEPARATOR_PATTERN)
 	for (let idx = 0; idx < lines.length; idx++) {
 		const lineNumber = idx + 1
 		const line = stripComments(lines[idx]).trim()
@@ -84,8 +82,8 @@ function parseGrammarText(source: string, options: TextGrammarOptions = {}): Gra
 	}
 }
 
-function createGrammarFromText(source: string, options: TextGrammarOptions = {}): Grammar {
-	return createGrammar(parseGrammarText(source, options))
+function createGrammarFromText(source: string): Grammar {
+	return createGrammar(parseGrammarText(source))
 }
 
 function parseRhsSymbols(source: string, lineNumber: number): string[] {
@@ -105,19 +103,12 @@ function isEpsilon(symbol: string): boolean {
 }
 
 function stripComments(line: string): string {
-	const hashIndex = line.indexOf('#')
 	const slashIndex = line.indexOf('//')
-	if (hashIndex === -1 && slashIndex === -1) {
+	if (slashIndex === -1) {
 		return line
 	}
-	if (hashIndex === -1) {
-		return line.slice(0, slashIndex)
-	}
-	if (slashIndex === -1) {
-		return line.slice(0, hashIndex)
-	}
 
-	return line.slice(0, Math.min(hashIndex, slashIndex))
+	return line.slice(0, slashIndex)
 }
 
 function splitAlternatives(source: string): string[] {
@@ -182,7 +173,7 @@ function tokenizeRhs(source: string, lineNumber: number): string[] {
 			continue
 		}
 
-		if (/\s/.test(ch)) {
+		if (WHITESPACE_PATTERN.test(ch)) {
 			if (current.length > 0) {
 				tokens.push(current)
 				current = ''
@@ -280,7 +271,6 @@ const TERMINAL_ALIASES = new Map<string, TokenType>([
 ])
 
 export {
-	type TextGrammarOptions,
 	createGrammarFromText,
 	parseGrammarText,
 }

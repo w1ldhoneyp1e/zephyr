@@ -115,7 +115,7 @@ class ModuleLoader {
 						dependencies.push({
 							kind: 'reexport',
 							names: stmnt.names,
-							resolvedPath: this.resolveImportPath(filePath, source),
+							resolvedPath: this.resolveImportPath(filePath, src),
 						})
 					}
 					else {

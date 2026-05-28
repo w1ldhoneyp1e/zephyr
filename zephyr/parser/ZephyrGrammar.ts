@@ -20,19 +20,12 @@ function createCurrentZephyrGrammar(): Grammar {
 }
 
 function resolveGrammarDirectoryPath(): string {
-	const candidates = [
-		path.resolve(process.cwd(), 'zephyr/parser', GRAMMAR_DIRECTORY),
-		path.resolve(__dirname, GRAMMAR_DIRECTORY),
-		path.resolve(__dirname, '../../zephyr/parser', GRAMMAR_DIRECTORY),
-	]
-
-	for (const candidate of candidates) {
-		if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
-			return candidate
-		}
+	const grammarDirectoryPath = path.resolve(process.cwd(), 'zephyr/parser', GRAMMAR_DIRECTORY)
+	if (fs.existsSync(grammarDirectoryPath) && fs.statSync(grammarDirectoryPath).isDirectory()) {
+		return grammarDirectoryPath
 	}
 
-	throw new Error(`Не удалось найти grammar-директорию ${GRAMMAR_DIRECTORY}`)
+	throw new Error(`Не удалось найти grammar-директорию ${grammarDirectoryPath}`)
 }
 
 function readGrammarDirectory(grammarDirectoryPath: string): string {
