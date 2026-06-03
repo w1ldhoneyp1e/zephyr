@@ -2,6 +2,8 @@ import {type ParserAction, type ParsingTables} from './LalrGenerator'
 
 interface ParserToken<TTerminal extends string> {
 	type: TTerminal,
+	line?: number,
+	column?: number,
 }
 
 type SemanticAction<TResult = unknown> = (values: unknown[]) => TResult
@@ -31,7 +33,7 @@ class TableParser<TToken extends ParserToken<string>> {
 				const expected = Object.keys(this.tables.action[state]).sort()
 					.join(', ')
 				const tokenName = options.tokenToDebugName?.(token) ?? token.type
-				throw new Error(`Неожиданный токен ${tokenName}. Ожидалось: ${expected}`)
+				throw new Error(`Неожиданный токен ${tokenName}${this.formatTokenPosition(token)}. Ожидалось: ${expected}`)
 			}
 
 			if (action.kind === 'shift') {
@@ -66,6 +68,14 @@ class TableParser<TToken extends ParserToken<string>> {
 
 			return valueStack[0]
 		}
+	}
+
+	private formatTokenPosition(token: TToken): string {
+		if (token.line === undefined || token.column === undefined) {
+			return ''
+		}
+
+		return ` на строке ${token.line}, столбец ${token.column}`
 	}
 }
 
