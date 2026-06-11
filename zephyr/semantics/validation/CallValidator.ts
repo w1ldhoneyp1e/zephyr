@@ -43,6 +43,9 @@ class CallValidator {
 
 		if (expression.callee.type === 'MemberExpression' || expression.callee.type === 'OptionalMemberExpression') {
 			const objectType = this.typeAnalyzer.inferExpressionType(expression.callee.object)
+			if (objectType.kind === 'any') {
+				return
+			}
 			this.validateCallArguments(
 				expression.args,
 				this.classRegistry.getMethodParameterTypes(objectType, expression.callee.property),
