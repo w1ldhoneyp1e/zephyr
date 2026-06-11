@@ -9,6 +9,7 @@ class CallValidator {
 		private readonly model: SemanticModel,
 		private readonly classRegistry: ClassRegistry,
 		private readonly typeAnalyzer: TypeAnalyzer,
+		private readonly reportExpressionError: (error: unknown, expression: ExpressionNode) => void,
 	) {
 	}
 
@@ -64,11 +65,16 @@ class CallValidator {
 		}
 
 		for (const [index, arg] of args.entries()) {
-			this.typeAnalyzer.assertExpressionAssignable(
-				expectedTypes[index],
-				arg,
-				`${context}, аргумент ${index + 1}`,
-			)
+			try {
+				this.typeAnalyzer.assertExpressionAssignable(
+					expectedTypes[index],
+					arg,
+					`${context}, аргумент ${index + 1}`,
+				)
+			}
+			catch (error) {
+				this.reportExpressionError(error, arg)
+			}
 		}
 	}
 }

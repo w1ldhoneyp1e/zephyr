@@ -1,0 +1,10 @@
+class Broken {
+	value: number;
+	value: string;
+
+	fn bad(): number {
+		return "oops";
+	}
+}
+
+return 0;

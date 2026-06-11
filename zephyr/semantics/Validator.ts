@@ -38,7 +38,12 @@ class Validator {
 			this.classRegistry,
 			() => this.getCurrentClassName(),
 		)
-		this.callValidator = new CallValidator(model, this.classRegistry, this.typeAnalyzer)
+		this.callValidator = new CallValidator(
+			model,
+			this.classRegistry,
+			this.typeAnalyzer,
+			(error, expression) => this.reporter.reportError(error, this.nodeLocations.get(expression)),
+		)
 		this.assignmentValidator = new AssignmentValidator(
 			model,
 			this.typeAnalyzer,
@@ -83,19 +88,7 @@ class Validator {
 				this.validateCallableBody(statement)
 				return
 			case 'ClassDeclaration':
-				this.getClassValidator().assertValidBaseClass(statement)
-				this.getClassValidator().assertNoInheritanceCycle(statement.name)
-				this.getClassValidator().assertUniqueFieldNames(statement.fields)
-				this.getClassValidator().assertUniqueMethodNames(statement)
-				this.getClassValidator().assertNoMemberNameConflicts(statement)
-				this.currentClassStack.push(statement.name)
-				if (statement.constructorDeclaration !== null) {
-					this.validateCallableBody(statement.constructorDeclaration)
-				}
-				for (const method of statement.methods) {
-					this.validateCallableBody(method)
-				}
-				this.currentClassStack.pop()
+				this.validateClassDeclaration(statement)
 				return
 			case 'ReturnStatement':
 				if (statement.value !== null) {
@@ -149,6 +142,40 @@ class Validator {
 
 	private validateCallableBody(callable: CallableDeclarationNode): void {
 		this.getValidationWalker().walkCallableBody(callable)
+	}
+
+	private validateClassDeclaration(statement: Extract<StatementNode, {type: 'ClassDeclaration'}>): void {
+		const validator = this.getClassValidator()
+		this.reportClassDeclarationCheck(statement, () => validator.assertValidBaseClass(statement))
+		this.reportClassDeclarationCheck(statement, () => validator.assertNoInheritanceCycle(statement.name))
+		this.reportClassDeclarationCheck(statement, () => validator.assertUniqueFieldNames(statement.fields))
+		this.reportClassDeclarationCheck(statement, () => validator.assertUniqueMethodNames(statement))
+		this.reportClassDeclarationCheck(statement, () => validator.assertNoMemberNameConflicts(statement))
+
+		this.currentClassStack.push(statement.name)
+		try {
+			if (statement.constructorDeclaration !== null) {
+				this.validateCallableBody(statement.constructorDeclaration)
+			}
+			for (const method of statement.methods) {
+				this.validateCallableBody(method)
+			}
+		}
+		finally {
+			this.currentClassStack.pop()
+		}
+	}
+
+	private reportClassDeclarationCheck(
+		statement: Extract<StatementNode, {type: 'ClassDeclaration'}>,
+		check: () => void,
+	): void {
+		try {
+			check()
+		}
+		catch (error) {
+			this.reporter.reportError(error, this.nodeLocations.get(statement))
+		}
 	}
 
 	private validateExpression(expression: ExpressionNode): void {

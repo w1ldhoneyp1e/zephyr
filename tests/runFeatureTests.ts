@@ -328,6 +328,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Несовместимые типы в вызов функции add, аргумент 2: ожидалось number, получено string',
 	},
 	{
+		name: 'call_arguments_recovery',
+		file: './functions/call_arguments_recovery.zph',
+		expectedError: 'Несовместимые типы в вызов функции add, аргумент 2: ожидалось number, получено string',
+	},
+	{
 		name: 'call_arity_mismatch_error',
 		file: './functions/call_arity_mismatch_error.zph',
 		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
@@ -366,6 +371,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'class_private_access_error',
 		file: './class/class_private_access_error.zph',
 		expectedError: 'Нельзя обращаться к private-члену Counter.value вне класса Counter',
+	},
+	{
+		name: 'class_declaration_recovery',
+		file: './class/class_declaration_recovery.zph',
+		expectedError: 'Несовместимые типы в return в методе bad: ожидалось number, получено string',
 	},
 	{
 		name: 'match_by_exhaustive_error',
