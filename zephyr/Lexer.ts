@@ -1,3 +1,4 @@
+import {DiagnosticError} from './diagnostics'
 import {
 	type Token,
 	KEYWORDS,
@@ -14,7 +15,7 @@ class Lexer {
 	private tokenLine = 1
 	private tokenColumn = 1
 
-	constructor(source: string) {
+	constructor(source: string, private readonly sourceFile?: string) {
 		this.source = source
 	}
 
@@ -293,8 +294,12 @@ class Lexer {
 		return this.isAlpha(ch) || this.isDigit(ch)
 	}
 
-	private error(message: string): Error {
-		return new Error(`[${this.tokenLine}:${this.tokenColumn}] ${message}`)
+	private error(message: string): DiagnosticError {
+		return new DiagnosticError(message, {
+			filePath: this.sourceFile,
+			line: this.tokenLine,
+			column: this.tokenColumn,
+		})
 	}
 }
 

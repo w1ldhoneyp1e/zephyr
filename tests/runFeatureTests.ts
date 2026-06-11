@@ -74,6 +74,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '4',
 	},
 	{
+		name: 'lexer_error',
+		file: './syntax-sugar/lexer_error.zph',
+		expectedError: 'Незавершенная строка',
+	},
+	{
 		name: 'nullish_coalescing',
 		file: './syntax-sugar/nullish_coalescing.zph',
 		expectedReturn: '7',

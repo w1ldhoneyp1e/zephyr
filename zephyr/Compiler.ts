@@ -87,7 +87,7 @@ class Compiler {
 	}
 
 	private parseSource(source: string, filePath: string, context: CompilationContext): ProgramNode {
-		const lexer = new Lexer(source)
+		const lexer = new Lexer(source, filePath)
 		const tokens = lexer.scanTokens()
 		const parser = new LalrAstParser(tokens, filePath, context.nodeLocations)
 
