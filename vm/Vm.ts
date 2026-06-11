@@ -21,6 +21,13 @@ interface VmOptions {
 	writeLine?: (text: string) => void,
 }
 
+class VmRuntimeError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = 'VmRuntimeError'
+	}
+}
+
 class Vm {
 	private programs: VmProgram[] = []
 	private globals = new Map<string, Value>()
@@ -173,6 +180,9 @@ class Vm {
 	}
 
 	private wrapRuntimeError(error: unknown, location: VmSourceLocation | null): Error {
+		if (error instanceof VmRuntimeError) {
+			return error
+		}
 		const message = error instanceof Error
 			? error.message
 			: String(error)
@@ -185,7 +195,7 @@ class Vm {
 			? ''
 			: `${location.filePath}:`
 
-		return new Error(`${filePrefix}${location.line}:${location.column}: ${message}`)
+		return new VmRuntimeError(`${filePrefix}${location.line}:${location.column}: ${message}`)
 	}
 
 	private installBuiltins(): void {
