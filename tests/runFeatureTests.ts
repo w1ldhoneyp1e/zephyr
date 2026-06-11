@@ -423,6 +423,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Повторное объявление поля класса: score',
 	},
 	{
+		name: 'class_field_unknown_type_error',
+		file: './class/class_field_unknown_type_error.zph',
+		expectedError: '2:1: Неизвестный тип: MissingType',
+	},
+	{
 		name: 'match_by_exhaustive_error',
 		file: './match/match_by_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',

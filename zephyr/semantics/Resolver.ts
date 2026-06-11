@@ -1,6 +1,7 @@
 import {
 	type AssignmentTargetNode,
 	type ClassDeclarationNode,
+	type ClassFieldNode,
 	type ConstructorDeclarationNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
@@ -48,6 +49,7 @@ type DiagnosticNode =
 	| StatementNode
 	| ExpressionNode
 	| AssignmentTargetNode
+	| ClassFieldNode
 	| ParameterNode
 	| MethodDeclarationNode
 	| ConstructorDeclarationNode
@@ -266,7 +268,7 @@ class Resolver {
 		)
 		this.model.classFieldTypes.set(
 			statement.name,
-			new Map(statement.fields.map(field => [field.name, this.resolveTypeName(field.typeName, statement)])),
+			new Map(statement.fields.map(field => [field.name, this.resolveTypeName(field.typeName, field)])),
 		)
 		this.model.classFieldVisibilities.set(
 			statement.name,
