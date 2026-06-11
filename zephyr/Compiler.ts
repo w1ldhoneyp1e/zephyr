@@ -76,9 +76,6 @@ class Compiler {
 	private compileProgram(program: ProgramNode, context: CompilationContext): VmProgram[] {
 		const resolver = new Resolver(context.reporter, context.nodeLocations)
 		const {program: resolvedProgram, model} = resolver.resolveProgram(program)
-		if (context.reporter.hasErrors()) {
-			return []
-		}
 		const validator = new Validator(context.nodeLocations, context.reporter)
 		const validatedProgram = validator.validateProgram(resolvedProgram, model)
 		if (context.reporter.hasErrors()) {

@@ -448,6 +448,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неизвестная переменная: missingB',
 	},
 	{
+		name: 'resolver_validator_recovery',
+		file: './typification/resolver_validator_recovery.zph',
+		expectedError: 'Несовместимые типы в инициализатор переменной count: ожидалось number, получено string',
+	},
+	{
 		name: 'unknown_types_recovery',
 		file: './typification/unknown_types_recovery.zph',
 		expectedError: 'Неизвестный тип: MissingSecond',
