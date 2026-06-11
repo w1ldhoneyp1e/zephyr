@@ -13,6 +13,7 @@ import {AssignmentValidator} from './validation/AssignmentValidator'
 import {CallValidator} from './validation/CallValidator'
 import {ClassValidator} from './validation/ClassValidator'
 import {TypeAnalyzer} from './validation/TypeAnalyzer'
+import {ValidationDiagnostics} from './validation/ValidationDiagnostics'
 import {ValidationWalker} from './validation/ValidationWalker'
 
 class Validator {
@@ -23,6 +24,7 @@ class Validator {
 	private callValidator: CallValidator | null = null
 	private assignmentValidator: AssignmentValidator | null = null
 	private validationWalker: ValidationWalker | null = null
+	private validationDiagnostics: ValidationDiagnostics | null = null
 	private nullableGuards: string[] = []
 
 	constructor(
@@ -31,6 +33,7 @@ class Validator {
 	) {}
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
+		this.validationDiagnostics = new ValidationDiagnostics(this.reporter, this.nodeLocations)
 		this.classRegistry = new ClassRegistry(model)
 		this.typeAnalyzer = new TypeAnalyzer(model, this.classRegistry, this.reporter, this.nodeLocations)
 		this.classValidator = new ClassValidator(
@@ -42,14 +45,14 @@ class Validator {
 			model,
 			this.classRegistry,
 			this.typeAnalyzer,
-			(error, expression) => this.reporter.reportError(error, this.nodeLocations.get(expression)),
+			(error, expression) => this.getValidationDiagnostics().reportForExpression(error, expression),
 		)
 		this.assignmentValidator = new AssignmentValidator(
 			model,
 			this.typeAnalyzer,
 			this.classValidator,
 			expression => this.validateExpression(expression),
-			(error, statement) => this.reporter.reportError(error, this.nodeLocations.get(statement)),
+			(error, statement) => this.getValidationDiagnostics().reportForStatement(error, statement),
 		)
 		this.validationWalker = new ValidationWalker(
 			statement => this.validateStatement(statement, model),
@@ -63,12 +66,9 @@ class Validator {
 	}
 
 	private validateStatement(statement: StatementNode, model: SemanticModel): void {
-		try {
+		this.getValidationDiagnostics().runForStatement(statement, () => {
 			this.validateStatementCore(statement, model)
-		}
-		catch (error) {
-			this.reporter.reportError(error, this.nodeLocations.get(statement))
-		}
+		})
 	}
 
 	private validateStatementCore(statement: StatementNode, model: SemanticModel): void {
@@ -171,21 +171,13 @@ class Validator {
 		statement: Extract<StatementNode, {type: 'ClassDeclaration'}>,
 		check: () => void,
 	): void {
-		try {
-			check()
-		}
-		catch (error) {
-			this.reporter.reportError(error, this.nodeLocations.get(statement))
-		}
+		this.getValidationDiagnostics().runForStatement(statement, check)
 	}
 
 	private validateExpression(expression: ExpressionNode): void {
-		try {
+		this.getValidationDiagnostics().runForExpression(expression, () => {
 			this.validateExpressionCore(expression)
-		}
-		catch (error) {
-			this.reporter.reportError(error, this.nodeLocations.get(expression))
-		}
+		})
 	}
 
 	private validateExpressionCore(expression: ExpressionNode): void {
@@ -300,12 +292,7 @@ class Validator {
 	}
 
 	private reportExpressionCheck(expression: ExpressionNode, check: () => void): void {
-		try {
-			check()
-		}
-		catch (error) {
-			this.reporter.reportError(error, this.nodeLocations.get(expression))
-		}
+		this.getValidationDiagnostics().runForExpression(expression, check)
 	}
 
 	private validateBinaryExpression(expression: Extract<ExpressionNode, {type: 'BinaryExpression'}>): void {
@@ -449,6 +436,14 @@ class Validator {
 		}
 
 		return this.validationWalker
+	}
+
+	private getValidationDiagnostics(): ValidationDiagnostics {
+		if (this.validationDiagnostics === null) {
+			throw new Error('ValidationDiagnostics не инициализирован')
+		}
+
+		return this.validationDiagnostics
 	}
 
 	private describeCallable(callable: CallableDeclarationNode): string {
