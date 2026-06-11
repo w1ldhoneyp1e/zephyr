@@ -147,7 +147,7 @@ class Resolver {
 		this.model.statementLoopOwners.set(statement, this.getCurrentLoop())
 		switch (statement.type) {
 			case 'VariableDeclaration':
-				this.declare(statement.name, this.createVariableBinding(statement))
+				this.declare(statement.name, this.createVariableBinding(statement), statement)
 				if (statement.initializer !== null) {
 					this.resolveExpression(statement.initializer)
 				}
@@ -218,7 +218,7 @@ class Resolver {
 
 	private resolveFunctionDeclaration(statement: FunctionDeclarationNode): void {
 		const binding = this.createFunctionBinding(statement)
-		this.declare(statement.name, binding)
+		this.declare(statement.name, binding, statement)
 		this.resolveCallableDeclaration(statement)
 	}
 
@@ -228,7 +228,7 @@ class Resolver {
 			kind: 'builtin',
 			name: statement.name,
 		}
-		this.declare(statement.name, binding)
+		this.declare(statement.name, binding, statement)
 		this.model.declarationBindings.set(statement, binding)
 	}
 
@@ -246,7 +246,7 @@ class Resolver {
 
 	private resolveClassDeclaration(statement: ClassDeclarationNode): void {
 		const binding = this.createClassBinding(statement)
-		this.declare(statement.name, binding)
+		this.declare(statement.name, binding, statement)
 		const baseBinding = statement.baseClassName === null
 			? null
 			: this.resolveName(statement.baseClassName, statement)
@@ -378,7 +378,7 @@ class Resolver {
 				type: this.resolveTypeName(param.typeName, statement),
 			}
 			this.recordBindingOwner(parameterBinding)
-			this.declare(param.name, parameterBinding)
+			this.declare(param.name, parameterBinding, statement)
 			parameterBindings.push(parameterBinding)
 		}
 		this.model.functionParameterBindings.set(statement, parameterBindings)
@@ -410,7 +410,7 @@ class Resolver {
 		const binding = this.createIteratorBinding(statement)
 		this.enterLoop(statement)
 		this.enterScope()
-		this.declare(statement.iterator, binding)
+		this.declare(statement.iterator, binding, statement)
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
 		}
@@ -503,7 +503,7 @@ class Resolver {
 				type: this.resolveTypeName(param.typeName, expression),
 			}
 			this.recordBindingOwner(parameterBinding)
-			this.declare(param.name, parameterBinding)
+			this.declare(param.name, parameterBinding, expression)
 			parameterBindings.push(parameterBinding)
 		}
 		this.model.functionParameterBindings.set(expression, parameterBindings)
@@ -545,7 +545,7 @@ class Resolver {
 			original: originalBinding,
 			name: expression.subject.name,
 			type: narrowedType,
-		})
+		}, expression)
 		this.resolveExpression(branchValue)
 		this.leaveScope()
 	}
@@ -998,13 +998,14 @@ class Resolver {
 			: this.nodeLocations.get(node)
 	}
 
-	private declare(name: string, binding: SemanticBinding): void {
+	private declare(name: string, binding: SemanticBinding, node?: DiagnosticNode): void {
 		const currentScope = this.scopes[this.scopes.length - 1]
 		if (currentScope === undefined) {
 			throw new Error('Resolver: отсутствует текущий scope')
 		}
 		if (currentScope.bindings.has(name)) {
-			throw new Error(`Повторное объявление переменной: ${name}`)
+			this.reporter.error(`Повторное объявление переменной: ${name}`, this.getNodeLocation(node))
+			return
 		}
 		currentScope.bindings.set(name, binding)
 	}

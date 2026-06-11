@@ -413,6 +413,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неизвестный тип: MissingSecond',
 	},
 	{
+		name: 'duplicate_declarations_recovery',
+		file: './typification/duplicate_declarations_recovery.zph',
+		expectedError: 'Повторное объявление переменной: score',
+	},
+	{
 		name: 'type_alias_cycle_error',
 		file: './typification/type_alias_cycle_error.zph',
 		expectedError: 'Циклический type alias',
