@@ -1,0 +1,5 @@
+fn use(value: MissingType): number {
+	return 1;
+}
+
+return use(1);

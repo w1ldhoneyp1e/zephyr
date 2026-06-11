@@ -1,6 +1,7 @@
 import {
 	type ExpressionNode,
 	type FunctionDeclarationNode,
+	type ParameterNode,
 	type StatementNode,
 } from '../../ast'
 import {type DiagnosticReporter, type NodeLocations} from '../../diagnostics'
@@ -161,7 +162,7 @@ class TypeAnalyzer {
 		this.assertTypeAssignable(targetType, this.inferExpressionType(expression, targetType), context)
 	}
 
-	resolveTypeName(typeName: string, typeParams: string[] = [], node?: StatementNode | ExpressionNode): SemanticType {
+	resolveTypeName(typeName: string, typeParams: string[] = [], node?: StatementNode | ExpressionNode | ParameterNode): SemanticType {
 		try {
 			return parseSemanticType(
 				typeName,
@@ -186,7 +187,7 @@ class TypeAnalyzer {
 	getFunctionParameterTypes(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType[] {
 		const substitutions = this.inferTypeParameterSubstitutions(declaration, args)
 		return declaration.params.map(param =>
-			this.substituteTypeParameters(this.resolveTypeName(param.typeName, declaration.typeParams), substitutions),
+			this.substituteTypeParameters(this.resolveTypeName(param.typeName, declaration.typeParams, param), substitutions),
 		)
 	}
 
@@ -252,7 +253,7 @@ class TypeAnalyzer {
 			class: value => classType(value.declaration.name),
 			function: value => functionType(
 				value.declaration.params.map(param =>
-					this.resolveTypeName(param.typeName, value.declaration.typeParams),
+					this.resolveTypeName(param.typeName, value.declaration.typeParams, param),
 				),
 				this.resolveTypeName(value.declaration.returnTypeName, value.declaration.typeParams),
 			),
@@ -306,7 +307,7 @@ class TypeAnalyzer {
 			const arg = args[index]
 			if (arg !== undefined) {
 				this.collectTypeParameterSubstitutions(
-					this.resolveTypeName(param.typeName, declaration.typeParams),
+					this.resolveTypeName(param.typeName, declaration.typeParams, param),
 					this.inferExpressionType(arg),
 					substitutions,
 				)
@@ -355,7 +356,7 @@ class TypeAnalyzer {
 			? expectedType
 			: null
 		const parameterTypes = expression.params.map((param, index) => {
-			const explicitType = this.resolveTypeName(param.typeName)
+			const explicitType = this.resolveTypeName(param.typeName, [], param)
 			return explicitType.kind === 'any'
 				? expectedFunctionType?.paramTypes[index] ?? explicitType
 				: explicitType

@@ -5,6 +5,7 @@ type TypeName = string
 type ClassMemberVisibility = 'public' | 'private'
 
 interface ParameterNode {
+	type: 'Parameter',
 	name: string,
 	typeName: TypeName,
 }

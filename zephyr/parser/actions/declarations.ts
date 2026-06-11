@@ -210,6 +210,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			return values => [values[0] as ParameterNode]
 		case 'Parameter -> Identifier TypeAnnotationOpt':
 			return values => ({
+				type: 'Parameter',
 				name: tokenLexeme(values[0]),
 				typeName: createTypeName(values[1]),
 			} satisfies ParameterNode)

@@ -458,6 +458,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неизвестный тип: Numbre',
 	},
 	{
+		name: 'unknown_parameter_type_error',
+		file: './typification/unknown_parameter_type_error.zph',
+		expectedError: '1:8: Неизвестный тип: MissingType',
+	},
+	{
 		name: 'unknown_type_alias_error',
 		file: './typification/unknown_type_alias_error.zph',
 		expectedError: 'Неизвестный тип: MissingType',

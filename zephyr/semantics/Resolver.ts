@@ -9,6 +9,7 @@ import {
 	type IdentifierTargetNode,
 	type LambdaExpressionNode,
 	type MethodDeclarationNode,
+	type ParameterNode,
 	type ProgramNode,
 	type StatementNode,
 	type TypeAliasDeclarationNode,
@@ -47,6 +48,7 @@ type DiagnosticNode =
 	| StatementNode
 	| ExpressionNode
 	| AssignmentTargetNode
+	| ParameterNode
 	| MethodDeclarationNode
 	| ConstructorDeclarationNode
 
@@ -273,7 +275,7 @@ class Resolver {
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
 			statement.constructorDeclaration?.params.map(param =>
-				this.resolveTypeName(param.typeName, statement.constructorDeclaration ?? statement),
+				this.resolveTypeName(param.typeName, param),
 			) ?? [],
 		)
 		this.model.classMethodReturnTypes.set(
@@ -287,7 +289,7 @@ class Resolver {
 			statement.name,
 			new Map(statement.methods.map(method => [
 				method.name,
-				method.params.map(param => this.resolveTypeName(param.typeName, method)),
+				method.params.map(param => this.resolveTypeName(param.typeName, param)),
 			])),
 		)
 		this.model.classMethodVisibilities.set(
@@ -375,7 +377,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: index + parameterBindings.length,
 				name: param.name,
-				type: this.resolveTypeName(param.typeName, statement),
+				type: this.resolveTypeName(param.typeName, param),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding, statement)
@@ -500,7 +502,7 @@ class Resolver {
 				callableDeclaration: expression,
 				index,
 				name: param.name,
-				type: this.resolveTypeName(param.typeName, expression),
+				type: this.resolveTypeName(param.typeName, param),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding, expression)
