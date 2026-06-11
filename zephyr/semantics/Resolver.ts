@@ -30,6 +30,7 @@ import {
 	errorBinding,
 } from './context'
 import {
+	errorType,
 	parseSemanticType,
 	removeNullFromType,
 	typeParameterType,
@@ -42,7 +43,12 @@ interface ConditionNarrowing {
 	type: ReturnType<typeof parseSemanticType>,
 }
 
-type DiagnosticNode = StatementNode | ExpressionNode | AssignmentTargetNode
+type DiagnosticNode =
+	| StatementNode
+	| ExpressionNode
+	| AssignmentTargetNode
+	| MethodDeclarationNode
+	| ConstructorDeclarationNode
 
 class Resolver {
 	private scopes: {
@@ -217,7 +223,7 @@ class Resolver {
 	}
 
 	private resolveTypeAliasDeclaration(statement: TypeAliasDeclarationNode): void {
-		this.model.typeAliases.set(statement.name, this.resolveTypeName(statement.typeName))
+		this.model.typeAliases.set(statement.name, this.resolveTypeName(statement.typeName, statement))
 		const binding: SemanticBinding = {
 			kind: 'builtin',
 			name: statement.name,
@@ -258,7 +264,7 @@ class Resolver {
 		)
 		this.model.classFieldTypes.set(
 			statement.name,
-			new Map(statement.fields.map(field => [field.name, this.resolveTypeName(field.typeName)])),
+			new Map(statement.fields.map(field => [field.name, this.resolveTypeName(field.typeName, statement)])),
 		)
 		this.model.classFieldVisibilities.set(
 			statement.name,
@@ -266,17 +272,22 @@ class Resolver {
 		)
 		this.model.classConstructorParameterTypes.set(
 			statement.name,
-			statement.constructorDeclaration?.params.map(param => this.resolveTypeName(param.typeName)) ?? [],
+			statement.constructorDeclaration?.params.map(param =>
+				this.resolveTypeName(param.typeName, statement.constructorDeclaration ?? statement),
+			) ?? [],
 		)
 		this.model.classMethodReturnTypes.set(
 			statement.name,
-			new Map(statement.methods.map(method => [method.name, this.resolveTypeName(method.returnTypeName)])),
+			new Map(statement.methods.map(method => [
+				method.name,
+				this.resolveTypeName(method.returnTypeName, method),
+			])),
 		)
 		this.model.classMethodParameterTypes.set(
 			statement.name,
 			new Map(statement.methods.map(method => [
 				method.name,
-				method.params.map(param => this.resolveTypeName(param.typeName)),
+				method.params.map(param => this.resolveTypeName(param.typeName, method)),
 			])),
 		)
 		this.model.classMethodVisibilities.set(
@@ -364,7 +375,7 @@ class Resolver {
 				callableDeclaration: statement,
 				index: index + parameterBindings.length,
 				name: param.name,
-				type: this.resolveTypeName(param.typeName),
+				type: this.resolveTypeName(param.typeName, statement),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
@@ -489,7 +500,7 @@ class Resolver {
 				callableDeclaration: expression,
 				index,
 				name: param.name,
-				type: this.resolveTypeName(param.typeName),
+				type: this.resolveTypeName(param.typeName, expression),
 			}
 			this.recordBindingOwner(parameterBinding)
 			this.declare(param.name, parameterBinding)
@@ -824,16 +835,22 @@ class Resolver {
 		}
 	}
 
-	private resolveTypeName(typeName: string): ReturnType<typeof parseSemanticType> {
-		return parseSemanticType(
-			typeName,
-			name => this.isCurrentFunctionTypeParameter(name)
-				? typeParameterType(name)
-				: this.model.typeAliasNames.has(name)
-					? this.resolveTypeAliasByName(name)
-					: null,
-			name => this.isKnownTypeName(name),
-		)
+	private resolveTypeName(typeName: string, node?: DiagnosticNode): ReturnType<typeof parseSemanticType> {
+		try {
+			return parseSemanticType(
+				typeName,
+				name => this.isCurrentFunctionTypeParameter(name)
+					? typeParameterType(name)
+					: this.model.typeAliasNames.has(name)
+						? this.resolveTypeAliasByName(name)
+						: null,
+				name => this.isKnownTypeName(name),
+			)
+		}
+		catch (error) {
+			this.reporter.reportError(error, this.getNodeLocation(node))
+			return errorType()
+		}
 	}
 
 	private isKnownTypeName(name: string): boolean {
@@ -867,8 +884,13 @@ class Resolver {
 			throw new Error(`Циклический type alias: ${name}`)
 		}
 		this.resolvingTypeAliases.add(name)
-		const resolved = this.resolveTypeName(declaration.typeName)
-		this.resolvingTypeAliases.delete(name)
+		let resolved: ReturnType<typeof parseSemanticType>
+		try {
+			resolved = this.resolveTypeName(declaration.typeName, declaration)
+		}
+		finally {
+			this.resolvingTypeAliases.delete(name)
+		}
 		this.model.typeAliases.set(name, resolved)
 		return resolved
 	}

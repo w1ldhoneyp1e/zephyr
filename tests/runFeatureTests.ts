@@ -408,6 +408,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неизвестная переменная: missingB',
 	},
 	{
+		name: 'unknown_types_recovery',
+		file: './typification/unknown_types_recovery.zph',
+		expectedError: 'Неизвестный тип: MissingSecond',
+	},
+	{
 		name: 'type_alias_cycle_error',
 		file: './typification/type_alias_cycle_error.zph',
 		expectedError: 'Циклический type alias',
