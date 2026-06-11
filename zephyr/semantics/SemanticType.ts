@@ -4,6 +4,10 @@ interface AnySemanticType {
 	kind: 'any',
 }
 
+interface ErrorSemanticType {
+	kind: 'error',
+}
+
 interface PrimitiveSemanticType {
 	kind: 'primitive',
 	name: PrimitiveTypeName,
@@ -42,6 +46,7 @@ interface ObjectSemanticType {
 
 type SemanticType =
 	| AnySemanticType
+	| ErrorSemanticType
 	| PrimitiveSemanticType
 	| ClassSemanticType
 	| TypeParameterSemanticType
@@ -51,11 +56,16 @@ type SemanticType =
 	| ObjectSemanticType
 
 const ANY_TYPE: SemanticType = {kind: 'any'}
+const ERROR_TYPE: SemanticType = {kind: 'error'}
 type TypeAliasResolver = (name: string) => SemanticType | null
 type TypeNameValidator = (name: string) => boolean
 
 function anyType(): SemanticType {
 	return ANY_TYPE
+}
+
+function errorType(): SemanticType {
+	return ERROR_TYPE
 }
 
 function primitiveType(name: PrimitiveTypeName): SemanticType {
@@ -142,6 +152,8 @@ function hasNullType(type: SemanticType): boolean {
 
 function formatSemanticType(type: SemanticType): string {
 	switch (type.kind) {
+		case 'error':
+			return '<error>'
 		case 'any':
 			return 'any'
 		case 'primitive':
@@ -175,6 +187,8 @@ function semanticTypesEqual(left: SemanticType, right: SemanticType): boolean {
 	}
 
 	switch (left.kind) {
+		case 'error':
+			return true
 		case 'any':
 			return true
 		case 'primitive':
@@ -231,6 +245,9 @@ function parseSemanticType(
 	const normalized = typeName.trim()
 	if (normalized === '' || normalized === 'any') {
 		return anyType()
+	}
+	if (normalized === '<error>') {
+		return errorType()
 	}
 
 	let current = normalized
@@ -422,9 +439,11 @@ function splitTopLevelWithPositions(source: string, delimiter: string): {
 
 export {
 	ANY_TYPE,
+	ERROR_TYPE,
 	anyType,
 	arrayType,
 	classType,
+	errorType,
 	formatSemanticType,
 	functionType,
 	hasNullType,

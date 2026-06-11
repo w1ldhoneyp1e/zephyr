@@ -11,6 +11,7 @@ import {
 	anyType,
 	arrayType,
 	classType,
+	errorType,
 	formatSemanticType,
 	functionType,
 	hasNullType,
@@ -236,6 +237,7 @@ class TypeAnalyzer {
 			super: value => classType(value.baseClassBinding.declaration.name),
 			iterator: anyType(),
 			builtin: anyType(),
+			error: errorType(),
 		})
 	}
 

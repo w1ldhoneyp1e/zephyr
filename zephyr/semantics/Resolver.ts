@@ -917,7 +917,7 @@ class Resolver {
 	}
 
 	private recordCapture(binding: SemanticBinding): void {
-		if (binding.kind === 'builtin') {
+		if (binding.kind === 'builtin' || binding.kind === 'error') {
 			return
 		}
 		const currentFunction = this.getCurrentFunction()

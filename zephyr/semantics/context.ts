@@ -70,6 +70,11 @@ interface BuiltinSemanticBinding {
 	name: string,
 }
 
+interface ErrorSemanticBinding {
+	kind: 'error',
+	name: string,
+}
+
 type SemanticBinding =
 	| VariableSemanticBinding
 	| FunctionSemanticBinding
@@ -79,8 +84,9 @@ type SemanticBinding =
 	| SuperSemanticBinding
 	| IteratorSemanticBinding
 	| BuiltinSemanticBinding
+	| ErrorSemanticBinding
 
-type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding>
+type OwnedSemanticBinding = Exclude<SemanticBinding, BuiltinSemanticBinding | ErrorSemanticBinding>
 type CallableDeclarationNode =
 	| FunctionDeclarationNode
 	| MethodDeclarationNode
@@ -127,6 +133,7 @@ function getBindingName(binding: SemanticBinding): string {
 		iterator: value => value.name,
 		super: 'super',
 		builtin: value => value.name,
+		error: value => value.name,
 	})
 }
 
@@ -140,13 +147,23 @@ function isBindingMutable(binding: SemanticBinding): boolean {
 		function: false,
 		class: false,
 		builtin: false,
+		error: false,
 	})
+}
+
+function errorBinding(name: string): ErrorSemanticBinding {
+	return {
+		kind: 'error',
+		name,
+	}
 }
 
 export {
 	type BuiltinSemanticBinding,
 	type CallableDeclarationNode,
 	type ClassSemanticBinding,
+	errorBinding,
+	type ErrorSemanticBinding,
 	type FunctionSemanticBinding,
 	getBindingName,
 	isBindingMutable,
