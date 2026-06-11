@@ -1,0 +1,8 @@
+class Broken {
+	value: number;
+	value: string;
+	score: number;
+	score: string;
+}
+
+return 0;

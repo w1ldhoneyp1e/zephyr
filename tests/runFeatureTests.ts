@@ -393,6 +393,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Несовместимые типы в return в методе bad: ожидалось number, получено string',
 	},
 	{
+		name: 'class_duplicate_members_recovery',
+		file: './class/class_duplicate_members_recovery.zph',
+		expectedError: 'Повторное объявление поля класса: score',
+	},
+	{
 		name: 'match_by_exhaustive_error',
 		file: './match/match_by_exhaustive_error.zph',
 		expectedError: 'match by kind не покрывает варианты: cat',

@@ -34,32 +34,62 @@ class ClassValidator {
 	}
 
 	assertUniqueFieldNames(fields: ClassFieldNode[]): void {
-		const seen = new Set<string>()
-		for (const field of fields) {
-			if (seen.has(field.name)) {
-				throw new Error(`Повторное объявление поля класса: ${field.name}`)
-			}
-			seen.add(field.name)
+		const duplicateName = this.getDuplicateFieldNames(fields)[0]
+		if (duplicateName !== undefined) {
+			throw new Error(`Повторное объявление поля класса: ${duplicateName}`)
 		}
 	}
 
 	assertUniqueMethodNames(statement: ClassDeclarationNode): void {
-		const seen = new Set<string>()
-		for (const method of statement.methods) {
-			if (seen.has(method.name)) {
-				throw new Error(`Повторное объявление метода класса ${statement.name}: ${method.name}`)
-			}
-			seen.add(method.name)
+		const duplicateName = this.getDuplicateMethodNames(statement)[0]
+		if (duplicateName !== undefined) {
+			throw new Error(`Повторное объявление метода класса ${statement.name}: ${duplicateName}`)
 		}
 	}
 
 	assertNoMemberNameConflicts(statement: ClassDeclarationNode): void {
-		const fieldNames = new Set(statement.fields.map(field => field.name))
+		const conflictName = this.getMemberNameConflicts(statement)[0]
+		if (conflictName !== undefined) {
+			throw new Error(`Конфликт имени члена класса ${statement.name}: ${conflictName} объявлен и как поле, и как метод`)
+		}
+	}
+
+	getDuplicateFieldNames(fields: ClassFieldNode[]): string[] {
+		const seen = new Set<string>()
+		const duplicates: string[] = []
+		for (const field of fields) {
+			if (seen.has(field.name) && !duplicates.includes(field.name)) {
+				duplicates.push(field.name)
+			}
+			seen.add(field.name)
+		}
+
+		return duplicates
+	}
+
+	getDuplicateMethodNames(statement: ClassDeclarationNode): string[] {
+		const seen = new Set<string>()
+		const duplicates: string[] = []
 		for (const method of statement.methods) {
-			if (fieldNames.has(method.name)) {
-				throw new Error(`Конфликт имени члена класса ${statement.name}: ${method.name} объявлен и как поле, и как метод`)
+			if (seen.has(method.name) && !duplicates.includes(method.name)) {
+				duplicates.push(method.name)
+			}
+			seen.add(method.name)
+		}
+
+		return duplicates
+	}
+
+	getMemberNameConflicts(statement: ClassDeclarationNode): string[] {
+		const fieldNames = new Set(statement.fields.map(field => field.name))
+		const conflicts: string[] = []
+		for (const method of statement.methods) {
+			if (fieldNames.has(method.name) && !conflicts.includes(method.name)) {
+				conflicts.push(method.name)
 			}
 		}
+
+		return conflicts
 	}
 
 	assertClassMemberAccessible(
