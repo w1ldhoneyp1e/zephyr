@@ -1,0 +1,6 @@
+var items: number[] = collect {
+	1 => 10,
+	"bad" => 20,
+};
+
+return items[0];

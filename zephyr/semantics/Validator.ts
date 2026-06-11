@@ -230,9 +230,7 @@ class Validator {
 				return
 			case 'MatchExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
-				if (expression.defaultValue === null) {
-					throw new Error('match без ветки _ пока поддерживается только для exhaustive match by')
-				}
+				this.validateMatchExpression(expression)
 				return
 			case 'MatchByExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
@@ -241,33 +239,52 @@ class Validator {
 			case 'ChooseExpression':
 			case 'CollectExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
-				for (const branch of expression.branches) {
-					this.getTypeAnalyzer().assertTypeAssignable(
-						primitiveType('boolean'),
-						this.getTypeAnalyzer().inferExpressionType(branch.condition),
-						expression.type === 'ChooseExpression'
-							? 'условие choose'
-							: 'условие collect',
-					)
-				}
+				this.validateConditionalExpressionBranches(expression)
 				return
 			default:
 				throw new Error(`Validator: неподдерживаемое выражение: ${(expression as {type: string}).type}`)
 		}
 	}
 
+	private validateMatchExpression(expression: Extract<ExpressionNode, {type: 'MatchExpression'}>): void {
+		this.reportExpressionCheck(expression, () => {
+			if (expression.defaultValue === null) {
+				throw new Error('match без ветки _ пока поддерживается только для exhaustive match by')
+			}
+		})
+	}
+
+	private validateConditionalExpressionBranches(
+		expression: Extract<ExpressionNode, {type: 'ChooseExpression' | 'CollectExpression'}>,
+	): void {
+		for (const branch of expression.branches) {
+			this.reportExpressionCheck(branch.condition, () => {
+				this.getTypeAnalyzer().assertTypeAssignable(
+					primitiveType('boolean'),
+					this.getTypeAnalyzer().inferExpressionType(branch.condition),
+					expression.type === 'ChooseExpression'
+						? 'условие choose'
+						: 'условие collect',
+				)
+			})
+		}
+	}
+
 	private validateMatchByExhaustiveness(expression: MatchByExpressionNode): void {
 		const subjectType = this.getTypeAnalyzer().inferExpressionType(expression.subject)
 		const variants = this.getClassRegistry().getDiscriminantVariants(subjectType, expression.discriminant)
-		this.assertNoDuplicateMatchByBranches(expression)
+		this.reportDuplicateMatchByBranches(expression)
 		if (variants.length > 0) {
-			this.assertNoImpossibleMatchByBranches(expression, variants)
+			this.reportImpossibleMatchByBranches(expression, variants)
 		}
 		if (expression.defaultValue !== null) {
 			return
 		}
 		if (variants.length === 0) {
-			throw new Error(`match by ${expression.discriminant} без _ не может быть проверен на полноту`)
+			this.reportExpressionCheck(expression, () => {
+				throw new Error(`match by ${expression.discriminant} без _ не может быть проверен на полноту`)
+			})
+			return
 		}
 		const coveredValues = new Set(expression.branches.map(branch =>
 			this.getMatchByPatternKey(branch.pattern.value),
@@ -276,7 +293,18 @@ class Validator {
 			.map(variant => variant.value)
 			.filter(value => !coveredValues.has(this.getMatchByPatternKey(value)))
 		if (missingValues.length > 0) {
-			throw new Error(`match by ${expression.discriminant} не покрывает варианты: ${missingValues.map(String).join(', ')}`)
+			this.reportExpressionCheck(expression, () => {
+				throw new Error(`match by ${expression.discriminant} не покрывает варианты: ${missingValues.map(String).join(', ')}`)
+			})
+		}
+	}
+
+	private reportExpressionCheck(expression: ExpressionNode, check: () => void): void {
+		try {
+			check()
+		}
+		catch (error) {
+			this.reporter.reportError(error, this.nodeLocations.get(expression))
 		}
 	}
 
@@ -336,18 +364,20 @@ class Validator {
 			: type
 	}
 
-	private assertNoDuplicateMatchByBranches(expression: MatchByExpressionNode): void {
+	private reportDuplicateMatchByBranches(expression: MatchByExpressionNode): void {
 		const seenValues = new Set<string>()
 		for (const branch of expression.branches) {
 			const key = this.getMatchByPatternKey(branch.pattern.value)
 			if (seenValues.has(key)) {
-				throw new Error(`match by ${expression.discriminant} содержит дублирующую ветку: ${String(branch.pattern.value)}`)
+				this.reportExpressionCheck(expression, () => {
+					throw new Error(`match by ${expression.discriminant} содержит дублирующую ветку: ${String(branch.pattern.value)}`)
+				})
 			}
 			seenValues.add(key)
 		}
 	}
 
-	private assertNoImpossibleMatchByBranches(
+	private reportImpossibleMatchByBranches(
 		expression: MatchByExpressionNode,
 		variants: {
 			value: string | number | boolean | null,
@@ -356,7 +386,9 @@ class Validator {
 		const possibleValues = new Set(variants.map(variant => this.getMatchByPatternKey(variant.value)))
 		for (const branch of expression.branches) {
 			if (!possibleValues.has(this.getMatchByPatternKey(branch.pattern.value))) {
-				throw new Error(`match by ${expression.discriminant} содержит невозможную ветку: ${String(branch.pattern.value)}`)
+				this.reportExpressionCheck(expression, () => {
+					throw new Error(`match by ${expression.discriminant} содержит невозможную ветку: ${String(branch.pattern.value)}`)
+				})
 			}
 		}
 	}

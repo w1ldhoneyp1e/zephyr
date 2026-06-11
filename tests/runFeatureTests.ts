@@ -173,6 +173,16 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '3',
 	},
 	{
+		name: 'choose_conditions_recovery',
+		file: './syntax-sugar/choose_conditions_recovery.zph',
+		expectedError: 'Несовместимые типы в условие choose: ожидалось boolean, получено string',
+	},
+	{
+		name: 'collect_conditions_recovery',
+		file: './syntax-sugar/collect_conditions_recovery.zph',
+		expectedError: 'Несовместимые типы в условие collect: ожидалось boolean, получено string',
+	},
+	{
 		name: 'match_expression',
 		file: './match/match_expression.zph',
 		expectedReturn: '20',
@@ -401,6 +411,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		name: 'match_by_impossible_branch_error',
 		file: './match/match_by_impossible_branch_error.zph',
 		expectedError: 'match by kind содержит невозможную ветку: bird',
+	},
+	{
+		name: 'match_by_branches_recovery',
+		file: './match/match_by_branches_recovery.zph',
+		expectedError: 'match by kind содержит невозможную ветку: fish',
 	},
 	{
 		name: 'type_alias_mismatch_error',
