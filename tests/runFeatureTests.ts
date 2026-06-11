@@ -348,6 +348,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неверное число аргументов в создание класса Point: ожидалось 2, получено 1',
 	},
 	{
+		name: 'call_arity_and_argument_recovery',
+		file: './functions/call_arity_and_argument_recovery.zph',
+		expectedError: 'Несовместимые типы в вызов функции add, аргумент 2: ожидалось number, получено string',
+	},
+	{
 		name: 'typed_callback_mismatch_error',
 		file: './typification/typed_callback_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в вызов функции apply, аргумент 1: ожидалось (number) => number, получено (string) => number',

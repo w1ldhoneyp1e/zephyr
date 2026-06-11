@@ -18,6 +18,7 @@ class CallValidator {
 			const binding = this.model.identifierBindings.get(expression.callee)
 			if (binding?.kind === 'function') {
 				this.validateCallArguments(
+					expression,
 					expression.args,
 					this.typeAnalyzer.getFunctionParameterTypes(binding.declaration, expression.args),
 					`вызов функции ${binding.declaration.name}`,
@@ -26,6 +27,7 @@ class CallValidator {
 			}
 			if (binding?.kind === 'class') {
 				this.validateCallArguments(
+					expression,
 					expression.args,
 					this.classRegistry.getConstructorParameterTypes(binding.declaration.name),
 					`создание класса ${binding.declaration.name}`,
@@ -34,6 +36,7 @@ class CallValidator {
 			}
 			if (binding?.kind === 'super') {
 				this.validateCallArguments(
+					expression,
 					expression.args,
 					this.classRegistry.getConstructorParameterTypes(binding.baseClassBinding.declaration.name),
 					`вызов super для ${binding.baseClassBinding.declaration.name}`,
@@ -48,6 +51,7 @@ class CallValidator {
 				return
 			}
 			this.validateCallArguments(
+				expression,
 				expression.args,
 				this.classRegistry.getMethodParameterTypes(objectType, expression.callee.property),
 				`вызов метода ${expression.callee.property}`,
@@ -56,15 +60,19 @@ class CallValidator {
 	}
 
 	private validateCallArguments(
+		expression: CallExpressionNode,
 		args: ExpressionNode[],
 		expectedTypes: SemanticType[],
 		context: string,
 	): void {
 		if (args.length !== expectedTypes.length) {
-			throw new Error(`Неверное число аргументов в ${context}: ожидалось ${expectedTypes.length}, получено ${args.length}`)
+			this.reportExpressionError(
+				new Error(`Неверное число аргументов в ${context}: ожидалось ${expectedTypes.length}, получено ${args.length}`),
+				expression,
+			)
 		}
 
-		for (const [index, arg] of args.entries()) {
+		for (const [index, arg] of args.slice(0, expectedTypes.length).entries()) {
 			try {
 				this.typeAnalyzer.assertExpressionAssignable(
 					expectedTypes[index],
