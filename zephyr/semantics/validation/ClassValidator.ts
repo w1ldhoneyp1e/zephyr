@@ -1,4 +1,8 @@
-import {type ClassDeclarationNode, type ClassFieldNode} from '../../ast'
+import {
+	type ClassDeclarationNode,
+	type ClassFieldNode,
+	type MethodDeclarationNode,
+} from '../../ast'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticModel} from '../context'
 import {type SemanticType, formatSemanticType} from '../SemanticType'
@@ -34,32 +38,34 @@ class ClassValidator {
 	}
 
 	assertUniqueFieldNames(fields: ClassFieldNode[]): void {
-		const duplicateName = this.getDuplicateFieldNames(fields)[0]
-		if (duplicateName !== undefined) {
-			throw new Error(`Повторное объявление поля класса: ${duplicateName}`)
+		const duplicateField = this.getDuplicateFields(fields)[0]
+		if (duplicateField !== undefined) {
+			throw new Error(`Повторное объявление поля класса: ${duplicateField.name}`)
 		}
 	}
 
 	assertUniqueMethodNames(statement: ClassDeclarationNode): void {
-		const duplicateName = this.getDuplicateMethodNames(statement)[0]
-		if (duplicateName !== undefined) {
-			throw new Error(`Повторное объявление метода класса ${statement.name}: ${duplicateName}`)
+		const duplicateMethod = this.getDuplicateMethods(statement)[0]
+		if (duplicateMethod !== undefined) {
+			throw new Error(`Повторное объявление метода класса ${statement.name}: ${duplicateMethod.name}`)
 		}
 	}
 
 	assertNoMemberNameConflicts(statement: ClassDeclarationNode): void {
-		const conflictName = this.getMemberNameConflicts(statement)[0]
-		if (conflictName !== undefined) {
-			throw new Error(`Конфликт имени члена класса ${statement.name}: ${conflictName} объявлен и как поле, и как метод`)
+		const conflictMethod = this.getMemberNameConflicts(statement)[0]
+		if (conflictMethod !== undefined) {
+			throw new Error(`Конфликт имени члена класса ${statement.name}: ${conflictMethod.name} объявлен и как поле, и как метод`)
 		}
 	}
 
-	getDuplicateFieldNames(fields: ClassFieldNode[]): string[] {
+	getDuplicateFields(fields: ClassFieldNode[]): ClassFieldNode[] {
 		const seen = new Set<string>()
-		const duplicates: string[] = []
+		const duplicateNames = new Set<string>()
+		const duplicates: ClassFieldNode[] = []
 		for (const field of fields) {
-			if (seen.has(field.name) && !duplicates.includes(field.name)) {
-				duplicates.push(field.name)
+			if (seen.has(field.name) && !duplicateNames.has(field.name)) {
+				duplicateNames.add(field.name)
+				duplicates.push(field)
 			}
 			seen.add(field.name)
 		}
@@ -67,12 +73,14 @@ class ClassValidator {
 		return duplicates
 	}
 
-	getDuplicateMethodNames(statement: ClassDeclarationNode): string[] {
+	getDuplicateMethods(statement: ClassDeclarationNode): MethodDeclarationNode[] {
 		const seen = new Set<string>()
-		const duplicates: string[] = []
+		const duplicateNames = new Set<string>()
+		const duplicates: MethodDeclarationNode[] = []
 		for (const method of statement.methods) {
-			if (seen.has(method.name) && !duplicates.includes(method.name)) {
-				duplicates.push(method.name)
+			if (seen.has(method.name) && !duplicateNames.has(method.name)) {
+				duplicateNames.add(method.name)
+				duplicates.push(method)
 			}
 			seen.add(method.name)
 		}
@@ -80,12 +88,14 @@ class ClassValidator {
 		return duplicates
 	}
 
-	getMemberNameConflicts(statement: ClassDeclarationNode): string[] {
+	getMemberNameConflicts(statement: ClassDeclarationNode): MethodDeclarationNode[] {
 		const fieldNames = new Set(statement.fields.map(field => field.name))
-		const conflicts: string[] = []
+		const conflictNames = new Set<string>()
+		const conflicts: MethodDeclarationNode[] = []
 		for (const method of statement.methods) {
-			if (fieldNames.has(method.name) && !conflicts.includes(method.name)) {
-				conflicts.push(method.name)
+			if (fieldNames.has(method.name) && !conflictNames.has(method.name)) {
+				conflictNames.add(method.name)
+				conflicts.push(method)
 			}
 		}
 

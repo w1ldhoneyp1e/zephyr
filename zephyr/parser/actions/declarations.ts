@@ -261,6 +261,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 			} satisfies StructMemberListValue)
 		case 'FieldDeclaration -> VisibilityOpt Identifier TypeAnnotationOpt Semicolon':
 			return values => ({
+				type: 'ClassField',
 				visibility: values[0] as ClassMemberVisibility,
 				name: tokenLexeme(values[1]),
 				typeName: createTypeName(values[2]),

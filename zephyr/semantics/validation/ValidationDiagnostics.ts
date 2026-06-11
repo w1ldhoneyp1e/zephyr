@@ -1,5 +1,16 @@
-import {type ExpressionNode, type StatementNode} from '../../ast'
+import {
+	type ClassFieldNode,
+	type ExpressionNode,
+	type MethodDeclarationNode,
+	type StatementNode,
+} from '../../ast'
 import {type DiagnosticReporter, type NodeLocations} from '../../diagnostics'
+
+type ValidationDiagnosticNode =
+	| StatementNode
+	| ExpressionNode
+	| ClassFieldNode
+	| MethodDeclarationNode
 
 class ValidationDiagnostics {
 	constructor(
@@ -14,6 +25,10 @@ class ValidationDiagnostics {
 
 	reportForExpression(error: unknown, expression: ExpressionNode): void {
 		this.reporter.reportError(error, this.nodeLocations.get(expression))
+	}
+
+	reportForNode(error: unknown, node: ValidationDiagnosticNode): void {
+		this.reporter.reportError(error, this.nodeLocations.get(node))
 	}
 
 	runForStatement(statement: StatementNode, check: () => void): void {

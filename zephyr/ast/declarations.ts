@@ -29,6 +29,7 @@ interface TypeAliasDeclarationNode {
 }
 
 interface ClassFieldNode {
+	type: 'ClassField',
 	name: string,
 	typeName: TypeName,
 	visibility: ClassMemberVisibility,

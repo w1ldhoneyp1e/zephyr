@@ -149,22 +149,22 @@ class Validator {
 		const validator = this.getClassValidator()
 		this.reportClassDeclarationCheck(statement, () => validator.assertValidBaseClass(statement))
 		this.reportClassDeclarationCheck(statement, () => validator.assertNoInheritanceCycle(statement.name))
-		for (const name of validator.getDuplicateFieldNames(statement.fields)) {
-			this.getValidationDiagnostics().reportForStatement(
-				new Error(`Повторное объявление поля класса: ${name}`),
-				statement,
+		for (const field of validator.getDuplicateFields(statement.fields)) {
+			this.getValidationDiagnostics().reportForNode(
+				new Error(`Повторное объявление поля класса: ${field.name}`),
+				field,
 			)
 		}
-		for (const name of validator.getDuplicateMethodNames(statement)) {
-			this.getValidationDiagnostics().reportForStatement(
-				new Error(`Повторное объявление метода класса ${statement.name}: ${name}`),
-				statement,
+		for (const method of validator.getDuplicateMethods(statement)) {
+			this.getValidationDiagnostics().reportForNode(
+				new Error(`Повторное объявление метода класса ${statement.name}: ${method.name}`),
+				method,
 			)
 		}
-		for (const name of validator.getMemberNameConflicts(statement)) {
-			this.getValidationDiagnostics().reportForStatement(
-				new Error(`Конфликт имени члена класса ${statement.name}: ${name} объявлен и как поле, и как метод`),
-				statement,
+		for (const method of validator.getMemberNameConflicts(statement)) {
+			this.getValidationDiagnostics().reportForNode(
+				new Error(`Конфликт имени члена класса ${statement.name}: ${method.name} объявлен и как поле, и как метод`),
+				method,
 			)
 		}
 
