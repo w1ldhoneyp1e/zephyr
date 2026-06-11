@@ -35,9 +35,16 @@ class Compiler {
 		try {
 			const loader = new ModuleLoader(
 				(source, sourceFile) => this.parseSource(source, sourceFile, context),
+				context.reporter,
 				context.nodeLocations,
 			)
 			const program = loader.loadEntryProgram(filePath)
+			if (program === null) {
+				return {
+					ok: false,
+					diagnostics: context.reporter.getDiagnostics(),
+				}
+			}
 			const programs = this.compileProgram(program, context)
 			if (context.reporter.hasErrors()) {
 				return {
@@ -89,9 +96,12 @@ class Compiler {
 		return generator.generate(validatedProgram, model)
 	}
 
-	private parseSource(source: string, filePath: string, context: CompilationContext): ProgramNode {
-		const lexer = new Lexer(source, filePath)
+	private parseSource(source: string, filePath: string, context: CompilationContext): ProgramNode | null {
+		const lexer = new Lexer(source, context.reporter, filePath)
 		const tokens = lexer.scanTokens()
+		if (context.reporter.hasErrors()) {
+			return null
+		}
 		const parser = new LalrAstParser(tokens, filePath, context.nodeLocations)
 
 		return parser.parseProgram()

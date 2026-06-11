@@ -1,4 +1,4 @@
-import {DiagnosticError} from './diagnostics'
+import {type DiagnosticReporter} from './diagnostics'
 import {
 	type Token,
 	KEYWORDS,
@@ -15,7 +15,11 @@ class Lexer {
 	private tokenLine = 1
 	private tokenColumn = 1
 
-	constructor(source: string, private readonly sourceFile?: string) {
+	constructor(
+		source: string,
+		private readonly reporter: DiagnosticReporter,
+		private readonly sourceFile?: string,
+	) {
 		this.source = source
 	}
 
@@ -175,7 +179,8 @@ class Lexer {
 					this.addToken(TokenType.AndAnd)
 					break
 				}
-				throw this.error('Ожидался второй символ "&"')
+				this.error('Ожидался второй символ "&"')
+				break
 			case '|':
 				if (this.match('|')) {
 					this.addToken(TokenType.OrOr)
@@ -202,7 +207,8 @@ class Lexer {
 					this.addToken(TokenType.QuestionLeftBracket)
 					break
 				}
-				throw this.error('Ожидался ?, ., или [ после ?')
+				this.error('Ожидался ?, ., или [ после ?')
+				break
 			case '.':
 				this.addToken(this.match('.')
 					? TokenType.Range
@@ -225,7 +231,7 @@ class Lexer {
 					this.scanIdentifier()
 					break
 				}
-				throw this.error(`Неожиданный символ: ${ch}`)
+				this.error(`Неожиданный символ: ${ch}`)
 		}
 	}
 
@@ -234,7 +240,8 @@ class Lexer {
 			this.advance()
 		}
 		if (this.isAtEnd()) {
-			throw this.error('Незавершенная строка')
+			this.error('Незавершенная строка')
+			return
 		}
 		this.advance()
 		this.addToken(TokenType.String)
@@ -277,7 +284,7 @@ class Lexer {
 			}
 			this.advance()
 		}
-		throw this.error('Незавершенный многострочный комментарий')
+		this.error('Незавершенный многострочный комментарий')
 	}
 
 	private isDigit(ch: string): boolean {
@@ -294,8 +301,8 @@ class Lexer {
 		return this.isAlpha(ch) || this.isDigit(ch)
 	}
 
-	private error(message: string): DiagnosticError {
-		return new DiagnosticError(message, {
+	private error(message: string): void {
+		this.reporter.error(message, {
 			filePath: this.sourceFile,
 			line: this.tokenLine,
 			column: this.tokenColumn,

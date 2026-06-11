@@ -6,7 +6,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type NodeLocations, DiagnosticError} from '../diagnostics'
+import {type DiagnosticReporter, type NodeLocations} from '../diagnostics'
 import {match} from '../utils'
 
 interface ModuleDependency {
@@ -27,15 +27,19 @@ class ModuleLoader {
 	private readonly moduleCache = new Map<string, LoadedModule>()
 
 	constructor(
-		private readonly parseSource: (source: string, filePath: string) => ProgramNode,
+		private readonly parseSource: (source: string, filePath: string) => ProgramNode | null,
+		private readonly reporter: DiagnosticReporter,
 		private readonly nodeLocations: NodeLocations,
 		private readonly workspaceRoot: string = process.cwd(),
 	) {
 	}
 
-	loadEntryProgram(filePath: string): ProgramNode {
+	loadEntryProgram(filePath: string): ProgramNode | null {
 		const entryPath = path.resolve(filePath)
 		const statements = this.flattenModule(entryPath, new Set(), [])
+		if (statements === null || this.reporter.hasErrors()) {
+			return null
+		}
 
 		return this.createProgram(statements)
 	}
@@ -51,22 +55,31 @@ class ModuleLoader {
 		filePath: string,
 		emitted: Set<string>,
 		active: string[],
-	): StatementNode[] {
+	): StatementNode[] | null {
 		if (emitted.has(filePath)) {
 			return []
 		}
 
-		this.checkCycling(filePath, active)
+		if (!this.checkCycling(filePath, active)) {
+			return null
+		}
 
 		active.push(filePath)
 		const loaded = this.loadModule(filePath)
+		if (loaded === null) {
+			active.pop()
+			return null
+		}
 		const statements: StatementNode[] = []
 
 		for (const dependency of loaded.dependencies) {
 			const dependencyModule = this.loadModule(dependency.resolvedPath)
+			if (dependencyModule === null) {
+				continue
+			}
 			for (const name of dependency.names) {
 				if (!dependencyModule.exports.has(name)) {
-					throw this.createDiagnosticError(
+					this.reportForStatement(
 						dependency.statement,
 						this.createMissingExportError(
 							loaded.filePath,
@@ -77,7 +90,10 @@ class ModuleLoader {
 					)
 				}
 			}
-			statements.push(...this.flattenModule(dependency.resolvedPath, emitted, active))
+			const dependencyStatements = this.flattenModule(dependency.resolvedPath, emitted, active)
+			if (dependencyStatements !== null) {
+				statements.push(...dependencyStatements)
+			}
 		}
 
 		statements.push(...this.normalizeStatements(loaded.program.body))
@@ -87,14 +103,24 @@ class ModuleLoader {
 		return statements
 	}
 
-	private loadModule(filePath: string): LoadedModule {
+	private loadModule(filePath: string): LoadedModule | null {
 		const cached = this.moduleCache.get(filePath)
 		if (cached !== undefined) {
 			return cached
 		}
 
-		const source = fs.readFileSync(filePath, 'utf-8')
+		let source: string
+		try {
+			source = fs.readFileSync(filePath, 'utf-8')
+		}
+		catch (error) {
+			this.reporter.reportError(error)
+			return null
+		}
 		const program = this.parseSource(source, filePath)
+		if (program === null) {
+			return null
+		}
 		const exports = new Set<string>()
 		const dependencies: ModuleDependency[] = []
 		const availableNames = new Set<string>()
@@ -102,10 +128,14 @@ class ModuleLoader {
 		for (const statement of program.body) {
 			match(statement, 'type', {
 				ImportStatement: stmnt => {
+					const resolvedPath = this.resolveImportPath(filePath, stmnt.source, stmnt)
+					if (resolvedPath === null) {
+						return
+					}
 					dependencies.push({
 						kind: 'import',
 						names: stmnt.names,
-						resolvedPath: this.resolveImportPath(filePath, stmnt.source, stmnt),
+						resolvedPath,
 						statement: stmnt,
 					})
 					for (const name of stmnt.names) {
@@ -124,17 +154,21 @@ class ModuleLoader {
 					const reexporting = src !== null
 
 					if (reexporting) {
+						const resolvedPath = this.resolveImportPath(filePath, src, stmnt)
+						if (resolvedPath === null) {
+							return
+						}
 						dependencies.push({
 							kind: 'reexport',
 							names: stmnt.names,
-							resolvedPath: this.resolveImportPath(filePath, src, stmnt),
+							resolvedPath,
 							statement: stmnt,
 						})
 					}
 					else {
 						for (const name of stmnt.names) {
 							if (!availableNames.has(name)) {
-								throw this.createDiagnosticError(
+								this.reportForStatement(
 									stmnt,
 									`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
 								)
@@ -165,14 +199,16 @@ class ModuleLoader {
 		fromFilePath: string,
 		importPath: string,
 		statement: ImportStatementNode | NamedExportStatementNode,
-	): string {
+	): string | null {
 		if (!importPath.startsWith('.')) {
-			throw this.createDiagnosticError(statement, `Пока поддерживаются только относительные импорты: ${importPath}`)
+			this.reportForStatement(statement, `Пока поддерживаются только относительные импорты: ${importPath}`)
+			return null
 		}
 
 		const resolvedPath = path.resolve(path.dirname(fromFilePath), importPath)
 		if (!fs.existsSync(resolvedPath)) {
-			throw this.createDiagnosticError(statement, `Не найден импортируемый модуль: ${resolvedPath}`)
+			this.reportForStatement(statement, `Не найден импортируемый модуль: ${resolvedPath}`)
+			return null
 		}
 
 		return resolvedPath
@@ -210,25 +246,27 @@ class ModuleLoader {
 	private checkCycling(
 		filePath: string,
 		active: string[],
-	) {
+	): boolean {
 		const cycleStartIdx = active.indexOf(filePath)
 		if (cycleStartIdx !== -1) {
 			const cycle = [...active.slice(cycleStartIdx), filePath]
 				.map(this.formatModulePath)
 				.join(' -> ')
-			throw new Error(`Циклический импорт: ${cycle}`)
+			this.reporter.error(`Циклический импорт: ${cycle}`)
+			return false
 		}
+		return true
 	}
 
 	private formatModulePath(filePath: string): string {
 		return path.relative(this.workspaceRoot, filePath)
 	}
 
-	private createDiagnosticError(
+	private reportForStatement(
 		statement: ImportStatementNode | NamedExportStatementNode,
 		message: string,
-	): DiagnosticError {
-		return new DiagnosticError(message, this.nodeLocations.get(statement))
+	): void {
+		this.reporter.error(message, this.nodeLocations.get(statement))
 	}
 }
 
