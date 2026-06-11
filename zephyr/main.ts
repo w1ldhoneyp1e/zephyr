@@ -8,6 +8,7 @@ import {
 	type VmProgram,
 } from '../vm/types'
 import {Compiler} from './Compiler'
+import {diagnosticToMessage} from './diagnostics'
 import {match} from './utils'
 
 interface CliOptions {
@@ -183,7 +184,14 @@ function main(): void {
 	const options = parseArgs(process.argv.slice(2))
 	const filePath = resolveInputPath(options.inputPath)
 	const compiler = new Compiler()
-	const programs = compiler.run(filePath)
+	const compileResult = compiler.compilePath(filePath)
+	if (!compileResult.ok) {
+		for (const diagnostic of compileResult.diagnostics) {
+			console.error(diagnosticToMessage(diagnostic))
+		}
+		process.exit(1)
+	}
+	const programs = compileResult.programs
 	if (options.emitBytecode) {
 		const outPath = options.outputPath === null
 			? defaultBytecodePath(filePath)

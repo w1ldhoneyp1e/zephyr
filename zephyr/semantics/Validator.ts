@@ -4,6 +4,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
+import {type NodeLocations, toDiagnosticError} from '../diagnostics'
 import {match} from '../utils'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
@@ -23,6 +24,8 @@ class Validator {
 	private assignmentValidator: AssignmentValidator | null = null
 	private validationWalker: ValidationWalker | null = null
 	private nullableGuards: string[] = []
+
+	constructor(private readonly nodeLocations: NodeLocations) {}
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
 		this.classRegistry = new ClassRegistry(model)
@@ -51,6 +54,15 @@ class Validator {
 	}
 
 	private validateStatement(statement: StatementNode, model: SemanticModel): void {
+		try {
+			this.validateStatementCore(statement, model)
+		}
+		catch (error) {
+			throw toDiagnosticError(error, this.nodeLocations.get(statement))
+		}
+	}
+
+	private validateStatementCore(statement: StatementNode, model: SemanticModel): void {
 		switch (statement.type) {
 			case 'VariableDeclaration':
 				if (statement.initializer !== null) {
@@ -136,6 +148,15 @@ class Validator {
 	}
 
 	private validateExpression(expression: ExpressionNode): void {
+		try {
+			this.validateExpressionCore(expression)
+		}
+		catch (error) {
+			throw toDiagnosticError(error, this.nodeLocations.get(expression))
+		}
+	}
+
+	private validateExpressionCore(expression: ExpressionNode): void {
 		switch (expression.type) {
 			case 'LiteralExpression':
 			case 'IdentifierExpression':

@@ -20,7 +20,7 @@ class ModuleLoader {
 	private readonly moduleCache = new Map<string, LoadedModule>()
 
 	constructor(
-		private readonly parseSource: (source: string) => ProgramNode,
+		private readonly parseSource: (source: string, filePath: string) => ProgramNode,
 		private readonly workspaceRoot: string = process.cwd(),
 	) {
 	}
@@ -83,7 +83,7 @@ class ModuleLoader {
 		}
 
 		const source = fs.readFileSync(filePath, 'utf-8')
-		const program = this.parseSource(source)
+		const program = this.parseSource(source, filePath)
 		const exports = new Set<string>()
 		const dependencies: ModuleDependency[] = []
 		const availableNames = new Set<string>()

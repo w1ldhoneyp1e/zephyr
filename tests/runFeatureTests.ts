@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import {formatValue, Vm} from '../vm'
 import {Compiler} from '../zephyr/Compiler'
+import {diagnosticToMessage} from '../zephyr/diagnostics'
 
 interface FeatureTestCase {
 	name: string,
@@ -432,7 +433,11 @@ function runTestCase(testCase: FeatureTestCase): void {
 	}
 
 	try {
-		const programs = compiler.compilePath(fixturePath)
+		const compileResult = compiler.compilePath(fixturePath)
+		if (!compileResult.ok) {
+			throw new Error(compileResult.diagnostics.map(diagnosticToMessage).join('\n'))
+		}
+		const programs = compileResult.programs
 		const vm = new Vm({
 			read: createRead(testCase.stdin ?? null),
 			write: text => {
