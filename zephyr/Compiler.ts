@@ -36,6 +36,12 @@ class Compiler {
 			const loader = new ModuleLoader((source, sourceFile) => this.parseSource(source, sourceFile, context))
 			const program = loader.loadEntryProgram(filePath)
 			const programs = this.compileProgram(program, context)
+			if (context.reporter.hasErrors()) {
+				return {
+					ok: false,
+					diagnostics: context.reporter.getDiagnostics(),
+				}
+			}
 
 			return {
 				ok: true,
@@ -68,10 +74,16 @@ class Compiler {
 	}
 
 	private compileProgram(program: ProgramNode, context: CompilationContext): VmProgram[] {
-		const resolver = new Resolver()
+		const resolver = new Resolver(context.reporter, context.nodeLocations)
 		const {program: resolvedProgram, model} = resolver.resolveProgram(program)
+		if (context.reporter.hasErrors()) {
+			return []
+		}
 		const validator = new Validator(context.nodeLocations)
 		const validatedProgram = validator.validateProgram(resolvedProgram, model)
+		if (context.reporter.hasErrors()) {
+			return []
+		}
 		const generator = new BytecodeGenerator()
 
 		return generator.generate(validatedProgram, model)

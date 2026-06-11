@@ -1,4 +1,5 @@
 import {
+	type AssignmentTargetNode,
 	type ClassDeclarationNode,
 	type ConstructorDeclarationNode,
 	type ExpressionNode,
@@ -15,12 +16,18 @@ import {
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
 import {
+	type DiagnosticReporter,
+	type NodeLocations,
+	type SourceLocation,
+} from '../diagnostics'
+import {
 	type CallableDeclarationNode,
 	type OwnedSemanticBinding,
 	type SemanticBinding,
 	type SemanticFunctionOwner,
 	type SemanticLoopOwner,
 	type SemanticModel,
+	errorBinding,
 } from './context'
 import {
 	parseSemanticType,
@@ -34,6 +41,8 @@ interface ConditionNarrowing {
 	binding: SemanticBinding,
 	type: ReturnType<typeof parseSemanticType>,
 }
+
+type DiagnosticNode = StatementNode | ExpressionNode | AssignmentTargetNode
 
 class Resolver {
 	private scopes: {
@@ -70,6 +79,11 @@ class Resolver {
 		classNames: new Set(),
 		typeAliasNames: new Set(),
 	}
+
+	constructor(
+		private readonly reporter: DiagnosticReporter,
+		private readonly nodeLocations: NodeLocations,
+	) {}
 
 	resolveProgram(program: ProgramNode): {
 		program: ProgramNode,
@@ -229,14 +243,18 @@ class Resolver {
 		this.declare(statement.name, binding)
 		const baseBinding = statement.baseClassName === null
 			? null
-			: this.resolveName(statement.baseClassName)
-		if (baseBinding !== null && baseBinding.kind !== 'class') {
+			: this.resolveName(statement.baseClassName, statement)
+		if (baseBinding !== null && baseBinding.kind !== 'class' && baseBinding.kind !== 'error') {
 			throw new Error(`Класс ${statement.name} может наследоваться только от класса: ${statement.baseClassName}`)
 		}
-		this.model.classBaseBindings.set(statement, baseBinding)
+		this.model.classBaseBindings.set(statement, baseBinding?.kind === 'class'
+			? baseBinding
+			: null)
 		this.model.classBaseNames.set(
 			statement.name,
-			baseBinding?.declaration.name ?? null,
+			baseBinding?.kind === 'class'
+				? baseBinding.declaration.name
+				: null,
 		)
 		this.model.classFieldTypes.set(
 			statement.name,
@@ -693,13 +711,13 @@ class Resolver {
 	}
 
 	private resolveIdentifierExpression(expression: IdentifierExpressionNode): void {
-		const binding = this.resolveName(expression.name)
+		const binding = this.resolveName(expression.name, expression)
 		this.model.identifierBindings.set(expression, binding)
 		this.recordCapture(binding)
 	}
 
 	private resolveAssignmentTarget(target: IdentifierTargetNode): void {
-		const binding = this.resolveName(target.name)
+		const binding = this.resolveName(target.name, target)
 		this.model.assignmentTargetBindings.set(target, binding)
 		this.recordCapture(binding)
 	}
@@ -935,7 +953,7 @@ class Resolver {
 		captures.add(binding)
 	}
 
-	private resolveName(name: string): SemanticBinding {
+	private resolveName(name: string, node?: DiagnosticNode): SemanticBinding {
 		if (isBuiltinGlobalName(name)) {
 			return {
 				kind: 'builtin',
@@ -948,7 +966,14 @@ class Resolver {
 				return binding
 			}
 		}
-		throw new Error(`Неизвестная переменная: ${name}`)
+		this.reporter.error(`Неизвестная переменная: ${name}`, this.getNodeLocation(node))
+		return errorBinding(name)
+	}
+
+	private getNodeLocation(node: DiagnosticNode | undefined): SourceLocation | null {
+		return node === undefined
+			? null
+			: this.nodeLocations.get(node)
 	}
 
 	private declare(name: string, binding: SemanticBinding): void {
