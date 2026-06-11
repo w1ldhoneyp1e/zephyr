@@ -333,6 +333,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Модуль tests/fixtures/modules_missing_export/main.zph импортирует sub из tests/fixtures/modules_missing_export/math.zph, но этот модуль его не экспортирует',
 	},
 	{
+		name: 'modules_missing_file_error',
+		file: 'modules_missing_file/main.zph',
+		expectedError: 'Не найден импортируемый модуль:',
+	},
+	{
 		name: 'return_type_mismatch_error',
 		file: './typification/return_type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в return в функции bad: ожидалось number, получено string',

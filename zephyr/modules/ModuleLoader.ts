@@ -1,12 +1,19 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import {type ProgramNode, type StatementNode} from '../ast'
+import {
+	type ImportStatementNode,
+	type NamedExportStatementNode,
+	type ProgramNode,
+	type StatementNode,
+} from '../ast'
+import {type NodeLocations, DiagnosticError} from '../diagnostics'
 import {match} from '../utils'
 
 interface ModuleDependency {
 	names: string[],
 	resolvedPath: string,
 	kind: 'import' | 'reexport',
+	statement: ImportStatementNode | NamedExportStatementNode,
 }
 
 interface LoadedModule {
@@ -21,6 +28,7 @@ class ModuleLoader {
 
 	constructor(
 		private readonly parseSource: (source: string, filePath: string) => ProgramNode,
+		private readonly nodeLocations: NodeLocations,
 		private readonly workspaceRoot: string = process.cwd(),
 	) {
 	}
@@ -58,12 +66,15 @@ class ModuleLoader {
 			const dependencyModule = this.loadModule(dependency.resolvedPath)
 			for (const name of dependency.names) {
 				if (!dependencyModule.exports.has(name)) {
-					throw new Error(this.createMissingExportError(
-						loaded.filePath,
-						dependency.resolvedPath,
-						name,
-						dependency.kind,
-					))
+					throw this.createDiagnosticError(
+						dependency.statement,
+						this.createMissingExportError(
+							loaded.filePath,
+							dependency.resolvedPath,
+							name,
+							dependency.kind,
+						),
+					)
 				}
 			}
 			statements.push(...this.flattenModule(dependency.resolvedPath, emitted, active))
@@ -94,7 +105,8 @@ class ModuleLoader {
 					dependencies.push({
 						kind: 'import',
 						names: stmnt.names,
-						resolvedPath: this.resolveImportPath(filePath, stmnt.source),
+						resolvedPath: this.resolveImportPath(filePath, stmnt.source, stmnt),
+						statement: stmnt,
 					})
 					for (const name of stmnt.names) {
 						availableNames.add(name)
@@ -115,13 +127,15 @@ class ModuleLoader {
 						dependencies.push({
 							kind: 'reexport',
 							names: stmnt.names,
-							resolvedPath: this.resolveImportPath(filePath, src),
+							resolvedPath: this.resolveImportPath(filePath, src, stmnt),
+							statement: stmnt,
 						})
 					}
 					else {
 						for (const name of stmnt.names) {
 							if (!availableNames.has(name)) {
-								throw new Error(
+								throw this.createDiagnosticError(
+									stmnt,
 									`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
 								)
 							}
@@ -147,14 +161,18 @@ class ModuleLoader {
 		return loaded
 	}
 
-	private resolveImportPath(fromFilePath: string, importPath: string): string {
+	private resolveImportPath(
+		fromFilePath: string,
+		importPath: string,
+		statement: ImportStatementNode | NamedExportStatementNode,
+	): string {
 		if (!importPath.startsWith('.')) {
-			throw new Error(`Пока поддерживаются только относительные импорты: ${importPath}`)
+			throw this.createDiagnosticError(statement, `Пока поддерживаются только относительные импорты: ${importPath}`)
 		}
 
 		const resolvedPath = path.resolve(path.dirname(fromFilePath), importPath)
 		if (!fs.existsSync(resolvedPath)) {
-			throw new Error(`Не найден импортируемый модуль: ${resolvedPath}`)
+			throw this.createDiagnosticError(statement, `Не найден импортируемый модуль: ${resolvedPath}`)
 		}
 
 		return resolvedPath
@@ -204,6 +222,13 @@ class ModuleLoader {
 
 	private formatModulePath(filePath: string): string {
 		return path.relative(this.workspaceRoot, filePath)
+	}
+
+	private createDiagnosticError(
+		statement: ImportStatementNode | NamedExportStatementNode,
+		message: string,
+	): DiagnosticError {
+		return new DiagnosticError(message, this.nodeLocations.get(statement))
 	}
 }
 

@@ -33,7 +33,10 @@ class Compiler {
 	compilePath(filePath: string): CompileResult {
 		const context = this.createCompilationContext()
 		try {
-			const loader = new ModuleLoader((source, sourceFile) => this.parseSource(source, sourceFile, context))
+			const loader = new ModuleLoader(
+				(source, sourceFile) => this.parseSource(source, sourceFile, context),
+				context.nodeLocations,
+			)
 			const program = loader.loadEntryProgram(filePath)
 			const programs = this.compileProgram(program, context)
 			if (context.reporter.hasErrors()) {
