@@ -4,7 +4,7 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type NodeLocations, toDiagnosticError} from '../diagnostics'
+import {type DiagnosticReporter, type NodeLocations} from '../diagnostics'
 import {match} from '../utils'
 import {ClassRegistry} from './ClassRegistry'
 import {type CallableDeclarationNode, type SemanticModel} from './context'
@@ -25,11 +25,14 @@ class Validator {
 	private validationWalker: ValidationWalker | null = null
 	private nullableGuards: string[] = []
 
-	constructor(private readonly nodeLocations: NodeLocations) {}
+	constructor(
+		private readonly nodeLocations: NodeLocations,
+		private readonly reporter: DiagnosticReporter,
+	) {}
 
 	validateProgram(program: ProgramNode, model: SemanticModel): ProgramNode {
 		this.classRegistry = new ClassRegistry(model)
-		this.typeAnalyzer = new TypeAnalyzer(model, this.classRegistry)
+		this.typeAnalyzer = new TypeAnalyzer(model, this.classRegistry, this.reporter, this.nodeLocations)
 		this.classValidator = new ClassValidator(
 			model,
 			this.classRegistry,
@@ -58,7 +61,7 @@ class Validator {
 			this.validateStatementCore(statement, model)
 		}
 		catch (error) {
-			throw toDiagnosticError(error, this.nodeLocations.get(statement))
+			this.reporter.reportError(error, this.nodeLocations.get(statement))
 		}
 	}
 
@@ -68,7 +71,7 @@ class Validator {
 				if (statement.initializer !== null) {
 					this.validateExpression(statement.initializer)
 					this.getTypeAnalyzer().assertExpressionAssignable(
-						this.getTypeAnalyzer().resolveTypeName(statement.typeName),
+						this.getTypeAnalyzer().resolveTypeName(statement.typeName, [], statement),
 						statement.initializer,
 						`инициализатор переменной ${statement.name}`,
 					)
@@ -111,6 +114,7 @@ class Validator {
 								owner.type === 'FunctionDeclaration'
 									? owner.typeParams
 									: [],
+								statement,
 							),
 							statement.value,
 							`return в ${this.describeCallable(owner)}`,
@@ -152,7 +156,7 @@ class Validator {
 			this.validateExpressionCore(expression)
 		}
 		catch (error) {
-			throw toDiagnosticError(error, this.nodeLocations.get(expression))
+			this.reporter.reportError(error, this.nodeLocations.get(expression))
 		}
 	}
 

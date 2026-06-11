@@ -413,6 +413,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неизвестный тип: MissingSecond',
 	},
 	{
+		name: 'unknown_variable_types_recovery',
+		file: './typification/unknown_variable_types_recovery.zph',
+		expectedError: 'Неизвестный тип: MissingSecond',
+	},
+	{
 		name: 'duplicate_declarations_recovery',
 		file: './typification/duplicate_declarations_recovery.zph',
 		expectedError: 'Повторное объявление переменной: score',

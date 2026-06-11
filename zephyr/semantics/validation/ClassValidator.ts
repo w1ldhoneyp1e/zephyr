@@ -70,7 +70,7 @@ class ClassValidator {
 		if (this.isNullableType(classType)) {
 			throw new Error(`Нельзя обращаться к члену ${memberName} у nullable-типа ${formatSemanticType(classType)}`)
 		}
-		if (classType.kind === 'any') {
+		if (classType.kind === 'any' || classType.kind === 'error') {
 			return
 		}
 		const member = preferredKind === 'field'

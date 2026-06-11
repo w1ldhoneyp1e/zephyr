@@ -3,6 +3,7 @@ import {
 	type FunctionDeclarationNode,
 	type StatementNode,
 } from '../../ast'
+import {type DiagnosticReporter, type NodeLocations} from '../../diagnostics'
 import {match} from '../../utils'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
@@ -29,6 +30,8 @@ class TypeAnalyzer {
 	constructor(
 		private readonly model: SemanticModel,
 		private readonly classRegistry: ClassRegistry,
+		private readonly reporter: DiagnosticReporter,
+		private readonly nodeLocations: NodeLocations,
 	) {
 	}
 
@@ -143,6 +146,9 @@ class TypeAnalyzer {
 	}
 
 	assertTypeAssignable(targetType: SemanticType, sourceType: SemanticType, context: string): void {
+		if (targetType.kind === 'error' || sourceType.kind === 'error') {
+			return
+		}
 		if (this.isTypeAssignable(targetType, sourceType)) {
 			return
 		}
@@ -155,14 +161,26 @@ class TypeAnalyzer {
 		this.assertTypeAssignable(targetType, this.inferExpressionType(expression, targetType), context)
 	}
 
-	resolveTypeName(typeName: string, typeParams: string[] = []): SemanticType {
-		return parseSemanticType(
-			typeName,
-			name => typeParams.includes(name)
-				? typeParameterType(name)
-				: this.model.typeAliases.get(name) ?? null,
-			name => typeParams.includes(name) || this.model.classNames.has(name) || this.model.typeAliasNames.has(name),
-		)
+	resolveTypeName(typeName: string, typeParams: string[] = [], node?: StatementNode | ExpressionNode): SemanticType {
+		try {
+			return parseSemanticType(
+				typeName,
+				name => typeParams.includes(name)
+					? typeParameterType(name)
+					: this.model.typeAliases.get(name) ?? null,
+				name =>
+					typeParams.includes(name)
+					|| this.model.classNames.has(name)
+					|| this.model.typeAliasNames.has(name),
+			)
+		}
+		catch (error) {
+			this.reporter.reportError(error, node === undefined
+				? null
+				: this.nodeLocations.get(node))
+
+			return errorType()
+		}
 	}
 
 	getFunctionParameterTypes(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType[] {
@@ -173,6 +191,9 @@ class TypeAnalyzer {
 	}
 
 	isTypeAssignable(targetType: SemanticType, sourceType: SemanticType): boolean {
+		if (targetType.kind === 'error' || sourceType.kind === 'error') {
+			return true
+		}
 		if (targetType.kind === 'any' || sourceType.kind === 'any') {
 			return true
 		}
@@ -216,6 +237,9 @@ class TypeAnalyzer {
 	}
 
 	getIndexedElementType(containerType: SemanticType): SemanticType {
+		if (containerType.kind === 'error') {
+			return errorType()
+		}
 		if (containerType.kind !== 'array') {
 			return anyType()
 		}
@@ -410,6 +434,9 @@ class TypeAnalyzer {
 	private inferCommonType(types: SemanticType[]): SemanticType {
 		if (types.length === 0) {
 			return anyType()
+		}
+		if (types.some(type => type.kind === 'error')) {
+			return errorType()
 		}
 
 		const firstType = types[0]

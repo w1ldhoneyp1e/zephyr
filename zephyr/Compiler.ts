@@ -79,7 +79,7 @@ class Compiler {
 		if (context.reporter.hasErrors()) {
 			return []
 		}
-		const validator = new Validator(context.nodeLocations)
+		const validator = new Validator(context.nodeLocations, context.reporter)
 		const validatedProgram = validator.validateProgram(resolvedProgram, model)
 		if (context.reporter.hasErrors()) {
 			return []
