@@ -40,6 +40,7 @@ import {
 	typeParameterType,
 	unionType,
 } from './SemanticType'
+import {getTypeErrorLocation} from './TypeDiagnostics'
 
 interface ConditionNarrowing {
 	name: string,
@@ -854,27 +855,9 @@ class Resolver {
 			)
 		}
 		catch (error) {
-			this.reporter.reportError(error, this.getTypeErrorLocation(typeName, node, error))
+			this.reporter.reportError(error, getTypeErrorLocation(typeName, node, this.nodeLocations, error))
 			return errorType()
 		}
-	}
-
-	private getTypeErrorLocation(
-		typeName: TypeName,
-		node: DiagnosticNode | undefined,
-		error: unknown,
-	): SourceLocation | null {
-		const message = error instanceof Error
-			? error.message
-			: String(error)
-		if (typeof typeName !== 'string' && typeName.objectMembers !== undefined) {
-			for (const member of typeName.objectMembers) {
-				if (message.includes(typeNameToString(member.typeName))) {
-					return this.nodeLocations.get(member)
-				}
-			}
-		}
-		return this.getNodeLocation(node)
 	}
 
 	private isKnownTypeName(name: string): boolean {

@@ -6,11 +6,7 @@ import {
 	type TypeName,
 	typeNameToString,
 } from '../../ast'
-import {
-	type DiagnosticReporter,
-	type NodeLocations,
-	type SourceLocation,
-} from '../../diagnostics'
+import {type DiagnosticReporter, type NodeLocations} from '../../diagnostics'
 import {match} from '../../utils'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
@@ -30,6 +26,7 @@ import {
 	typeParameterType,
 	unionType,
 } from '../SemanticType'
+import {getTypeErrorLocation} from '../TypeDiagnostics'
 
 class TypeAnalyzer {
 	private readonly contextualParameterTypes = new WeakMap<SemanticBinding, SemanticType>()
@@ -186,31 +183,10 @@ class TypeAnalyzer {
 			)
 		}
 		catch (error) {
-			this.reporter.reportError(error, this.getTypeErrorLocation(typeName, node, error))
+			this.reporter.reportError(error, getTypeErrorLocation(typeName, node, this.nodeLocations, error))
 
 			return errorType()
 		}
-	}
-
-	private getTypeErrorLocation(
-		typeName: TypeName,
-		node: StatementNode | ExpressionNode | ParameterNode | undefined,
-		error: unknown,
-	): SourceLocation | null {
-		const message = error instanceof Error
-			? error.message
-			: String(error)
-		if (typeof typeName !== 'string' && typeName.objectMembers !== undefined) {
-			for (const member of typeName.objectMembers) {
-				if (message.includes(typeNameToString(member.typeName))) {
-					return this.nodeLocations.get(member)
-				}
-			}
-		}
-
-		return node === undefined
-			? null
-			: this.nodeLocations.get(node)
 	}
 
 	getFunctionParameterTypes(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType[] {
