@@ -10,6 +10,7 @@ import {
 	type TypeAliasDeclarationNode,
 	type VariableDeclarationNode,
 } from '../ast'
+import {type NodeLocations, type SourceLocation} from '../diagnostics'
 import {
 	type ClassSemanticBinding,
 	type SemanticBinding,
@@ -29,6 +30,7 @@ import {
 	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
+	type VmSourceLocation,
 	Opcode,
 } from './context'
 import {compilerInvariant} from './errors'
@@ -52,12 +54,15 @@ class CompilerState {
 	private scopes: CompilerScopeInfo[] = []
 	private upvalues: UpvalueDescriptor[] = []
 	private upvalueDedup = new Map<string, number>()
+	private debugLocations: (VmSourceLocation | null)[] = []
+	private currentLocation: SourceLocation | null = null
 
 	constructor(
 		private readonly parent: CompilerState | null,
 		private readonly fnName: string,
 		private readonly arity: number,
 		private readonly model: SemanticModel,
+		private readonly nodeLocations: NodeLocations,
 	) {
 	}
 
@@ -68,6 +73,7 @@ class CompilerState {
 			localsCount: this.localCount,
 			constants: this.constants,
 			instructions: this.instructions,
+			debugLocations: this.debugLocations,
 		}
 	}
 
@@ -180,6 +186,7 @@ class CompilerState {
 
 	emitNoArg(op: NoArgOpcode): void {
 		this.instructions.push({op})
+		this.recordDebugLocation()
 	}
 
 	emitNumArg(op: NumArgOpcode, arg: number): void {
@@ -187,6 +194,7 @@ class CompilerState {
 			op,
 			arg,
 		})
+		this.recordDebugLocation()
 	}
 
 	emitClosureInstr(functionConstIndex: number, ups: UpvalueDescriptor[]): void {
@@ -196,6 +204,21 @@ class CompilerState {
 			upvalues: ups,
 		}
 		this.instructions.push(instr)
+		this.recordDebugLocation()
+	}
+
+	withNodeLocation<TResult>(node: object, callback: () => TResult): TResult {
+		const previousLocation = this.currentLocation
+		const nextLocation = this.nodeLocations.get(node)
+		if (nextLocation !== null) {
+			this.currentLocation = nextLocation
+		}
+		try {
+			return callback()
+		}
+		finally {
+			this.currentLocation = previousLocation
+		}
 	}
 
 	emitJump(op: Opcode.Jump | Opcode.JumpIfFalse): number {
@@ -306,6 +329,10 @@ class CompilerState {
 		this.upvalueDedup.set(key, idx)
 
 		return idx
+	}
+
+	private recordDebugLocation(): void {
+		this.debugLocations.push(this.currentLocation)
 	}
 
 	private resolveUpvalue(binding: SemanticBinding): number {

@@ -27,6 +27,15 @@ function emitStatement(
 	compiler: FunctionCompiler,
 	statement: StatementNode,
 ): void {
+	state.withNodeLocation(statement, () => emitStatementCore(state, generator, compiler, statement))
+}
+
+function emitStatementCore(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	compiler: FunctionCompiler,
+	statement: StatementNode,
+): void {
 	switch (statement.type) {
 		case 'VariableDeclaration': {
 			const binding = state.getDeclarationBinding(statement)

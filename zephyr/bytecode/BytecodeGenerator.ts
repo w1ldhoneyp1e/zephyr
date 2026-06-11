@@ -1,5 +1,6 @@
 import {type VmProgram, Opcode} from '../../vm/types'
 import {type ProgramNode} from '../ast'
+import {type NodeLocations} from '../diagnostics'
 import {type SemanticModel} from '../semantics/context'
 import {CompilerState} from './CompilerState'
 import {compilerInvariant} from './errors'
@@ -8,6 +9,9 @@ import {FunctionCompiler} from './FunctionCompiler'
 class BytecodeGenerator {
 	functionPrograms: VmProgram[] = []
 	private model: SemanticModel | null = null
+
+	constructor(private readonly nodeLocations: NodeLocations) {
+	}
 
 	generate(program: ProgramNode, model: SemanticModel): VmProgram[] {
 		this.functionPrograms = []
@@ -29,7 +33,7 @@ class BytecodeGenerator {
 			compilerInvariant('BytecodeGenerator semantic model is not initialized')
 		}
 
-		return new FunctionCompiler(this, new CompilerState(parentState, fnName, arity, this.model))
+		return new FunctionCompiler(this, new CompilerState(parentState, fnName, arity, this.model, this.nodeLocations))
 	}
 }
 

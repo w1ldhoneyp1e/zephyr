@@ -323,6 +323,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '28',
 	},
 	{
+		name: 'runtime_divide_by_zero_error',
+		file: './runtime/divide_by_zero_error.zph',
+		expectedError: '1:11: Divide by zero',
+	},
+	{
 		name: 'modules_basic',
 		file: 'modules/main.zph',
 		expectedReturn: '8',

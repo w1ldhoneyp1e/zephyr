@@ -7,6 +7,7 @@ import {
 	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
+	type VmSourceLocation,
 	type VmStructTemplate,
 	Opcode,
 } from '../../vm/types'
@@ -78,5 +79,6 @@ export {
 	type Value,
 	type VmFunctionTemplate,
 	type VmProgram,
+	type VmSourceLocation,
 	type VmStructTemplate,
 }

@@ -11,6 +11,10 @@ import {compilerInvariant} from '../errors'
 import {emitBindingLoad, emitCallableClosure} from './functionEmitter'
 
 function emitExpression(state: CompilerState, generator: BytecodeGenerator, expression: ExpressionNode): void {
+	state.withNodeLocation(expression, () => emitExpressionCore(state, generator, expression))
+}
+
+function emitExpressionCore(state: CompilerState, generator: BytecodeGenerator, expression: ExpressionNode): void {
 	switch (expression.type) {
 		case 'LiteralExpression': {
 			if (expression.value === null) {

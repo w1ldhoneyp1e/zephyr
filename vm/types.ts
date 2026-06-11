@@ -76,6 +76,13 @@ interface VmProgram {
 	localsCount: number,
 	constants: ConstantPoolItem[],
 	instructions: Instruction[],
+	debugLocations?: (VmSourceLocation | null)[],
+}
+
+interface VmSourceLocation {
+	filePath?: string,
+	line: number,
+	column: number,
 }
 
 enum Opcode {
@@ -177,6 +184,7 @@ export {
 	VmObject,
 	VmArray,
 	VmProgram,
+	VmSourceLocation,
 	Value,
 	ConstantPoolItem,
 	Opcode,

@@ -9,6 +9,14 @@ function emitAssignment(
 	generator: BytecodeGenerator,
 	statement: AssignmentStatementNode,
 ): void {
+	state.withNodeLocation(statement, () => emitAssignmentCore(state, generator, statement))
+}
+
+function emitAssignmentCore(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	statement: AssignmentStatementNode,
+): void {
 	if (statement.target.type === 'IdentifierTarget') {
 		const binding = state.getAssignmentTargetBinding(statement.target)
 		state.assertMutable(binding)

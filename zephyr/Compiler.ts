@@ -92,7 +92,7 @@ class Compiler {
 		if (context.reporter.hasErrors()) {
 			return []
 		}
-		const generator = new BytecodeGenerator()
+		const generator = new BytecodeGenerator(context.nodeLocations)
 
 		return generator.generate(validatedProgram, model)
 	}

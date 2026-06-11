@@ -12,6 +12,7 @@ import {
 	type LocalCell,
 	type Value,
 	type VmProgram,
+	type VmSourceLocation,
 } from './types'
 
 interface VmOptions {
@@ -70,9 +71,16 @@ class Vm {
 				continue
 			}
 			const instr = frame.program.instructions[frame.ip] as Instruction
+			const instructionIp = frame.ip
 			frame.ip++
 
-			const done = this.execInstruction(instr, frame)
+			let done: Value | undefined
+			try {
+				done = this.execInstruction(instr, frame)
+			}
+			catch (error) {
+				throw this.wrapRuntimeError(error, frame.program.debugLocations?.[instructionIp] ?? null)
+			}
 			if (done !== undefined) {
 
 				return done
@@ -162,6 +170,22 @@ class Vm {
 		}
 
 		throw new Error(`Неизвестный опкод по адресу ${frame.ip - 1}`)
+	}
+
+	private wrapRuntimeError(error: unknown, location: VmSourceLocation | null): Error {
+		const message = error instanceof Error
+			? error.message
+			: String(error)
+		if (location === null) {
+			return error instanceof Error
+				? error
+				: new Error(message)
+		}
+		const filePrefix = location.filePath === undefined
+			? ''
+			: `${location.filePath}:`
+
+		return new Error(`${filePrefix}${location.line}:${location.column}: ${message}`)
 	}
 
 	private installBuiltins(): void {
