@@ -49,6 +49,7 @@ class Validator {
 			this.typeAnalyzer,
 			this.classValidator,
 			expression => this.validateExpression(expression),
+			(error, statement) => this.reporter.reportError(error, this.nodeLocations.get(statement)),
 		)
 		this.validationWalker = new ValidationWalker(
 			statement => this.validateStatement(statement, model),

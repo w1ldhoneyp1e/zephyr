@@ -1,0 +1,3 @@
+var values: number[] = [1, 2];
+
+values["bad"] = "oops";

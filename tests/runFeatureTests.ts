@@ -348,6 +348,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
 	},
 	{
+		name: 'assignment_recovery',
+		file: './typification/assignment_recovery.zph',
+		expectedError: 'Несовместимые типы в присваивание элемента массива: ожидалось number, получено string',
+	},
+	{
 		name: 'union_type_mismatch_error',
 		file: './typification/union_type_mismatch_error.zph',
 		expectedError: 'Несовместимые типы в инициализатор переменной value: ожидалось number | string, получено boolean',
