@@ -102,7 +102,7 @@ class Compiler {
 		if (context.reporter.hasErrors()) {
 			return null
 		}
-		const parser = new LalrAstParser(tokens, filePath, context.nodeLocations)
+		const parser = new LalrAstParser(tokens, filePath, context.nodeLocations, context.reporter)
 
 		return parser.parseProgram()
 	}

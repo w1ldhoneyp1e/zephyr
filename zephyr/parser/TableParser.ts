@@ -1,7 +1,7 @@
 import {
+	type DiagnosticReporter,
 	type NodeLocations,
 	type SourceLocation,
-	DiagnosticError,
 } from '../diagnostics'
 import {type ParserAction, type ParsingTables} from './LalrGenerator'
 
@@ -18,13 +18,14 @@ interface ParseOptions<TToken extends ParserToken<string>> {
 	tokenToDebugName?: (token: TToken) => string,
 	sourceFile?: string,
 	nodeLocations?: NodeLocations,
+	reporter?: DiagnosticReporter,
 }
 
 class TableParser<TToken extends ParserToken<string>> {
 	constructor(private readonly tables: ParsingTables) {
 	}
 
-	parse(tokens: TToken[], options: ParseOptions<TToken> = {}): unknown {
+	parse(tokens: TToken[], options: ParseOptions<TToken> = {}): unknown | null {
 		const stateStack: number[] = [this.tables.startState]
 		const valueStack: unknown[] = []
 		let current = 0
@@ -40,10 +41,12 @@ class TableParser<TToken extends ParserToken<string>> {
 				const expected = Object.keys(this.tables.action[state]).sort()
 					.join(', ')
 				const tokenName = options.tokenToDebugName?.(token) ?? token.type
-				throw new DiagnosticError(
+				this.reportError(
+					options,
 					`Неожиданный токен ${tokenName}. Ожидалось: ${expected}`,
 					this.getTokenLocation(token, options.sourceFile),
 				)
+				return null
 			}
 
 			if (action.kind === 'shift') {
@@ -73,9 +76,11 @@ class TableParser<TToken extends ParserToken<string>> {
 				catch (error) {
 					const location = this.findChildLocation(values, options)
 					if (error instanceof Error) {
-						throw new DiagnosticError(error.message, location)
+						this.reportError(options, error.message, location)
+						return null
 					}
-					throw new DiagnosticError(String(error), location)
+					this.reportError(options, String(error), location)
+					return null
 				}
 				this.attachReducedLocation(reducedValue, values, options)
 				const gotoState = this.tables.goto[stateStack[stateStack.length - 1]][production.lhs]
@@ -131,6 +136,13 @@ class TableParser<TToken extends ParserToken<string>> {
 		}
 
 		return null
+	}
+
+	private reportError(options: ParseOptions<TToken>, message: string, location: SourceLocation | null): void {
+		if (options.reporter === undefined) {
+			throw new Error(message)
+		}
+		options.reporter.error(message, location)
 	}
 }
 

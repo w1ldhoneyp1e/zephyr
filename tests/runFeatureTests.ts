@@ -79,6 +79,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Незавершенная строка',
 	},
 	{
+		name: 'parser_error',
+		file: './syntax-sugar/parser_error.zph',
+		expectedError: 'Неожиданный токен Semicolon',
+	},
+	{
 		name: 'nullish_coalescing',
 		file: './syntax-sugar/nullish_coalescing.zph',
 		expectedReturn: '7',
