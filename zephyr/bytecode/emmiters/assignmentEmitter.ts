@@ -1,6 +1,7 @@
 import {type BytecodeGenerator} from '../BytecodeGenerator'
 import {type CompilerState} from '../CompilerState'
 import {type AssignmentStatementNode, Opcode} from '../context'
+import {compilerInvariant} from '../errors'
 import {emitExpression} from './expressionEmitter'
 
 function emitAssignment(
@@ -38,7 +39,7 @@ function emitAssignment(
 
 		return
 	}
-	throw new Error('Неподдерживаемая цель присваивания')
+	compilerInvariant(`unsupported assignment target: ${(statement.target as {type: string}).type}`)
 }
 
 export {

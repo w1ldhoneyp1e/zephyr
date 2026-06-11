@@ -2,6 +2,7 @@ import {type VmProgram, Opcode} from '../../vm/types'
 import {type ProgramNode} from '../ast'
 import {type SemanticModel} from '../semantics/context'
 import {CompilerState} from './CompilerState'
+import {compilerInvariant} from './errors'
 import {FunctionCompiler} from './FunctionCompiler'
 
 class BytecodeGenerator {
@@ -25,7 +26,7 @@ class BytecodeGenerator {
 
 	createFunctionCompiler(parentState: CompilerState | null, fnName: string, arity: number): FunctionCompiler {
 		if (this.model === null) {
-			throw new Error('BytecodeGenerator: semantic model is not initialized')
+			compilerInvariant('BytecodeGenerator semantic model is not initialized')
 		}
 
 		return new FunctionCompiler(this, new CompilerState(parentState, fnName, arity, this.model))

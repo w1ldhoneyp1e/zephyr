@@ -7,6 +7,7 @@ import {
 	type NoArgOpcode,
 	type Value,
 } from '../context'
+import {compilerInvariant} from '../errors'
 import {emitBindingLoad, emitCallableClosure} from './functionEmitter'
 
 function emitExpression(state: CompilerState, generator: BytecodeGenerator, expression: ExpressionNode): void {
@@ -55,7 +56,7 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 				state.emitNoArg(Opcode.Not)
 			}
 			else {
-				throw new Error(`Неподдерживаемый унарный оператор: ${expression.operator}`)
+				compilerInvariant(`unsupported unary operator in bytecode emitter: ${expression.operator}`)
 			}
 			break
 		}
@@ -90,7 +91,7 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 			}
 			const opcode = opMap[expression.operator]
 			if (opcode === undefined) {
-				throw new Error(`Неподдерживаемый бинарный оператор: ${expression.operator}`)
+				compilerInvariant(`unsupported binary operator in bytecode emitter: ${expression.operator}`)
 			}
 			state.emitNoArg(opcode)
 			break
@@ -253,7 +254,7 @@ function emitExpression(state: CompilerState, generator: BytecodeGenerator, expr
 			break
 		}
 		default:
-			throw new Error(`Неподдерживаемое выражение: ${(expression as {type: string}).type}`)
+			compilerInvariant(`unsupported expression in bytecode emitter: ${(expression as {type: string}).type}`)
 	}
 }
 

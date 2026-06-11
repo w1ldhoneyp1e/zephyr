@@ -31,6 +31,7 @@ import {
 	type VmProgram,
 	Opcode,
 } from './context'
+import {compilerInvariant} from './errors'
 
 interface CompilerScopeInfo {
 	locals: Set<CompilerBinding>,
@@ -85,7 +86,7 @@ class CompilerState {
 	leaveScope(): void {
 		const scope = this.scopes.pop()
 		if (scope === undefined) {
-			throw new Error('Неожиданный выход из scope')
+			compilerInvariant('unexpected scope exit')
 		}
 		for (const name of scope.locals) {
 			this.localSlots.delete(name)
@@ -94,7 +95,7 @@ class CompilerState {
 
 	declareBinding(binding: SemanticBinding): number {
 		if (this.localSlots.has(binding)) {
-			throw new Error(`Повторное объявление переменной: ${getBindingName(binding)}`)
+			compilerInvariant(`binding is already declared in current function: ${getBindingName(binding)}`)
 		}
 		const slot = this.localCount
 		this.localCount++
@@ -119,7 +120,7 @@ class CompilerState {
 
 	assertMutable(binding: SemanticBinding): void {
 		if (!isBindingMutable(binding)) {
-			throw new Error(`Нельзя присвоить значение имени: ${getBindingName(binding)}`)
+			compilerInvariant(`immutable binding reached assignment emitter: ${getBindingName(binding)}`)
 		}
 	}
 
@@ -141,7 +142,7 @@ class CompilerState {
 				index: upvalue,
 			}
 		}
-		throw new Error(`Неизвестная переменная: ${getBindingName(binding)}`)
+		compilerInvariant(`binding is not available in compiler state: ${getBindingName(binding)}`)
 	}
 
 	resolveExpressionBinding(binding: SemanticBinding): ResolvedExpressionBinding {
@@ -168,7 +169,7 @@ class CompilerState {
 				index: upvalue,
 			}
 		}
-		throw new Error(`Неизвестная переменная: ${getBindingName(binding)}`)
+		compilerInvariant(`expression binding is not available in compiler state: ${getBindingName(binding)}`)
 	}
 
 	addConstant(value: Value | VmFunctionTemplate): number {
@@ -207,7 +208,7 @@ class CompilerState {
 	patchJump(position: number, target: number): void {
 		const instruction = this.instructions[position]
 		if (instruction === undefined || !('arg' in instruction)) {
-			throw new Error('Невозможно пропатчить jump')
+			compilerInvariant('cannot patch jump instruction')
 		}
 		instruction.arg = target
 	}
@@ -217,7 +218,7 @@ class CompilerState {
 	): SemanticBinding {
 		const binding = this.model.declarationBindings.get(name)
 		if (binding === undefined) {
-			throw new Error('CompilerState: declaration binding not found')
+			compilerInvariant('declaration binding not found')
 		}
 
 		return binding
@@ -235,7 +236,7 @@ class CompilerState {
 	): SemanticBinding[] {
 		const bindings = this.model.functionParameterBindings.get(name)
 		if (bindings === undefined) {
-			throw new Error('CompilerState: function parameter bindings not found')
+			compilerInvariant('function parameter bindings not found')
 		}
 
 		return bindings
@@ -244,7 +245,7 @@ class CompilerState {
 	getForRangeBinding(statement: ForRangeStatementNode): SemanticBinding {
 		const binding = this.model.forRangeBindings.get(statement)
 		if (binding === undefined) {
-			throw new Error('CompilerState: for-range binding not found')
+			compilerInvariant('for-range binding not found')
 		}
 
 		return binding
@@ -253,7 +254,7 @@ class CompilerState {
 	getExpressionBinding(name: IdentifierExpressionNode): SemanticBinding {
 		const binding = this.model.identifierBindings.get(name)
 		if (binding === undefined) {
-			throw new Error('CompilerState: identifier binding not found')
+			compilerInvariant('identifier binding not found')
 		}
 
 		return binding
@@ -262,7 +263,7 @@ class CompilerState {
 	getAssignmentTargetBinding(name: IdentifierTargetNode): SemanticBinding {
 		const binding = this.model.assignmentTargetBindings.get(name)
 		if (binding === undefined) {
-			throw new Error('CompilerState: assignment target binding not found')
+			compilerInvariant('assignment target binding not found')
 		}
 
 		return binding
@@ -271,7 +272,7 @@ class CompilerState {
 	getMethodReceiverBinding(name: MethodDeclarationNode | ConstructorDeclarationNode): ClassSemanticBinding {
 		const binding = this.model.methodReceiverBindings.get(name)
 		if (binding === undefined) {
-			throw new Error('CompilerState: method receiver binding not found')
+			compilerInvariant('method receiver binding not found')
 		}
 
 		return binding
@@ -288,7 +289,7 @@ class CompilerState {
 	private getCurrentScope(): CompilerScopeInfo {
 		const scope = this.scopes[this.scopes.length - 1]
 		if (scope === undefined) {
-			throw new Error('CompilerState: отсутствует текущий scope')
+			compilerInvariant('current scope is missing')
 		}
 
 		return scope

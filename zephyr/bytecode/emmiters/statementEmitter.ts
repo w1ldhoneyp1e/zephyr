@@ -8,6 +8,7 @@ import {
 	type StatementNode,
 	type VmStructTemplate,
 } from '../context'
+import {compilerInvariant} from '../errors'
 import {type FunctionCompiler} from '../FunctionCompiler'
 import {emitAssignment} from './assignmentEmitter'
 import {emitBlock} from './blockEmitter'
@@ -104,7 +105,7 @@ function emitStatement(
 			emitClassDeclaration(state, generator, statement)
 			break
 		default:
-			throw new Error(`Неподдерживаемый statement: ${(statement as {type: string}).type}`)
+			compilerInvariant(`unsupported statement in bytecode emitter: ${(statement as {type: string}).type}`)
 	}
 }
 

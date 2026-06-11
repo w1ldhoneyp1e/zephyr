@@ -3,6 +3,7 @@ import {type BytecodeGenerator} from './BytecodeGenerator'
 import {type CompilerState} from './CompilerState'
 import {type VmProgram, Opcode} from './context'
 import {emitStatement} from './emmiters/statementEmitter'
+import {compilerInvariant} from './errors'
 
 interface LoopControlContext {
 	breakJumps: number[],
@@ -69,10 +70,10 @@ class FunctionCompiler {
 	endLoop(breakTarget: number): void {
 		const loop = this.loopStack.pop()
 		if (loop === undefined) {
-			throw new Error('FunctionCompiler: неожиданный выход из loop-контекста')
+			compilerInvariant('unexpected loop context exit')
 		}
 		if (loop.continueTarget === null) {
-			throw new Error('FunctionCompiler: continue target не установлен')
+			compilerInvariant('continue target is not set')
 		}
 		for (const jump of loop.breakJumps) {
 			this.state.patchJump(jump, breakTarget)
@@ -85,7 +86,7 @@ class FunctionCompiler {
 	private getCurrentLoop(): LoopControlContext {
 		const loop = this.loopStack[this.loopStack.length - 1]
 		if (loop === undefined) {
-			throw new Error('FunctionCompiler: break/continue вне loop-контекста')
+			compilerInvariant('break/continue emitted outside loop context')
 		}
 
 		return loop
