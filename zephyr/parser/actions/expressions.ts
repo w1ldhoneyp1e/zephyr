@@ -322,26 +322,32 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 			} satisfies MatchByBranchNode)
 		case 'MatchByPattern -> Identifier':
 			return values => ({
+				type: 'MatchByPattern',
 				value: tokenLexeme(values[0]),
 			} satisfies MatchByPatternNode)
 		case 'MatchByPattern -> Number':
 			return values => ({
+				type: 'MatchByPattern',
 				value: Number(tokenLexeme(values[0])),
 			} satisfies MatchByPatternNode)
 		case 'MatchByPattern -> String':
 			return values => ({
+				type: 'MatchByPattern',
 				value: unquoteString(tokenLexeme(values[0])),
 			} satisfies MatchByPatternNode)
 		case 'MatchByPattern -> True':
 			return () => ({
+				type: 'MatchByPattern',
 				value: true,
 			} satisfies MatchByPatternNode)
 		case 'MatchByPattern -> False':
 			return () => ({
+				type: 'MatchByPattern',
 				value: false,
 			} satisfies MatchByPatternNode)
 		case 'MatchByPattern -> Null':
 			return () => ({
+				type: 'MatchByPattern',
 				value: null,
 			} satisfies MatchByPatternNode)
 		case 'MatchByDefaultBranch -> Underscore Arrow Expression':

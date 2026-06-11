@@ -45,6 +45,7 @@ interface MatchValueBranchNode {
 }
 
 interface MatchByPatternNode {
+	type: 'MatchByPattern',
 	value: string | number | boolean | null,
 }
 

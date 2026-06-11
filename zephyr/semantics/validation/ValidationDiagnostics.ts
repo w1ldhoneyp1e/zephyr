@@ -1,6 +1,7 @@
 import {
 	type ClassFieldNode,
 	type ExpressionNode,
+	type MatchByPatternNode,
 	type MethodDeclarationNode,
 	type StatementNode,
 } from '../../ast'
@@ -10,6 +11,7 @@ type ValidationDiagnosticNode =
 	| StatementNode
 	| ExpressionNode
 	| ClassFieldNode
+	| MatchByPatternNode
 	| MethodDeclarationNode
 
 class ValidationDiagnostics {

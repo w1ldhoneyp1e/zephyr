@@ -371,9 +371,10 @@ class Validator {
 		for (const branch of expression.branches) {
 			const key = this.getMatchByPatternKey(branch.pattern.value)
 			if (seenValues.has(key)) {
-				this.reportExpressionCheck(expression, () => {
-					throw new Error(`match by ${expression.discriminant} содержит дублирующую ветку: ${String(branch.pattern.value)}`)
-				})
+				this.getValidationDiagnostics().reportForNode(
+					new Error(`match by ${expression.discriminant} содержит дублирующую ветку: ${String(branch.pattern.value)}`),
+					branch.pattern,
+				)
 			}
 			seenValues.add(key)
 		}
@@ -388,9 +389,10 @@ class Validator {
 		const possibleValues = new Set(variants.map(variant => this.getMatchByPatternKey(variant.value)))
 		for (const branch of expression.branches) {
 			if (!possibleValues.has(this.getMatchByPatternKey(branch.pattern.value))) {
-				this.reportExpressionCheck(expression, () => {
-					throw new Error(`match by ${expression.discriminant} содержит невозможную ветку: ${String(branch.pattern.value)}`)
-				})
+				this.getValidationDiagnostics().reportForNode(
+					new Error(`match by ${expression.discriminant} содержит невозможную ветку: ${String(branch.pattern.value)}`),
+					branch.pattern,
+				)
 			}
 		}
 	}
