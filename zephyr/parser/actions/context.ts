@@ -37,6 +37,7 @@ import {
 	type MemberTargetNode,
 	type MethodDeclarationNode,
 	type NamedExportStatementNode,
+	type ObjectTypeMemberNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type ParameterNode,
@@ -45,9 +46,11 @@ import {
 	type StatementNode,
 	type TypeAliasDeclarationNode,
 	type TypeName,
+	type TypeNameNode,
 	type UnaryExpressionNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
+	typeNameToString,
 } from '../../ast'
 import {type Token} from '../../token'
 import {type Production} from '../grammar'
@@ -60,7 +63,10 @@ type SemanticValue =
 	| ParameterNode[]
 	| ClassFieldNode
 	| ParameterNode
+	| TypeNameNode
 	| TypeName[]
+	| ObjectTypeMemberNode
+	| ObjectTypeMemberNode[]
 	| ExpressionNode[]
 	| ConditionalBranchNode
 	| ConditionalBranchNode[]
@@ -133,9 +139,13 @@ function createVariableDeclaration(
 }
 
 function createTypeName(value: SemanticValue): TypeName {
-	return typeof value === 'string'
-		? value
-		: 'any'
+	if (typeof value === 'string') {
+		return value
+	}
+	if (value !== null && typeof value === 'object' && 'type' in value && value.type === 'TypeName') {
+		return value
+	}
+	return 'any'
 }
 
 function appendArrayTypeSuffix(baseTypeName: TypeName): TypeName {
@@ -143,7 +153,7 @@ function appendArrayTypeSuffix(baseTypeName: TypeName): TypeName {
 }
 
 function createFunctionTypeName(paramTypeNames: TypeName[], returnTypeName: TypeName): TypeName {
-	return `(${paramTypeNames.join(', ')}) => ${returnTypeName}`
+	return `(${paramTypeNames.map(typeNameToString).join(', ')}) => ${typeNameToString(returnTypeName)}`
 }
 
 function createBinary(
@@ -284,6 +294,7 @@ export {
 	type MatchValueBranchesValue,
 	type MatchValueBranchNode,
 	type NamedExportStatementNode,
+	type ObjectTypeMemberNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,
@@ -297,6 +308,7 @@ export {
 	type StructMemberListValue,
 	type TypeAliasDeclarationNode,
 	type TypeName,
+	type TypeNameNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 	createFunctionTypeName,
@@ -310,5 +322,6 @@ export {
 	isPendingAssignment,
 	productionKey,
 	tokenLexeme,
+	typeNameToString,
 	unquoteString,
 }

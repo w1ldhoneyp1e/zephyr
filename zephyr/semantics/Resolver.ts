@@ -14,7 +14,9 @@ import {
 	type ProgramNode,
 	type StatementNode,
 	type TypeAliasDeclarationNode,
+	type TypeName,
 	type VariableDeclarationNode,
+	typeNameToString,
 } from '../ast'
 import {isBuiltinGlobalName} from '../builtins'
 import {
@@ -839,10 +841,10 @@ class Resolver {
 		}
 	}
 
-	private resolveTypeName(typeName: string, node?: DiagnosticNode): ReturnType<typeof parseSemanticType> {
+	private resolveTypeName(typeName: TypeName, node?: DiagnosticNode): ReturnType<typeof parseSemanticType> {
 		try {
 			return parseSemanticType(
-				typeName,
+				typeNameToString(typeName),
 				name => this.isCurrentFunctionTypeParameter(name)
 					? typeParameterType(name)
 					: this.model.typeAliasNames.has(name)
@@ -852,9 +854,27 @@ class Resolver {
 			)
 		}
 		catch (error) {
-			this.reporter.reportError(error, this.getNodeLocation(node))
+			this.reporter.reportError(error, this.getTypeErrorLocation(typeName, node, error))
 			return errorType()
 		}
+	}
+
+	private getTypeErrorLocation(
+		typeName: TypeName,
+		node: DiagnosticNode | undefined,
+		error: unknown,
+	): SourceLocation | null {
+		const message = error instanceof Error
+			? error.message
+			: String(error)
+		if (typeof typeName !== 'string' && typeName.objectMembers !== undefined) {
+			for (const member of typeName.objectMembers) {
+				if (message.includes(typeNameToString(member.typeName))) {
+					return this.nodeLocations.get(member)
+				}
+			}
+		}
+		return this.getNodeLocation(node)
 	}
 
 	private isKnownTypeName(name: string): boolean {

@@ -1,8 +1,21 @@
 import {type ExpressionNode} from './expressions'
 import {type BlockStatementNode, type StatementNode} from './statements'
 
-type TypeName = string
+type TypeName = string | TypeNameNode
 type ClassMemberVisibility = 'public' | 'private'
+
+interface TypeNameNode {
+	type: 'TypeName',
+	source: string,
+	objectMembers?: ObjectTypeMemberNode[],
+}
+
+interface ObjectTypeMemberNode {
+	type: 'ObjectTypeMember',
+	name: string,
+	typeName: TypeName,
+	source: string,
+}
 
 interface ParameterNode {
 	type: 'Parameter',
@@ -69,6 +82,12 @@ interface ClassDeclarationNode {
 	methods: MethodDeclarationNode[],
 }
 
+function typeNameToString(typeName: TypeName): string {
+	return typeof typeName === 'string'
+		? typeName
+		: typeName.source
+}
+
 export {
 	type ClassMemberVisibility,
 	type ClassFieldNode,
@@ -76,9 +95,12 @@ export {
 	type ConstructorDeclarationNode,
 	type FunctionDeclarationNode,
 	type MethodDeclarationNode,
+	type ObjectTypeMemberNode,
 	type ParameterNode,
 	type ProgramNode,
 	type TypeAliasDeclarationNode,
+	type TypeNameNode,
 	type TypeName,
 	type VariableDeclarationNode,
+	typeNameToString,
 }

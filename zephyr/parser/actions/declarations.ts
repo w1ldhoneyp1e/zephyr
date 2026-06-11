@@ -12,12 +12,14 @@ import {
 	type ImportStatementNode,
 	type MethodDeclarationNode,
 	type NamedExportStatementNode,
+	type ObjectTypeMemberNode,
 	type ParameterNode,
 	type SemanticValue,
 	type SemanticValueAction,
 	type StructMemberListValue,
 	type TypeAliasDeclarationNode,
 	type TypeName,
+	type TypeNameNode,
 	type VariableDeclarationNode,
 	createFunctionTypeName,
 	createTypeName,
@@ -25,6 +27,7 @@ import {
 	ensureExpression,
 	productionKey,
 	tokenLexeme,
+	typeNameToString,
 } from './context'
 
 function createDeclarationAction(production: Production): SemanticValueAction | null {
@@ -97,9 +100,15 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'UnionTypeExpression -> ArrayTypeExpression':
 			return values => createTypeName(values[0])
 		case 'UnionTypeExpression -> UnionTypeExpression Pipe ArrayTypeExpression':
-			return values => `${createTypeName(values[0])} | ${createTypeName(values[2])}`
+			return values => `${typeNameToString(createTypeName(values[0]))} | ${typeNameToString(createTypeName(values[2]))}`
 		case 'ArrayTypeExpression -> PrimaryTypeExpression TypeSuffixListOpt':
-			return values => `${createTypeName(values[0])}${values[1] as string}`
+			return values => {
+				const baseTypeName = createTypeName(values[0])
+				const suffix = values[1] as string
+				return suffix === ''
+					? baseTypeName
+					: `${typeNameToString(baseTypeName)}${suffix}`
+			}
 		case 'PrimaryTypeExpression -> Identifier':
 			return values => tokenLexeme(values[0]) as TypeName
 		case 'PrimaryTypeExpression -> Null':
@@ -117,24 +126,40 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 				if (types.length !== 1) {
 					throw new Error('В скобках типа без => ожидается ровно один тип')
 				}
-				return `(${createTypeName(types[0])})`
+				return `(${typeNameToString(createTypeName(types[0]))})`
 			}
 		case 'ParenthesizedTypeContinuation -> Arrow TypeExpression':
 			return values => createTypeName(values[1])
 		case 'ParenthesizedTypeContinuation -> ε':
 			return () => null
 		case 'ObjectTypeExpression -> LeftBrace ObjectTypeMemberListOpt RightBrace':
-			return values => `{${(values[1] as TypeName[]).join('')}}`
+			return values => {
+				const members = values[1] as ObjectTypeMemberNode[]
+				return {
+					type: 'TypeName',
+					source: `{${members.map(member => member.source).join('')}}`,
+					objectMembers: members,
+				} satisfies TypeNameNode
+			}
 		case 'ObjectTypeMemberListOpt -> ObjectTypeMemberList':
 			return values => values[0]
 		case 'ObjectTypeMemberListOpt -> ε':
 			return () => []
 		case 'ObjectTypeMemberList -> ObjectTypeMemberList ObjectTypeMember':
-			return values => [...(values[0] as TypeName[]), createTypeName(values[1])]
+			return values => [...(values[0] as ObjectTypeMemberNode[]), values[1] as ObjectTypeMemberNode]
 		case 'ObjectTypeMemberList -> ObjectTypeMember':
-			return values => [createTypeName(values[0])]
+			return values => [values[0] as ObjectTypeMemberNode]
 		case 'ObjectTypeMember -> Identifier Colon TypeExpression Semicolon':
-			return values => `${tokenLexeme(values[0])}: ${createTypeName(values[2])};`
+			return values => {
+				const typeName = createTypeName(values[2])
+				const source = `${tokenLexeme(values[0])}: ${typeNameToString(typeName)};`
+				return {
+					type: 'ObjectTypeMember',
+					name: tokenLexeme(values[0]),
+					typeName,
+					source,
+				} satisfies ObjectTypeMemberNode
+			}
 		case 'TypeArgumentListOpt -> TypeArgumentList TypeTrailingCommaOpt':
 			return values => values[0]
 		case 'TypeArgumentListOpt -> ε':

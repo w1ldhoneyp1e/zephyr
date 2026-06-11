@@ -50,9 +50,15 @@ export type {
 	ConstructorDeclarationNode,
 	FunctionDeclarationNode,
 	MethodDeclarationNode,
+	ObjectTypeMemberNode,
 	ParameterNode,
 	ProgramNode,
 	TypeAliasDeclarationNode,
+	TypeNameNode,
 	TypeName,
 	VariableDeclarationNode,
+} from './declarations'
+
+export {
+	typeNameToString,
 } from './declarations'

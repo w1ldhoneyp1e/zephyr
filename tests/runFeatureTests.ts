@@ -517,6 +517,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		file: './typification/object_type_member_type_error.zph',
 		expectedError: 'член score: ожидалось () => number, получено () => string',
 	},
+	{
+		name: 'object_type_unknown_member_type_error',
+		file: './typification/object_type_unknown_member_type_error.zph',
+		expectedError: '2:2: Неизвестный тип: MissingType',
+	},
 ]
 
 function runTestCase(testCase: FeatureTestCase): void {

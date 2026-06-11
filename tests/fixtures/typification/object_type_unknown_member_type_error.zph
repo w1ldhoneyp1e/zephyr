@@ -1,0 +1,5 @@
+type Shape = {
+	score: MissingType;
+};
+
+return 0;

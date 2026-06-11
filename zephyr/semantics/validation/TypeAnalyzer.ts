@@ -3,8 +3,14 @@ import {
 	type FunctionDeclarationNode,
 	type ParameterNode,
 	type StatementNode,
+	type TypeName,
+	typeNameToString,
 } from '../../ast'
-import {type DiagnosticReporter, type NodeLocations} from '../../diagnostics'
+import {
+	type DiagnosticReporter,
+	type NodeLocations,
+	type SourceLocation,
+} from '../../diagnostics'
 import {match} from '../../utils'
 import {type ClassRegistry} from '../ClassRegistry'
 import {type SemanticBinding, type SemanticModel} from '../context'
@@ -162,10 +168,14 @@ class TypeAnalyzer {
 		this.assertTypeAssignable(targetType, this.inferExpressionType(expression, targetType), context)
 	}
 
-	resolveTypeName(typeName: string, typeParams: string[] = [], node?: StatementNode | ExpressionNode | ParameterNode): SemanticType {
+	resolveTypeName(
+		typeName: TypeName,
+		typeParams: string[] = [],
+		node?: StatementNode | ExpressionNode | ParameterNode,
+	): SemanticType {
 		try {
 			return parseSemanticType(
-				typeName,
+				typeNameToString(typeName),
 				name => typeParams.includes(name)
 					? typeParameterType(name)
 					: this.model.typeAliases.get(name) ?? null,
@@ -176,18 +186,44 @@ class TypeAnalyzer {
 			)
 		}
 		catch (error) {
-			this.reporter.reportError(error, node === undefined
-				? null
-				: this.nodeLocations.get(node))
+			this.reporter.reportError(error, this.getTypeErrorLocation(typeName, node, error))
 
 			return errorType()
 		}
 	}
 
+	private getTypeErrorLocation(
+		typeName: TypeName,
+		node: StatementNode | ExpressionNode | ParameterNode | undefined,
+		error: unknown,
+	): SourceLocation | null {
+		const message = error instanceof Error
+			? error.message
+			: String(error)
+		if (typeof typeName !== 'string' && typeName.objectMembers !== undefined) {
+			for (const member of typeName.objectMembers) {
+				if (message.includes(typeNameToString(member.typeName))) {
+					return this.nodeLocations.get(member)
+				}
+			}
+		}
+
+		return node === undefined
+			? null
+			: this.nodeLocations.get(node)
+	}
+
 	getFunctionParameterTypes(declaration: FunctionDeclarationNode, args: ExpressionNode[]): SemanticType[] {
 		const substitutions = this.inferTypeParameterSubstitutions(declaration, args)
 		return declaration.params.map(param =>
-			this.substituteTypeParameters(this.resolveTypeName(param.typeName, declaration.typeParams, param), substitutions),
+			this.substituteTypeParameters(
+				this.resolveTypeName(
+					param.typeName,
+					declaration.typeParams,
+					param,
+				),
+				substitutions,
+			),
 		)
 	}
 
