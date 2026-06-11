@@ -22,6 +22,7 @@ import {
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
 	type IfStatementNode,
+	type ImportNameNode,
 	type ImportStatementNode,
 	type IndexExpressionNode,
 	type IndexTargetNode,
@@ -81,6 +82,8 @@ type SemanticValue =
 	| StatementNode
 	| StatementNode[]
 	| PendingAssignmentNode
+	| ImportNameNode
+	| ImportNameNode[]
 	| ImportStatementNode
 	| ExportStatementNode
 	| NamedExportStatementNode
@@ -266,6 +269,7 @@ export {
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IfStatementNode,
+	type ImportNameNode,
 	type ImportStatementNode,
 	type IndexExpressionNode,
 	type LiteralExpressionNode,

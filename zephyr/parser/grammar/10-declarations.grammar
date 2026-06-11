@@ -4,7 +4,8 @@ TypeAliasDeclaration -> type Identifier '=' TypeExpression ';'
 ImportStatement -> import '{' ImportNameListOpt '}' from String ';'
 ImportNameListOpt -> ImportNameList ImportTrailingCommaOpt | ε
 ImportTrailingCommaOpt -> ',' | ε
-ImportNameList -> ImportNameList ',' Identifier | Identifier
+ImportNameList -> ImportNameList ',' ImportName | ImportName
+ImportName -> Identifier
 ExportStatement -> export VariableDeclaration
 ExportStatement -> export TypeAliasDeclaration
 ExportStatement -> export FunctionDeclaration

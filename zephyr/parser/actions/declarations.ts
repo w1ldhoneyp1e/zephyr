@@ -8,10 +8,12 @@ import {
 	type ExportStatementNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
+	type ImportNameNode,
 	type ImportStatementNode,
 	type MethodDeclarationNode,
 	type NamedExportStatementNode,
 	type ParameterNode,
+	type SemanticValue,
 	type SemanticValueAction,
 	type StructMemberListValue,
 	type TypeAliasDeclarationNode,
@@ -50,7 +52,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ImportStatement -> Import LeftBrace ImportNameListOpt RightBrace From String Semicolon':
 			return values => ({
 				type: 'ImportStatement',
-				names: values[2] as string[],
+				names: values[2] as ImportNameNode[],
 				source: tokenLexeme(values[5]).slice(1, -1),
 			} satisfies ImportStatementNode)
 		case 'ImportNameListOpt -> ImportNameList ImportTrailingCommaOpt':
@@ -60,10 +62,12 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ImportTrailingCommaOpt -> Comma':
 		case 'ImportTrailingCommaOpt -> ε':
 			return () => null
-		case 'ImportNameList -> ImportNameList Comma Identifier':
-			return values => [...(values[0] as string[]), tokenLexeme(values[2])]
-		case 'ImportNameList -> Identifier':
-			return values => [tokenLexeme(values[0])]
+		case 'ImportNameList -> ImportNameList Comma ImportName':
+			return values => [...(values[0] as ImportNameNode[]), values[2] as ImportNameNode]
+		case 'ImportNameList -> ImportName':
+			return values => [values[0] as ImportNameNode]
+		case 'ImportName -> Identifier':
+			return values => createImportName(values[0])
 		case 'ExportStatement -> Export VariableDeclaration':
 		case 'ExportStatement -> Export TypeAliasDeclaration':
 		case 'ExportStatement -> Export FunctionDeclaration':
@@ -78,7 +82,7 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 		case 'ExportStatement -> Export LeftBrace ImportNameListOpt RightBrace ExportFromOpt Semicolon':
 			return values => ({
 				type: 'NamedExportStatement',
-				names: values[2] as string[],
+				names: values[2] as ImportNameNode[],
 				source: values[4] as string | null,
 			} satisfies NamedExportStatementNode)
 		case 'ExportFromOpt -> From String':
@@ -281,6 +285,13 @@ function createDeclarationAction(production: Production): SemanticValueAction | 
 
 		default:
 			return null
+	}
+}
+
+function createImportName(value: SemanticValue): ImportNameNode {
+	return {
+		type: 'ImportName',
+		name: tokenLexeme(value),
 	}
 }
 

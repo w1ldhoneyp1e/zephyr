@@ -84,6 +84,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedError: 'Неожиданный токен Semicolon',
 	},
 	{
+		name: 'parser_recovery',
+		file: './syntax-sugar/parser_recovery.zph',
+		expectedError: '2:14: Неожиданный токен Semicolon',
+	},
+	{
 		name: 'nullish_coalescing',
 		file: './syntax-sugar/nullish_coalescing.zph',
 		expectedReturn: '7',

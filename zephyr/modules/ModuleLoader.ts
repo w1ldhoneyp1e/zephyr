@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {
+	type ImportNameNode,
 	type ImportStatementNode,
 	type NamedExportStatementNode,
 	type ProgramNode,
@@ -14,7 +15,7 @@ import {
 import {match} from '../utils'
 
 interface ModuleDependency {
-	names: string[],
+	names: ImportNameNode[],
 	resolvedPath: string,
 	kind: 'import' | 'reexport',
 	statement: ImportStatementNode | NamedExportStatementNode,
@@ -90,13 +91,13 @@ class ModuleLoader {
 			}
 			const dependencyModule = dependencyModuleResult.value
 			for (const name of dependency.names) {
-				if (!dependencyModule.exports.has(name)) {
-					this.reportForStatement(
-						dependency.statement,
+				if (!dependencyModule.exports.has(name.name)) {
+					this.reportForNode(
+						name,
 						this.createMissingExportError(
 							loaded.filePath,
 							dependency.resolvedPath,
-							name,
+							name.name,
 							dependency.kind,
 						),
 					)
@@ -158,7 +159,7 @@ class ModuleLoader {
 						statement: stmnt,
 					})
 					for (const name of stmnt.names) {
-						availableNames.add(name)
+						availableNames.add(name.name)
 					}
 				},
 				ExportStatement: stmnt => {
@@ -167,7 +168,7 @@ class ModuleLoader {
 				},
 				NamedExportStatement: stmnt => {
 					for (const name of stmnt.names) {
-						exports.add(name)
+						exports.add(name.name)
 					}
 					const src = stmnt.source
 					const reexporting = src !== null
@@ -186,10 +187,10 @@ class ModuleLoader {
 					}
 					else {
 						for (const name of stmnt.names) {
-							if (!availableNames.has(name)) {
-								this.reportForStatement(
-									stmnt,
-									`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name}: имя не объявлено и не импортировано`,
+							if (!availableNames.has(name.name)) {
+								this.reportForNode(
+									name,
+									`Модуль ${this.formatModulePath(filePath)} не может экспортировать ${name.name}: имя не объявлено и не импортировано`,
 								)
 							}
 						}
@@ -292,6 +293,13 @@ class ModuleLoader {
 		message: string,
 	): void {
 		this.reporter.error(message, this.nodeLocations.get(statement))
+	}
+
+	private reportForNode(
+		node: ImportNameNode,
+		message: string,
+	): void {
+		this.reporter.error(message, this.nodeLocations.get(node))
 	}
 
 	private failure(): PhaseResult<never> {

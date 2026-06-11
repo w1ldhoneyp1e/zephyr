@@ -35,6 +35,7 @@ export type {
 	ExportStatementNode,
 	ExpressionStatementNode,
 	ForRangeStatementNode,
+	ImportNameNode,
 	ImportStatementNode,
 	IfStatementNode,
 	ReturnStatementNode,

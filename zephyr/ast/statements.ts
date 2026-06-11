@@ -14,8 +14,13 @@ type ExportableStatementNode =
 
 interface ImportStatementNode {
 	type: 'ImportStatement',
-	names: string[],
+	names: ImportNameNode[],
 	source: string,
+}
+
+interface ImportNameNode {
+	type: 'ImportName',
+	name: string,
 }
 
 interface ExportStatementNode {
@@ -25,7 +30,7 @@ interface ExportStatementNode {
 
 interface NamedExportStatementNode {
 	type: 'NamedExportStatement',
-	names: string[],
+	names: ImportNameNode[],
 	source: string | null,
 }
 
@@ -103,6 +108,7 @@ export {
 	type BreakStatementNode,
 	type ContinueStatementNode,
 	type ExportableStatementNode,
+	type ImportNameNode,
 	type NamedExportStatementNode,
 	type ExportStatementNode,
 	type ExpressionStatementNode,

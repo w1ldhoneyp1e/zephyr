@@ -27,9 +27,10 @@ class TableParser<TToken extends ParserToken<string>> {
 	}
 
 	parse(tokens: TToken[], options: ParseOptions<TToken> = {}): PhaseResult<unknown> {
-		const stateStack: number[] = [this.tables.startState]
-		const valueStack: unknown[] = []
+		let stateStack: number[] = [this.tables.startState]
+		let valueStack: unknown[] = []
 		let current = 0
+		let hasErrors = false
 
 		while (true) {
 			const state = stateStack[stateStack.length - 1]
@@ -47,9 +48,16 @@ class TableParser<TToken extends ParserToken<string>> {
 					`Неожиданный токен ${tokenName}. Ожидалось: ${expected}`,
 					this.getTokenLocation(token, options.sourceFile),
 				)
-				return {
-					ok: false,
+				hasErrors = true
+				current = this.synchronize(tokens, current)
+				if (tokens[current]?.type === 'Eof') {
+					return {
+						ok: false,
+					}
 				}
+				stateStack = [this.tables.startState]
+				valueStack = []
+				continue
 			}
 
 			if (action.kind === 'shift') {
@@ -80,14 +88,18 @@ class TableParser<TToken extends ParserToken<string>> {
 					const location = this.findChildLocation(values, options)
 					if (error instanceof Error) {
 						this.reportError(options, error.message, location)
-						return {
-							ok: false,
-						}
+						hasErrors = true
+						current = this.synchronize(tokens, current)
+						stateStack = [this.tables.startState]
+						valueStack = []
+						continue
 					}
 					this.reportError(options, String(error), location)
-					return {
-						ok: false,
-					}
+					hasErrors = true
+					current = this.synchronize(tokens, current)
+					stateStack = [this.tables.startState]
+					valueStack = []
+					continue
 				}
 				this.attachReducedLocation(reducedValue, values, options)
 				const gotoState = this.tables.goto[stateStack[stateStack.length - 1]][production.lhs]
@@ -97,6 +109,12 @@ class TableParser<TToken extends ParserToken<string>> {
 				stateStack.push(gotoState)
 				valueStack.push(reducedValue)
 				continue
+			}
+
+			if (hasErrors) {
+				return {
+					ok: false,
+				}
 			}
 
 			return {
@@ -153,6 +171,19 @@ class TableParser<TToken extends ParserToken<string>> {
 			throw new Error(message)
 		}
 		options.reporter.error(message, location)
+	}
+
+	private synchronize(tokens: TToken[], current: number): number {
+		let next = current
+		while (tokens[next] !== undefined && tokens[next].type !== 'Eof') {
+			const tokenType = tokens[next].type
+			next++
+			if (tokenType === 'Semicolon' || tokenType === 'RightBrace') {
+				return next
+			}
+		}
+
+		return next
 	}
 }
 
