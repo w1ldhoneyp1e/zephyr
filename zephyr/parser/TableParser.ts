@@ -1,6 +1,7 @@
 import {
 	type DiagnosticReporter,
 	type NodeLocations,
+	type PhaseResult,
 	type SourceLocation,
 } from '../diagnostics'
 import {type ParserAction, type ParsingTables} from './LalrGenerator'
@@ -25,7 +26,7 @@ class TableParser<TToken extends ParserToken<string>> {
 	constructor(private readonly tables: ParsingTables) {
 	}
 
-	parse(tokens: TToken[], options: ParseOptions<TToken> = {}): unknown | null {
+	parse(tokens: TToken[], options: ParseOptions<TToken> = {}): PhaseResult<unknown> {
 		const stateStack: number[] = [this.tables.startState]
 		const valueStack: unknown[] = []
 		let current = 0
@@ -46,7 +47,9 @@ class TableParser<TToken extends ParserToken<string>> {
 					`Неожиданный токен ${tokenName}. Ожидалось: ${expected}`,
 					this.getTokenLocation(token, options.sourceFile),
 				)
-				return null
+				return {
+					ok: false,
+				}
 			}
 
 			if (action.kind === 'shift') {
@@ -77,10 +80,14 @@ class TableParser<TToken extends ParserToken<string>> {
 					const location = this.findChildLocation(values, options)
 					if (error instanceof Error) {
 						this.reportError(options, error.message, location)
-						return null
+						return {
+							ok: false,
+						}
 					}
 					this.reportError(options, String(error), location)
-					return null
+					return {
+						ok: false,
+					}
 				}
 				this.attachReducedLocation(reducedValue, values, options)
 				const gotoState = this.tables.goto[stateStack[stateStack.length - 1]][production.lhs]
@@ -92,7 +99,10 @@ class TableParser<TToken extends ParserToken<string>> {
 				continue
 			}
 
-			return valueStack[0]
+			return {
+				ok: true,
+				value: valueStack[0],
+			}
 		}
 	}
 

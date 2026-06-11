@@ -10,6 +10,15 @@ interface Diagnostic {
 	location: SourceLocation | null,
 }
 
+type PhaseResult<TValue> =
+	| {
+		ok: true,
+		value: TValue,
+	}
+	| {
+		ok: false,
+	}
+
 class DiagnosticReporter {
 	private readonly diagnostics: Diagnostic[] = []
 
@@ -125,6 +134,7 @@ export {
 	DiagnosticError,
 	DiagnosticReporter,
 	NodeLocations,
+	type PhaseResult,
 	type SourceLocation,
 	diagnosticFromError,
 	diagnosticToMessage,

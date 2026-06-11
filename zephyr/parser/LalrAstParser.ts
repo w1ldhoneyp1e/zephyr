@@ -3,7 +3,11 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type DiagnosticReporter, type NodeLocations} from '../diagnostics'
+import {
+	type DiagnosticReporter,
+	type NodeLocations,
+	type PhaseResult,
+} from '../diagnostics'
 import {type Token} from '../token'
 import {buildCurrentZephyrArtifacts} from './currentArtifacts'
 import {type ParseOptions, TableParser} from './TableParser'
@@ -29,12 +33,16 @@ class LalrAstParser {
 		}
 	}
 
-	parseProgram(): ProgramNode | null {
+	parseProgram(): PhaseResult<ProgramNode> {
 		const result = this.parser.parse(this.tokens, this.parseOptions)
+		if (!result.ok) {
+			return result
+		}
 
-		return result === null
-			? null
-			: result as ProgramNode
+		return {
+			ok: true,
+			value: result.value as ProgramNode,
+		}
 	}
 }
 

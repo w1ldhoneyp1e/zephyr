@@ -6,7 +6,11 @@ import {
 	type ProgramNode,
 	type StatementNode,
 } from '../ast'
-import {type DiagnosticReporter, type NodeLocations} from '../diagnostics'
+import {
+	type DiagnosticReporter,
+	type NodeLocations,
+	type PhaseResult,
+} from '../diagnostics'
 import {match} from '../utils'
 
 interface ModuleDependency {
@@ -27,21 +31,24 @@ class ModuleLoader {
 	private readonly moduleCache = new Map<string, LoadedModule>()
 
 	constructor(
-		private readonly parseSource: (source: string, filePath: string) => ProgramNode | null,
+		private readonly parseSource: (source: string, filePath: string) => PhaseResult<ProgramNode>,
 		private readonly reporter: DiagnosticReporter,
 		private readonly nodeLocations: NodeLocations,
 		private readonly workspaceRoot: string = process.cwd(),
 	) {
 	}
 
-	loadEntryProgram(filePath: string): ProgramNode | null {
+	loadEntryProgram(filePath: string): PhaseResult<ProgramNode> {
 		const entryPath = path.resolve(filePath)
-		const statements = this.flattenModule(entryPath, new Set(), [])
-		if (statements === null || this.reporter.hasErrors()) {
-			return null
+		const statementsResult = this.flattenModule(entryPath, new Set(), [])
+		if (!statementsResult.ok || this.reporter.hasErrors()) {
+			return this.failure()
 		}
 
-		return this.createProgram(statements)
+		return {
+			ok: true,
+			value: this.createProgram(statementsResult.value),
+		}
 	}
 
 	private createProgram(statements: StatementNode[]): ProgramNode {
@@ -55,28 +62,33 @@ class ModuleLoader {
 		filePath: string,
 		emitted: Set<string>,
 		active: string[],
-	): StatementNode[] | null {
+	): PhaseResult<StatementNode[]> {
 		if (emitted.has(filePath)) {
-			return []
+			return {
+				ok: true,
+				value: [],
+			}
 		}
 
 		if (!this.checkCycling(filePath, active)) {
-			return null
+			return this.failure()
 		}
 
 		active.push(filePath)
-		const loaded = this.loadModule(filePath)
-		if (loaded === null) {
+		const loadedResult = this.loadModule(filePath)
+		if (!loadedResult.ok) {
 			active.pop()
-			return null
+			return this.failure()
 		}
+		const loaded = loadedResult.value
 		const statements: StatementNode[] = []
 
 		for (const dependency of loaded.dependencies) {
-			const dependencyModule = this.loadModule(dependency.resolvedPath)
-			if (dependencyModule === null) {
+			const dependencyModuleResult = this.loadModule(dependency.resolvedPath)
+			if (!dependencyModuleResult.ok) {
 				continue
 			}
+			const dependencyModule = dependencyModuleResult.value
 			for (const name of dependency.names) {
 				if (!dependencyModule.exports.has(name)) {
 					this.reportForStatement(
@@ -90,9 +102,9 @@ class ModuleLoader {
 					)
 				}
 			}
-			const dependencyStatements = this.flattenModule(dependency.resolvedPath, emitted, active)
-			if (dependencyStatements !== null) {
-				statements.push(...dependencyStatements)
+			const dependencyStatementsResult = this.flattenModule(dependency.resolvedPath, emitted, active)
+			if (dependencyStatementsResult.ok) {
+				statements.push(...dependencyStatementsResult.value)
 			}
 		}
 
@@ -100,13 +112,19 @@ class ModuleLoader {
 		active.pop()
 		emitted.add(filePath)
 
-		return statements
+		return {
+			ok: true,
+			value: statements,
+		}
 	}
 
-	private loadModule(filePath: string): LoadedModule | null {
+	private loadModule(filePath: string): PhaseResult<LoadedModule> {
 		const cached = this.moduleCache.get(filePath)
 		if (cached !== undefined) {
-			return cached
+			return {
+				ok: true,
+				value: cached,
+			}
 		}
 
 		let source: string
@@ -115,12 +133,13 @@ class ModuleLoader {
 		}
 		catch (error) {
 			this.reporter.reportError(error)
-			return null
+			return this.failure()
 		}
-		const program = this.parseSource(source, filePath)
-		if (program === null) {
-			return null
+		const programResult = this.parseSource(source, filePath)
+		if (!programResult.ok) {
+			return this.failure()
 		}
+		const program = programResult.value
 		const exports = new Set<string>()
 		const dependencies: ModuleDependency[] = []
 		const availableNames = new Set<string>()
@@ -129,13 +148,13 @@ class ModuleLoader {
 			match(statement, 'type', {
 				ImportStatement: stmnt => {
 					const resolvedPath = this.resolveImportPath(filePath, stmnt.source, stmnt)
-					if (resolvedPath === null) {
+					if (!resolvedPath.ok) {
 						return
 					}
 					dependencies.push({
 						kind: 'import',
 						names: stmnt.names,
-						resolvedPath,
+						resolvedPath: resolvedPath.value,
 						statement: stmnt,
 					})
 					for (const name of stmnt.names) {
@@ -155,13 +174,13 @@ class ModuleLoader {
 
 					if (reexporting) {
 						const resolvedPath = this.resolveImportPath(filePath, src, stmnt)
-						if (resolvedPath === null) {
+						if (!resolvedPath.ok) {
 							return
 						}
 						dependencies.push({
 							kind: 'reexport',
 							names: stmnt.names,
-							resolvedPath,
+							resolvedPath: resolvedPath.value,
 							statement: stmnt,
 						})
 					}
@@ -192,26 +211,32 @@ class ModuleLoader {
 		}
 		this.moduleCache.set(filePath, loaded)
 
-		return loaded
+		return {
+			ok: true,
+			value: loaded,
+		}
 	}
 
 	private resolveImportPath(
 		fromFilePath: string,
 		importPath: string,
 		statement: ImportStatementNode | NamedExportStatementNode,
-	): string | null {
+	): PhaseResult<string> {
 		if (!importPath.startsWith('.')) {
 			this.reportForStatement(statement, `Пока поддерживаются только относительные импорты: ${importPath}`)
-			return null
+			return this.failure()
 		}
 
 		const resolvedPath = path.resolve(path.dirname(fromFilePath), importPath)
 		if (!fs.existsSync(resolvedPath)) {
 			this.reportForStatement(statement, `Не найден импортируемый модуль: ${resolvedPath}`)
-			return null
+			return this.failure()
 		}
 
-		return resolvedPath
+		return {
+			ok: true,
+			value: resolvedPath,
+		}
 	}
 
 	private normalizeStatements(statements: StatementNode[]): StatementNode[] {
@@ -267,6 +292,12 @@ class ModuleLoader {
 		message: string,
 	): void {
 		this.reporter.error(message, this.nodeLocations.get(statement))
+	}
+
+	private failure(): PhaseResult<never> {
+		return {
+			ok: false,
+		}
 	}
 }
 

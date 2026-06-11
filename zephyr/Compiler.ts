@@ -3,6 +3,7 @@ import {type ProgramNode} from './ast'
 import {BytecodeGenerator} from './bytecode/BytecodeGenerator'
 import {
 	type Diagnostic,
+	type PhaseResult,
 	DiagnosticError,
 	DiagnosticReporter,
 	diagnosticToMessage,
@@ -38,14 +39,14 @@ class Compiler {
 				context.reporter,
 				context.nodeLocations,
 			)
-			const program = loader.loadEntryProgram(filePath)
-			if (program === null) {
+			const programResult = loader.loadEntryProgram(filePath)
+			if (!programResult.ok) {
 				return {
 					ok: false,
 					diagnostics: context.reporter.getDiagnostics(),
 				}
 			}
-			const programs = this.compileProgram(program, context)
+			const programs = this.compileProgram(programResult.value, context)
 			if (context.reporter.hasErrors()) {
 				return {
 					ok: false,
@@ -96,11 +97,13 @@ class Compiler {
 		return generator.generate(validatedProgram, model)
 	}
 
-	private parseSource(source: string, filePath: string, context: CompilationContext): ProgramNode | null {
+	private parseSource(source: string, filePath: string, context: CompilationContext): PhaseResult<ProgramNode> {
 		const lexer = new Lexer(source, context.reporter, filePath)
 		const tokens = lexer.scanTokens()
 		if (context.reporter.hasErrors()) {
-			return null
+			return {
+				ok: false,
+			}
 		}
 		const parser = new LalrAstParser(tokens, filePath, context.nodeLocations, context.reporter)
 
