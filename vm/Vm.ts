@@ -16,7 +16,7 @@ import {
 } from './types'
 
 interface VmOptions {
-	read?: () => string | null,
+	read?: () => Value,
 	write?: (text: string) => void,
 	writeLine?: (text: string) => void,
 }
@@ -34,7 +34,7 @@ class Vm {
 	private natives = new Map<BuiltinGlobalName, NativeImplementation>()
 	private frames: CallFrame[] = []
 	private stack: Value[] = []
-	private stdinCache: string | null | undefined
+	private stdinBuffer = ''
 
 	constructor(private readonly options: VmOptions = {}) {
 	}
@@ -50,7 +50,7 @@ class Vm {
 		const mainProgram = this.programs[0]
 		this.frames = []
 		this.stack = []
-		this.stdinCache = undefined
+		this.stdinBuffer = ''
 		this.installBuiltins()
 		this.frames.push({
 			program: mainProgram,
@@ -207,20 +207,41 @@ class Vm {
 		this.natives = registry.natives
 	}
 
-	private readStdin(): string | null {
+	private readStdin(): Value {
 		if (this.options.read !== undefined) {
 			return this.options.read()
 		}
-		if (this.stdinCache === undefined) {
-			this.stdinCache = fs.readFileSync(0, 'utf-8')
-		}
-		if (this.stdinCache === null) {
+		const line = this.readStdinLine()
+		if (line === null) {
 			return null
 		}
-		const value = this.stdinCache
-		this.stdinCache = null
 
-		return value
+		return line
+	}
+
+	private readStdinLine(): string | null {
+		while (true) {
+			const newlineIndex = this.stdinBuffer.indexOf('\n')
+			if (newlineIndex !== -1) {
+				const line = this.stdinBuffer.slice(0, newlineIndex)
+				this.stdinBuffer = this.stdinBuffer.slice(newlineIndex + 1)
+
+				return stripTrailingCarriageReturn(line)
+			}
+
+			const chunk = Buffer.alloc(1)
+			const bytesRead = fs.readSync(0, chunk, 0, 1, null)
+			if (bytesRead === 0) {
+				if (this.stdinBuffer.length === 0) {
+					return null
+				}
+				const line = this.stdinBuffer
+				this.stdinBuffer = ''
+
+				return stripTrailingCarriageReturn(line)
+			}
+			this.stdinBuffer += chunk.toString('utf-8', 0, bytesRead)
+		}
 	}
 
 	private write(text: string): void {
@@ -231,6 +252,12 @@ class Vm {
 		}
 		process.stdout.write(text)
 	}
+}
+
+function stripTrailingCarriageReturn(value: string): string {
+	return value.endsWith('\r')
+		? value.slice(0, -1)
+		: value
 }
 
 export {

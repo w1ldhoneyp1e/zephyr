@@ -3,6 +3,8 @@ const BUILTIN_GLOBALS = [
 	'readf',
 	'print',
 	'printf',
+	'number',
+	'string',
 ] as const
 
 type BuiltinGlobalName = typeof BUILTIN_GLOBALS[number]

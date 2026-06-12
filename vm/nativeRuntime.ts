@@ -7,7 +7,7 @@ import {type Value, type VmNative} from './types'
 type NativeImplementation = (args: Value[]) => Value
 
 interface NativeEnvironment {
-	read: () => string | null,
+	read: () => Value,
 	write: (text: string) => void,
 }
 
@@ -20,6 +20,16 @@ function createNativeRegistry(environment: NativeEnvironment): NativeRegistry {
 	const globals = new Map<string, Value>()
 	const natives = new Map<BuiltinGlobalName, NativeImplementation>([
 		['read', () => environment.read()],
+		['number', args => {
+			const value = args[0] ?? null
+			const converted = Number(value)
+			if (Number.isNaN(converted)) {
+				return null
+			}
+
+			return converted
+		}],
+		['string', args => formatValue(args[0] ?? null)],
 		['readf', args => {
 			const pathValue = requireStringArg('readf', 0, 1, args)
 			return fs.readFileSync(pathValue, 'utf-8')
@@ -55,6 +65,14 @@ function createNativeRegistry(environment: NativeEnvironment): NativeRegistry {
 			read: {
 				arity: 0,
 				minArity: 0,
+			},
+			number: {
+				arity: 1,
+				minArity: 1,
+			},
+			string: {
+				arity: 1,
+				minArity: 1,
 			},
 		})
 		globals.set(name, {

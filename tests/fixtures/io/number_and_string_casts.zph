@@ -1,0 +1,4 @@
+var value = number(read());
+var text = string(value + 2);
+
+return text;

@@ -133,6 +133,17 @@ const TEST_CASES: FeatureTestCase[] = [
 		stdin: '5',
 	},
 	{
+		name: 'number_and_string_casts',
+		file: './io/number_and_string_casts.zph',
+		expectedReturn: '7',
+		stdin: '5',
+	},
+	{
+		name: 'number_cast_invalid_returns_null',
+		file: './io/number_cast_invalid_returns_null.zph',
+		expectedReturn: null,
+	},
+	{
 		name: 'readf_file',
 		file: './io/readf_file.zph',
 		expectedReturn: 'file-value',
