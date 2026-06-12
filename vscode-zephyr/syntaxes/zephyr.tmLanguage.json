@@ -1,0 +1,140 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Zephyr",
+  "scopeName": "source.zephyr",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#builtins"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.zephyr",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.zephyr",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.zephyr",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.zephyr",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.zephyr",
+          "match": "\\b\\d+(?:\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "storage.type.zephyr",
+          "match": "\\b(?:var|const|type|fn|class|constructor)\\b"
+        },
+        {
+          "name": "storage.modifier.zephyr",
+          "match": "\\b(?:public|private|extends)\\b"
+        },
+        {
+          "name": "keyword.control.zephyr",
+          "match": "\\b(?:if|else|while|for|in|return|break|continue|match|choose|collect|by)\\b"
+        },
+        {
+          "name": "keyword.control.import-export.zephyr",
+          "match": "\\b(?:import|export|from)\\b"
+        },
+        {
+          "name": "variable.language.super.zephyr",
+          "match": "\\bsuper\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.zephyr",
+          "match": "\\b(?:true|false|null)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.zephyr",
+          "match": "\\b(?:number|string|boolean|any)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.zephyr",
+          "match": "\\b(?:read|readf|print|printf|number|string)\\b(?=\\s*\\()"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.zephyr",
+          "match": "=>|->|\\?\\?=|\\?\\?|\\?\\.|\\?\\[|==|!=|<=|>=|&&|\\|\\||\\.\\.|[+\\-*/%=!<>|]"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.zephyr",
+          "match": "[,;:.]"
+        },
+        {
+          "name": "punctuation.bracket.zephyr",
+          "match": "[(){}\\[\\]]"
+        }
+      ]
+    }
+  }
+}

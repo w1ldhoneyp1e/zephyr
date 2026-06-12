@@ -1,0 +1,48 @@
+{
+  "name": "zephyr-language",
+  "displayName": "Zephyr Language",
+  "description": "Syntax highlighting and editor basics for Zephyr source files.",
+  "version": "0.0.1",
+  "publisher": "zephyr",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "scripts": {
+    "package": "vsce package --allow-missing-repository --no-yarn --no-dependencies --skip-license",
+    "install:local": "code --install-extension zephyr-language-0.0.1.vsix --force"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "zephyr",
+        "aliases": [
+          "Zephyr",
+          "zephyr"
+        ],
+        "extensions": [
+          ".zph"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "zephyr",
+        "scopeName": "source.zephyr",
+        "path": "./syntaxes/zephyr.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "zephyr",
+        "path": "./snippets/zephyr.code-snippets"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.6.3"
+  }
+}
