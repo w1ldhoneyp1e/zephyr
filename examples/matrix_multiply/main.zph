@@ -1,0 +1,46 @@
+import { multiply } from "./multiply.zph";
+import { Matrix } from "./matrix.zph";
+
+fn readMatrix(name: string, rows: number, cols: number): Matrix {
+    var M = Matrix(rows, cols);
+    print("Введите элементы матрицы " + name + " (" + rows + "x" + cols + "):");
+    var i = 0;
+    while (i < rows) {
+        var j = 0;
+        while (j < cols) {
+            print("M[" + i + "][" + j + "] = ");
+            var val = number(read());
+            M.set(i, j, val);
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return M;
+}
+
+fn main() {
+    print("=== Умножение матриц (ручной ввод) ===");
+
+    print("Введите количество строк матрицы A:");
+    var rowsA = number(read());
+    print("Введите количество столбцов матрицы A (и строк B):");
+    var colsA_rowsB = number(read());
+    print("Введите количество столбцов матрицы B:");
+    var colsB = number(read());
+
+    var A = readMatrix("A", rowsA, colsA_rowsB);
+    var B = readMatrix("B", colsA_rowsB, colsB);
+
+    print("Матрица A:");
+    A.printMatrix();
+    print("Матрица B:");
+    B.printMatrix();
+
+    var C = multiply(A, B);
+    print("Результат A * B:");
+    C.printMatrix();
+
+    return C.get(0, 0);
+}
+
+main();

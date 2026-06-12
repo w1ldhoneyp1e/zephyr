@@ -1,0 +1,29 @@
+import { Matrix } from "./matrix.zph";
+
+fn multiply(A: Matrix, B: Matrix): Matrix {
+    if (A.cols != B.rows) {
+        print("Ошибка: число столбцов A должно равняться числу строк B");
+        return Matrix(0, 0);
+    }
+    var C = Matrix(A.rows, B.cols);
+    var i = 0;
+    while (i < A.rows) {
+        var j = 0;
+        while (j < B.cols) {
+            var sum = 0;
+            var k = 0;
+            while (k < A.cols) {
+                sum = sum + A.get(i, k) * B.get(k, j);
+                k = k + 1;
+            }
+            C.set(i, j, sum);
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return C;
+}
+
+export {
+    multiply,
+};
