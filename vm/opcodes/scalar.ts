@@ -58,6 +58,10 @@ function execScalarOpcode(
 				push(left + right)
 				return undefined
 			}
+			if (typeof left === 'string' || typeof right === 'string') {
+				push(String(left) + String(right))
+				return undefined
+			}
 			if (Array.isArray(left) && Array.isArray(right)) {
 				push([...(left as VmArray), ...(right as VmArray)])
 				return undefined
