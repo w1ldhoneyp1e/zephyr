@@ -12,10 +12,15 @@ import {diagnosticToMessage} from './diagnostics'
 import {match} from './utils'
 import {compileZephyrFileToWasmModule, emitWasmModule} from './wasm'
 
+type CliCommand = 'run' | 'compile' | 'check'
+type CompileTarget = 'bytecode' | 'wasm'
+
 interface CliOptions {
+	command: CliCommand,
 	inputPath: string,
 	emitBytecode: boolean,
 	emitWasm: boolean,
+	target: CompileTarget | null,
 	jsonOutput: boolean,
 	outputPath: string | null,
 	runProgram: boolean,
@@ -52,10 +57,13 @@ function parseArgs(args: string[]): CliOptions {
 	if (args.length === 0) {
 		throw new Error('Не передан путь к файлу')
 	}
+	const command = getCliCommand(args[0])
 	const initialOptions: CliParseState = {
+		command,
 		inputPath: '',
 		emitBytecode: false,
 		emitWasm: false,
+		target: null,
 		jsonOutput: false,
 		outputPath: null,
 		runProgram: true,
@@ -64,7 +72,8 @@ function parseArgs(args: string[]): CliOptions {
 		skipNext: false,
 	}
 
-	const parsed = args.reduce<CliParseState>((acc, arg, index, arr) => {
+	const commandArgs = parseCommandArgs(args)
+	const parsed = commandArgs.reduce<CliParseState>((acc, arg, index, arr) => {
 		if (acc.skipNext) {
 			return {
 				...acc,
@@ -80,13 +89,30 @@ function parseArgs(args: string[]): CliOptions {
 			'--emit-wasm': {
 				...acc,
 				emitWasm: true,
+				target: 'wasm',
 				runProgram: false,
 			},
 			'--check': {
 				...acc,
+				command: 'check',
 				checkOnly: true,
 				runProgram: false,
 			},
+			'--target': (() => {
+				const nextArg = arr[index + 1]
+				if (nextArg === undefined) {
+					throw new Error('Ожидался target после --target')
+				}
+				if (nextArg !== 'bytecode' && nextArg !== 'wasm') {
+					throw new Error(`Неизвестный target: ${nextArg}`)
+				}
+
+				return {
+					...acc,
+					target: nextArg,
+					skipNext: true,
+				}
+			}),
 			'--json': {
 				...acc,
 				jsonOutput: true,
@@ -132,14 +158,49 @@ function parseArgs(args: string[]): CliOptions {
 	}
 
 	return {
+		command: parsed.command,
 		inputPath: parsed.inputPath,
 		emitBytecode: parsed.emitBytecode,
 		emitWasm: parsed.emitWasm,
+		target: parsed.target,
 		jsonOutput: parsed.jsonOutput,
 		outputPath: parsed.outputPath,
 		runProgram: parsed.runProgram,
 		checkOnly: parsed.checkOnly,
 		sourceStdin: parsed.sourceStdin,
+	}
+}
+
+function parseCommandArgs(args: string[]): string[] {
+	const [firstArg, ...rest] = args
+	if (firstArg === 'compile') {
+		return [
+			'--no-run',
+			...rest,
+		]
+	}
+	if (firstArg === 'run') {
+		return rest
+	}
+	if (firstArg === 'check') {
+		return [
+			'--check',
+			...rest,
+		]
+	}
+
+	return args
+}
+
+function getCliCommand(firstArg: string): CliCommand {
+	switch (firstArg) {
+		case 'compile':
+			return 'compile'
+		case 'check':
+			return 'check'
+		case 'run':
+		default:
+			return 'run'
 	}
 }
 
@@ -242,7 +303,12 @@ function main(): void {
 		}
 		return
 	}
-	if (options.emitWasm) {
+	const compileTarget = options.target ?? (options.emitWasm
+		? 'wasm'
+		: options.emitBytecode || options.command === 'compile'
+			? 'bytecode'
+			: null)
+	if (compileTarget === 'wasm') {
 		const outPath = options.outputPath === null
 			? defaultWasmPath(filePath)
 			: path.resolve(process.cwd(), options.outputPath)
@@ -265,7 +331,7 @@ function main(): void {
 		process.exit(1)
 	}
 	const programs = compileResult.programs
-	if (options.emitBytecode) {
+	if (options.emitBytecode || compileTarget === 'bytecode') {
 		const outPath = options.outputPath === null
 			? defaultBytecodePath(filePath)
 			: path.resolve(process.cwd(), options.outputPath)

@@ -6,6 +6,9 @@ export default defineConfig({
 		index: 'vm/index.ts',
 		zephyrMain: 'zephyr/main.ts',
 	},
+	banner: {
+		js: '#!/usr/bin/env node',
+	},
 	format: ['cjs'],
 	target: 'node18',
 	clean: true,
