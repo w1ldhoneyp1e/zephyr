@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "ts-node --project tsconfig.json vm/main.ts",
     "dev:zephyr": "ts-node --project tsconfig.json zephyr/main.ts",
-    "dev:wasm": "ts-node --project tsconfig.json zephyr/wasmMain.ts",
+    "dev:wasm": "ts-node --project tsconfig.json zephyr/main.ts --emit-wasm",
     "build": "tsup",
     "build:tsc": "tsc --project tsconfig.json",
     "lint": "eslint vm zephyr --ext .ts --fix",

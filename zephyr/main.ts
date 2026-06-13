@@ -10,10 +10,12 @@ import {
 import {Compiler} from './Compiler'
 import {diagnosticToMessage} from './diagnostics'
 import {match} from './utils'
+import {compileZephyrFileToWasmModule, emitWasmModule} from './wasm'
 
 interface CliOptions {
 	inputPath: string,
 	emitBytecode: boolean,
+	emitWasm: boolean,
 	jsonOutput: boolean,
 	outputPath: string | null,
 	runProgram: boolean,
@@ -40,6 +42,12 @@ function defaultBytecodePath(inputPath: string): string {
 	return path.join(parsed.dir, `${parsed.name}.zphbc`)
 }
 
+function defaultWasmPath(inputPath: string): string {
+	const parsed = path.parse(inputPath)
+
+	return path.join(parsed.dir, `${parsed.name}.wasm`)
+}
+
 function parseArgs(args: string[]): CliOptions {
 	if (args.length === 0) {
 		throw new Error('Не передан путь к файлу')
@@ -47,6 +55,7 @@ function parseArgs(args: string[]): CliOptions {
 	const initialOptions: CliParseState = {
 		inputPath: '',
 		emitBytecode: false,
+		emitWasm: false,
 		jsonOutput: false,
 		outputPath: null,
 		runProgram: true,
@@ -67,6 +76,11 @@ function parseArgs(args: string[]): CliOptions {
 			'--emit-bc': {
 				...acc,
 				emitBytecode: true,
+			},
+			'--emit-wasm': {
+				...acc,
+				emitWasm: true,
+				runProgram: false,
 			},
 			'--check': {
 				...acc,
@@ -120,6 +134,7 @@ function parseArgs(args: string[]): CliOptions {
 	return {
 		inputPath: parsed.inputPath,
 		emitBytecode: parsed.emitBytecode,
+		emitWasm: parsed.emitWasm,
 		jsonOutput: parsed.jsonOutput,
 		outputPath: parsed.outputPath,
 		runProgram: parsed.runProgram,
@@ -225,6 +240,17 @@ function main(): void {
 		if (!checkResult.ok) {
 			process.exit(1)
 		}
+		return
+	}
+	if (options.emitWasm) {
+		const outPath = options.outputPath === null
+			? defaultWasmPath(filePath)
+			: path.resolve(process.cwd(), options.outputPath)
+		const wasmModule = compileZephyrFileToWasmModule(filePath)
+		const wasmBytes = emitWasmModule(wasmModule)
+		fs.mkdirSync(path.dirname(outPath), {recursive: true})
+		fs.writeFileSync(outPath, wasmBytes)
+		console.log(`Wasm: ${outPath}`)
 		return
 	}
 	const compileResult = compiler.compilePath(filePath)
