@@ -64,6 +64,7 @@ const OPCODES = {
 	'f64.mul': 0xa2,
 	'f64.div': 0xa3,
 	'i32.trunc_f64_s': 0xaa,
+	'f64.convert_i32_s': 0xb7,
 } as const
 
 function emitWasmModule(module: WasmModuleIr): Uint8Array {
@@ -291,6 +292,7 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'f64.mul':
 		case 'f64.div':
 		case 'i32.trunc_f64_s':
+		case 'f64.convert_i32_s':
 		case 'drop':
 		case 'return':
 			break

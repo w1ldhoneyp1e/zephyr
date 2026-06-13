@@ -1,4 +1,8 @@
 export {emitWasmModule} from './WasmBinaryEmitter'
+export {
+	compileZephyrFileToWasmModule,
+	compileZephyrSourceToWasmModule,
+} from './WasmCompiler'
 export {lowerProgramToWasmIr} from './WasmLowerer'
 export {
 	type WasmRecordField,

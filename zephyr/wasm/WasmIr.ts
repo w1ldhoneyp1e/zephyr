@@ -38,6 +38,9 @@ type WasmInstruction =
 		op: 'i32.trunc_f64_s',
 	}
 	| {
+		op: 'f64.convert_i32_s',
+	}
+	| {
 		op: 'i32.eq' | 'i32.ne' | 'i32.lt_s' | 'i32.gt_s' | 'i32.le_s' | 'i32.ge_s'
 			| 'f64.eq' | 'f64.ne' | 'f64.lt' | 'f64.gt' | 'f64.le' | 'f64.ge',
 	}
