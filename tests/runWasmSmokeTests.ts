@@ -1,4 +1,13 @@
-import {type WasmModuleIr, emitWasmModule} from '../zephyr/wasm'
+import {
+	ARRAY_CAPACITY_OFFSET,
+	ARRAY_DATA_PTR_OFFSET,
+	ARRAY_LENGTH_OFFSET,
+	createAllocFunction,
+	createArrayGetPtrFunction,
+	createArrayNewFunction,
+	emitWasmModule,
+	type WasmModuleIr,
+} from '../zephyr/wasm'
 
 interface WebAssemblyRuntime {
 	compile: (bytes: Uint8Array) => Promise<unknown>,
@@ -298,127 +307,8 @@ async function assertArrayHelpers(): Promise<void> {
 		],
 		functions: [
 			createAllocFunction(),
-			{
-				name: 'arrayNew',
-				params: ['i32', 'i32'],
-				result: 'i32',
-				locals: ['i32', 'i32'],
-				body: [
-					{
-						op: 'i32.const',
-						value: 12,
-					},
-					{
-						op: 'call',
-						functionIndex: 0,
-					},
-					{
-						op: 'local.set',
-						index: 2,
-					},
-					{
-						op: 'local.get',
-						index: 0,
-					},
-					{
-						op: 'local.get',
-						index: 1,
-					},
-					{
-						op: 'i32.mul',
-					},
-					{
-						op: 'call',
-						functionIndex: 0,
-					},
-					{
-						op: 'local.set',
-						index: 3,
-					},
-					{
-						op: 'local.get',
-						index: 2,
-					},
-					{
-						op: 'local.get',
-						index: 1,
-					},
-					{
-						op: 'i32.store',
-						align: 2,
-						offset: 0,
-					},
-					{
-						op: 'local.get',
-						index: 2,
-					},
-					{
-						op: 'local.get',
-						index: 1,
-					},
-					{
-						op: 'i32.store',
-						align: 2,
-						offset: 4,
-					},
-					{
-						op: 'local.get',
-						index: 2,
-					},
-					{
-						op: 'local.get',
-						index: 3,
-					},
-					{
-						op: 'i32.store',
-						align: 2,
-						offset: 8,
-					},
-					{
-						op: 'local.get',
-						index: 2,
-					},
-					{
-						op: 'return',
-					},
-				],
-				exported: true,
-			},
-			{
-				name: 'arrayGetPtr',
-				params: ['i32', 'i32', 'i32'],
-				result: 'i32',
-				locals: [],
-				body: [
-					{
-						op: 'local.get',
-						index: 0,
-					},
-					{
-						op: 'i32.load',
-						align: 2,
-						offset: 8,
-					},
-					{
-						op: 'local.get',
-						index: 1,
-					},
-					{
-						op: 'local.get',
-						index: 2,
-					},
-					{
-						op: 'i32.mul',
-					},
-					{
-						op: 'i32.add',
-					},
-					{
-						op: 'return',
-					},
-				],
-				exported: true,
-			},
+			createArrayNewFunction({allocFunctionIndex: 0}),
+			createArrayGetPtrFunction(),
 		],
 	}
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
@@ -436,53 +326,11 @@ async function assertArrayHelpers(): Promise<void> {
 	const arrayGetPtrFn = arrayGetPtr as (arrayPtr: number, index: number, elementSize: number) => number
 	const arrayPtr = arrayNewFn(8, 3)
 	const view = new DataView(memory.buffer)
-	const dataPtr = view.getInt32(arrayPtr + 8, true)
-	assert(view.getInt32(arrayPtr, true) === 3, 'Expected array length to be 3')
-	assert(view.getInt32(arrayPtr + 4, true) === 3, 'Expected array capacity to be 3')
+	const dataPtr = view.getInt32(arrayPtr + ARRAY_DATA_PTR_OFFSET, true)
+	assert(view.getInt32(arrayPtr + ARRAY_LENGTH_OFFSET, true) === 3, 'Expected array length to be 3')
+	assert(view.getInt32(arrayPtr + ARRAY_CAPACITY_OFFSET, true) === 3, 'Expected array capacity to be 3')
 	assert(arrayGetPtrFn(arrayPtr, 0, 8) === dataPtr, 'Expected index 0 pointer to equal data pointer')
 	assert(arrayGetPtrFn(arrayPtr, 2, 8) === dataPtr + 16, 'Expected index 2 pointer to use element size')
-}
-
-function createAllocFunction(): WasmModuleIr['functions'][number] {
-	return {
-		name: 'alloc',
-		params: ['i32'],
-		result: 'i32',
-		locals: ['i32'],
-		body: [
-			{
-				op: 'global.get',
-				index: 0,
-			},
-			{
-				op: 'local.set',
-				index: 1,
-			},
-			{
-				op: 'global.get',
-				index: 0,
-			},
-			{
-				op: 'local.get',
-				index: 0,
-			},
-			{
-				op: 'i32.add',
-			},
-			{
-				op: 'global.set',
-				index: 0,
-			},
-			{
-				op: 'local.get',
-				index: 1,
-			},
-			{
-				op: 'return',
-			},
-		],
-		exported: false,
-	}
 }
 
 async function assertRecordAggregate(): Promise<void> {
