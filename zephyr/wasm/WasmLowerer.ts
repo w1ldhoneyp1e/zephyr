@@ -4,6 +4,7 @@ import {
 	type BlockStatementNode,
 	type CallExpressionNode,
 	type ExpressionNode,
+	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IfStatementNode,
@@ -38,6 +39,8 @@ interface FunctionLoweringContext {
 	module: ModuleLoweringContext,
 	locals: Map<string, WasmLocalBinding>,
 	localTypes: WasmFunctionIr['locals'],
+	nextLocalIndex: number,
+	nextInternalLocalId: number,
 }
 
 function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
@@ -62,6 +65,8 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: Mo
 		module: moduleContext,
 		locals: new Map(fn.params.map((param, index) => [param.name, {index}])),
 		localTypes: [],
+		nextLocalIndex: fn.params.length,
+		nextInternalLocalId: 0,
 	}
 	const body: WasmInstruction[] = []
 	body.push(...lowerBlockStatement(fn.body, context))
@@ -86,6 +91,8 @@ function lowerStatement(statement: StatementNode, context: FunctionLoweringConte
 			return lowerIfStatement(statement, context)
 		case 'WhileStatement':
 			return lowerWhileStatement(statement, context)
+		case 'ForRangeStatement':
+			return lowerForRangeStatement(statement, context)
 		case 'ReturnStatement':
 			return lowerReturnStatement(statement, context)
 		default:
@@ -99,9 +106,7 @@ function lowerBlockStatement(block: BlockStatementNode, context: FunctionLowerin
 
 function lowerVariableDeclaration(statement: VariableDeclarationNode, context: FunctionLoweringContext): WasmInstruction[] {
 	assertNumberType(statement.typeName, `variable ${statement.name}`)
-	const index = context.locals.size
-	context.locals.set(statement.name, {index})
-	context.localTypes.push('f64')
+	const binding = declareNumberLocal(context, statement.name)
 	if (statement.initializer === null) {
 		return [
 			{
@@ -110,7 +115,7 @@ function lowerVariableDeclaration(statement: VariableDeclarationNode, context: F
 			},
 			{
 				op: 'local.set',
-				index,
+				index: binding.index,
 			},
 		]
 	}
@@ -119,7 +124,7 @@ function lowerVariableDeclaration(statement: VariableDeclarationNode, context: F
 		...lowerNumberExpression(statement.initializer, context),
 		{
 			op: 'local.set',
-			index,
+			index: binding.index,
 		},
 	]
 }
@@ -173,6 +178,79 @@ function lowerWhileStatement(statement: WhileStatementNode, context: FunctionLow
 							labelIndex: 1,
 						},
 						...lowerBlockStatement(statement.body, context),
+						{
+							op: 'br',
+							labelIndex: 0,
+						},
+					],
+				},
+			],
+		},
+	]
+}
+
+function lowerForRangeStatement(statement: ForRangeStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	const previousIteratorBinding = context.locals.get(statement.iterator) ?? null
+	const iteratorBinding = declareNumberLocal(context, statement.iterator)
+	const endBinding = declareNumberLocal(context, createInternalLocalName(context, 'forEnd'))
+	const body = lowerBlockStatement(statement.body, context)
+	restoreLocalBinding(context, statement.iterator, previousIteratorBinding)
+
+	return [
+		...lowerNumberExpression(statement.start, context),
+		{
+			op: 'local.set',
+			index: iteratorBinding.index,
+		},
+		...lowerNumberExpression(statement.end, context),
+		{
+			op: 'local.set',
+			index: endBinding.index,
+		},
+		{
+			op: 'block',
+			body: [
+				{
+					op: 'loop',
+					body: [
+						{
+							op: 'local.get',
+							index: iteratorBinding.index,
+						},
+						{
+							op: 'local.get',
+							index: endBinding.index,
+						},
+						{
+							op: 'f64.lt',
+						},
+						{
+							op: 'i32.const',
+							value: 0,
+						},
+						{
+							op: 'i32.eq',
+						},
+						{
+							op: 'br_if',
+							labelIndex: 1,
+						},
+						...body,
+						{
+							op: 'local.get',
+							index: iteratorBinding.index,
+						},
+						{
+							op: 'f64.const',
+							value: 1,
+						},
+						{
+							op: 'f64.add',
+						},
+						{
+							op: 'local.set',
+							index: iteratorBinding.index,
+						},
 						{
 							op: 'br',
 							labelIndex: 0,
@@ -377,6 +455,32 @@ function getLocal(context: FunctionLoweringContext, name: string): WasmLocalBind
 	}
 
 	return binding
+}
+
+function declareNumberLocal(context: FunctionLoweringContext, name: string): WasmLocalBinding {
+	const binding = {
+		index: context.nextLocalIndex,
+	}
+	context.nextLocalIndex++
+	context.locals.set(name, binding)
+	context.localTypes.push('f64')
+
+	return binding
+}
+
+function createInternalLocalName(context: FunctionLoweringContext, prefix: string): string {
+	const id = context.nextInternalLocalId
+	context.nextInternalLocalId++
+
+	return `__wasm_${prefix}_${id}`
+}
+
+function restoreLocalBinding(context: FunctionLoweringContext, name: string, binding: WasmLocalBinding | null): void {
+	if (binding === null) {
+		context.locals.delete(name)
+		return
+	}
+	context.locals.set(name, binding)
 }
 
 function assertNumberType(typeName: TypeName, context: string): void {

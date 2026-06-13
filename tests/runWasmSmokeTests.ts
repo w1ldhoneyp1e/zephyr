@@ -541,6 +541,22 @@ fn sumTo(limit: number): number {
 	}
 	return total;
 }
+
+fn sumRange(limit: number): number {
+	var total: number = 0;
+	for (i in 0..limit) {
+		total = total + i;
+	}
+	return total;
+}
+
+fn sumDoubles(limit: number): number {
+	var total: number = 0;
+	for (i in 0..limit) {
+		total = total + double(i);
+	}
+	return total;
+}
 `)
 	const module = lowerProgramToWasmIr(program)
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
@@ -552,18 +568,24 @@ fn sumTo(limit: number): number {
 	const calc = instance.exports.calc
 	const max = instance.exports.max
 	const sumTo = instance.exports.sumTo
+	const sumRange = instance.exports.sumRange
+	const sumDoubles = instance.exports.sumDoubles
 	assert(typeof add === 'function', 'Expected lowered source to export add function')
 	assert(typeof addViaCall === 'function', 'Expected lowered source to export addViaCall function')
 	assert(typeof callsForward === 'function', 'Expected lowered source to export callsForward function')
 	assert(typeof calc === 'function', 'Expected lowered source to export calc function')
 	assert(typeof max === 'function', 'Expected lowered source to export max function')
 	assert(typeof sumTo === 'function', 'Expected lowered source to export sumTo function')
+	assert(typeof sumRange === 'function', 'Expected lowered source to export sumRange function')
+	assert(typeof sumDoubles === 'function', 'Expected lowered source to export sumDoubles function')
 	const addFn = add as (left: number, right: number) => number
 	const addViaCallFn = addViaCall as (left: number, right: number) => number
 	const callsForwardFn = callsForward as (value: number) => number
 	const calcFn = calc as (value: number) => number
 	const maxFn = max as (left: number, right: number) => number
 	const sumToFn = sumTo as (limit: number) => number
+	const sumRangeFn = sumRange as (limit: number) => number
+	const sumDoublesFn = sumDoubles as (limit: number) => number
 	assert(addFn(7, 8) === 15, 'Expected lowered add(7, 8) to return 15')
 	assert(addViaCallFn(20, 22) === 42, 'Expected lowered addViaCall(20, 22) to return 42')
 	assert(callsForwardFn(8) === 17, 'Expected lowered callsForward(8) to return 17')
@@ -571,6 +593,8 @@ fn sumTo(limit: number): number {
 	assert(maxFn(10, 7) === 10, 'Expected lowered max(10, 7) to return 10')
 	assert(maxFn(4, 9) === 9, 'Expected lowered max(4, 9) to return 9')
 	assert(sumToFn(10) === 55, 'Expected lowered sumTo(10) to return 55')
+	assert(sumRangeFn(10) === 45, 'Expected lowered sumRange(10) to return 45')
+	assert(sumDoublesFn(5) === 20, 'Expected lowered sumDoubles(5) to return 20')
 }
 
 function parseProgram(source: string): ProgramNode {
