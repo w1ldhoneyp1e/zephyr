@@ -28,6 +28,7 @@ const OPCODES = {
 	'br': 0x0c,
 	'br_if': 0x0d,
 	'return': 0x0f,
+	'call': 0x10,
 	'local.get': 0x20,
 	'local.set': 0x21,
 	'local.tee': 0x22,
@@ -222,6 +223,9 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'global.get':
 		case 'global.set':
 			writer.writeUnsignedLeb128(instruction.index)
+			break
+		case 'call':
+			writer.writeUnsignedLeb128(instruction.functionIndex)
 			break
 		case 'i32.const':
 			writer.writeSignedLeb128(instruction.value)

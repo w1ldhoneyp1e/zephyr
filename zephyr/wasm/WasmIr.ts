@@ -14,6 +14,10 @@ type WasmInstruction =
 		index: number,
 	}
 	| {
+		op: 'call',
+		functionIndex: number,
+	}
+	| {
 		op: 'i32.const',
 		value: number,
 	}

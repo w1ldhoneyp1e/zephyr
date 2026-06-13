@@ -52,6 +52,7 @@ async function run(): Promise<void> {
 	await assertMemoryStore()
 	await assertLoopSum()
 	await assertAlloc()
+	await assertArrayHelpers()
 	console.log('passed wasm smoke tests')
 }
 
@@ -278,6 +279,209 @@ async function assertAlloc(): Promise<void> {
 	const allocFn = alloc as (size: number) => number
 	assert(allocFn(16) === 1024, 'Expected first alloc to return initial heap pointer')
 	assert(allocFn(8) === 1040, 'Expected second alloc to return advanced heap pointer')
+}
+
+async function assertArrayHelpers(): Promise<void> {
+	const module: WasmModuleIr = {
+		memory: {
+			minPages: 1,
+			exportName: 'memory',
+		},
+		globals: [
+			{
+				name: 'heapPtr',
+				type: 'i32',
+				mutable: true,
+				initialValue: 2048,
+			},
+		],
+		functions: [
+			createAllocFunction(),
+			{
+				name: 'arrayNew',
+				params: ['i32', 'i32'],
+				result: 'i32',
+				locals: ['i32', 'i32'],
+				body: [
+					{
+						op: 'i32.const',
+						value: 12,
+					},
+					{
+						op: 'call',
+						functionIndex: 0,
+					},
+					{
+						op: 'local.set',
+						index: 2,
+					},
+					{
+						op: 'local.get',
+						index: 0,
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'i32.mul',
+					},
+					{
+						op: 'call',
+						functionIndex: 0,
+					},
+					{
+						op: 'local.set',
+						index: 3,
+					},
+					{
+						op: 'local.get',
+						index: 2,
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'i32.store',
+						align: 2,
+						offset: 0,
+					},
+					{
+						op: 'local.get',
+						index: 2,
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'i32.store',
+						align: 2,
+						offset: 4,
+					},
+					{
+						op: 'local.get',
+						index: 2,
+					},
+					{
+						op: 'local.get',
+						index: 3,
+					},
+					{
+						op: 'i32.store',
+						align: 2,
+						offset: 8,
+					},
+					{
+						op: 'local.get',
+						index: 2,
+					},
+					{
+						op: 'return',
+					},
+				],
+				exported: true,
+			},
+			{
+				name: 'arrayGetPtr',
+				params: ['i32', 'i32', 'i32'],
+				result: 'i32',
+				locals: [],
+				body: [
+					{
+						op: 'local.get',
+						index: 0,
+					},
+					{
+						op: 'i32.load',
+						align: 2,
+						offset: 8,
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'local.get',
+						index: 2,
+					},
+					{
+						op: 'i32.mul',
+					},
+					{
+						op: 'i32.add',
+					},
+					{
+						op: 'return',
+					},
+				],
+				exported: true,
+			},
+		],
+	}
+	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
+	const compiled = await wasm.compile(emitWasmModule(module))
+	const instance = await wasm.instantiate(compiled)
+	const arrayNew = instance.exports.arrayNew
+	const arrayGetPtr = instance.exports.arrayGetPtr
+	const memory = instance.exports.memory
+	assert(typeof arrayNew === 'function', 'Expected exported arrayNew function')
+	assert(typeof arrayGetPtr === 'function', 'Expected exported arrayGetPtr function')
+	if (!isWasmMemory(memory)) {
+		throw new Error('Expected exported memory')
+	}
+	const arrayNewFn = arrayNew as (elementSize: number, length: number) => number
+	const arrayGetPtrFn = arrayGetPtr as (arrayPtr: number, index: number, elementSize: number) => number
+	const arrayPtr = arrayNewFn(8, 3)
+	const view = new DataView(memory.buffer)
+	const dataPtr = view.getInt32(arrayPtr + 8, true)
+	assert(view.getInt32(arrayPtr, true) === 3, 'Expected array length to be 3')
+	assert(view.getInt32(arrayPtr + 4, true) === 3, 'Expected array capacity to be 3')
+	assert(arrayGetPtrFn(arrayPtr, 0, 8) === dataPtr, 'Expected index 0 pointer to equal data pointer')
+	assert(arrayGetPtrFn(arrayPtr, 2, 8) === dataPtr + 16, 'Expected index 2 pointer to use element size')
+}
+
+function createAllocFunction(): WasmModuleIr['functions'][number] {
+	return {
+		name: 'alloc',
+		params: ['i32'],
+		result: 'i32',
+		locals: ['i32'],
+		body: [
+			{
+				op: 'global.get',
+				index: 0,
+			},
+			{
+				op: 'local.set',
+				index: 1,
+			},
+			{
+				op: 'global.get',
+				index: 0,
+			},
+			{
+				op: 'local.get',
+				index: 0,
+			},
+			{
+				op: 'i32.add',
+			},
+			{
+				op: 'global.set',
+				index: 0,
+			},
+			{
+				op: 'local.get',
+				index: 1,
+			},
+			{
+				op: 'return',
+			},
+		],
+		exported: false,
+	}
 }
 
 run().catch(error => {
