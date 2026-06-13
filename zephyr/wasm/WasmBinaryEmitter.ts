@@ -11,10 +11,12 @@ const WASM_VERSION = [0x01, 0x00, 0x00, 0x00] as const
 
 const SECTION_TYPE = 1
 const SECTION_FUNCTION = 3
+const SECTION_MEMORY = 5
 const SECTION_EXPORT = 7
 const SECTION_CODE = 10
 
 const EXPORT_KIND_FUNCTION = 0x00
+const EXPORT_KIND_MEMORY = 0x02
 const FUNCTION_TYPE = 0x60
 
 const OPCODES = {
@@ -23,6 +25,10 @@ const OPCODES = {
 	'local.get': 0x20,
 	'i32.const': 0x41,
 	'f64.const': 0x44,
+	'i32.load': 0x28,
+	'f64.load': 0x2b,
+	'i32.store': 0x36,
+	'f64.store': 0x39,
 	'i32.add': 0x6a,
 	'i32.sub': 0x6b,
 	'i32.mul': 0x6c,
@@ -38,7 +44,10 @@ function emitWasmModule(module: WasmModuleIr): Uint8Array {
 	writer.writeBytes(WASM_VERSION)
 	writeSection(writer, SECTION_TYPE, section => writeTypeSection(section, module.functions))
 	writeSection(writer, SECTION_FUNCTION, section => writeFunctionSection(section, module.functions))
-	writeSection(writer, SECTION_EXPORT, section => writeExportSection(section, module.functions))
+	if (module.memory !== undefined) {
+		writeSection(writer, SECTION_MEMORY, section => writeMemorySection(section, module))
+	}
+	writeSection(writer, SECTION_EXPORT, section => writeExportSection(section, module))
 	writeSection(writer, SECTION_CODE, section => writeCodeSection(section, module.functions))
 
 	return writer.toUint8Array()
@@ -71,14 +80,40 @@ function writeFunctionSection(writer: BinaryWriter, functions: WasmFunctionIr[])
 	}
 }
 
-function writeExportSection(writer: BinaryWriter, functions: WasmFunctionIr[]): void {
-	const exportedFunctions = functions
+function writeMemorySection(writer: BinaryWriter, module: WasmModuleIr): void {
+	const memory = module.memory
+	if (memory === undefined) {
+		writer.writeUnsignedLeb128(0)
+		return
+	}
+	writer.writeUnsignedLeb128(1)
+	if (memory.maxPages === undefined) {
+		writer.writeByte(0x00)
+		writer.writeUnsignedLeb128(memory.minPages)
+	}
+	else {
+		writer.writeByte(0x01)
+		writer.writeUnsignedLeb128(memory.minPages)
+		writer.writeUnsignedLeb128(memory.maxPages)
+	}
+}
+
+function writeExportSection(writer: BinaryWriter, module: WasmModuleIr): void {
+	const exportedFunctions = module.functions
 		.map((fn, index) => ({
 			fn,
 			index,
 		}))
 		.filter(item => item.fn.exported)
-	writer.writeUnsignedLeb128(exportedFunctions.length)
+	const memoryExportName = module.memory?.exportName ?? null
+	writer.writeUnsignedLeb128(exportedFunctions.length + (memoryExportName === null
+		? 0
+		: 1))
+	if (memoryExportName !== null) {
+		writer.writeString(memoryExportName)
+		writer.writeByte(EXPORT_KIND_MEMORY)
+		writer.writeUnsignedLeb128(0)
+	}
 	for (const {fn, index} of exportedFunctions) {
 		writer.writeString(fn.name)
 		writer.writeByte(EXPORT_KIND_FUNCTION)
@@ -136,6 +171,13 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 			break
 		case 'f64.const':
 			writer.writeFloat64(instruction.value)
+			break
+		case 'i32.load':
+		case 'f64.load':
+		case 'i32.store':
+		case 'f64.store':
+			writer.writeUnsignedLeb128(instruction.align)
+			writer.writeUnsignedLeb128(instruction.offset)
 			break
 		case 'i32.add':
 		case 'i32.sub':
