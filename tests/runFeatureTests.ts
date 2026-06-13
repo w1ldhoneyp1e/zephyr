@@ -109,6 +109,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '8',
 	},
 	{
+		name: 'for_statement',
+		file: './loop/for_statement.zph',
+		expectedReturn: '10',
+	},
+	{
 		name: 'print_stdout',
 		file: './io/print_stdout.zph',
 		expectedReturn: '0',

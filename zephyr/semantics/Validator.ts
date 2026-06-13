@@ -128,6 +128,7 @@ class Validator {
 				return
 			case 'IfStatement':
 			case 'WhileStatement':
+			case 'ForStatement':
 			case 'ForRangeStatement':
 			case 'BlockStatement':
 			case 'ExpressionStatement':

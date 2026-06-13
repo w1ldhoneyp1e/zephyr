@@ -4,6 +4,7 @@ import {type CompilerState} from '../CompilerState'
 import {
 	type AssignmentStatementNode,
 	type ClassDeclarationNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type StatementNode,
 	type VmStructTemplate,
@@ -89,6 +90,9 @@ function emitStatementCore(
 		case 'ForRangeStatement':
 			emitForRange(state, generator, compiler, statement)
 			break
+		case 'ForStatement':
+			emitForStatement(state, generator, compiler, statement)
+			break
 		case 'ReturnStatement':
 			if (statement.value !== null) {
 				emitExpression(state, generator, statement.value)
@@ -116,6 +120,32 @@ function emitStatementCore(
 		default:
 			compilerInvariant(`unsupported statement in bytecode emitter: ${(statement as {type: string}).type}`)
 	}
+}
+
+function emitForStatement(
+	state: CompilerState,
+	generator: BytecodeGenerator,
+	compiler: FunctionCompiler,
+	statement: ForStatementNode,
+): void {
+	state.enterScope()
+	compiler.beginLoop()
+	const iteratorBinding = state.getForRangeBinding(statement)
+	const iteratorSlot = state.declareBinding(iteratorBinding)
+	emitExpression(state, generator, statement.start)
+	state.emitNumArg(Opcode.SetLocal, iteratorSlot)
+	const loopStart = state.getInstructions().length
+	emitExpression(state, generator, statement.condition)
+	const endJump = state.emitJump(Opcode.JumpIfFalse)
+	emitBlock(state, generator, compiler, statement.body.statements)
+	compiler.setContinueTarget(state.getInstructions().length)
+	emitExpression(state, generator, statement.increment)
+	state.emitNumArg(Opcode.SetLocal, iteratorSlot)
+	state.emitNumArg(Opcode.Jump, loopStart)
+	const loopEnd = state.getInstructions().length
+	state.patchJump(endJump, loopEnd)
+	compiler.endLoop(loopEnd)
+	state.leaveScope()
 }
 
 function emitClassDeclaration(

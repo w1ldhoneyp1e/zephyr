@@ -52,6 +52,14 @@ class ValidationWalker {
 					this.validateStatement(bodyStatement)
 				}
 				break
+			case 'ForStatement':
+				this.validateExpression(statement.start)
+				this.validateExpression(statement.condition)
+				this.validateExpression(statement.increment)
+				for (const bodyStatement of statement.body.statements) {
+					this.validateStatement(bodyStatement)
+				}
+				break
 			case 'BlockStatement':
 				for (const bodyStatement of statement.statements) {
 					this.validateStatement(bodyStatement)

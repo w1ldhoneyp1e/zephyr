@@ -60,6 +60,16 @@ interface ForRangeStatementNode {
 	body: BlockStatementNode,
 }
 
+interface ForStatementNode {
+	type: 'ForStatement',
+	iterator: string,
+	start: ExpressionNode,
+	condition: ExpressionNode,
+	incrementTarget: string,
+	increment: ExpressionNode,
+	body: BlockStatementNode,
+}
+
 interface ReturnStatementNode {
 	type: 'ReturnStatement',
 	value: ExpressionNode | null,
@@ -96,6 +106,7 @@ type StatementNode =
 	| IfStatementNode
 	| WhileStatementNode
 	| ForRangeStatementNode
+	| ForStatementNode
 	| ReturnStatementNode
 	| BreakStatementNode
 	| ContinueStatementNode
@@ -112,6 +123,7 @@ export {
 	type NamedExportStatementNode,
 	type ExportStatementNode,
 	type ExpressionStatementNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type ImportStatementNode,
 	type IfStatementNode,

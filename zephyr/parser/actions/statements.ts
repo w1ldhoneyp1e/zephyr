@@ -6,6 +6,7 @@ import {
 	type ContinueStatementNode,
 	type ExpressionNode,
 	type ExpressionStatementNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type IfStatementNode,
 	type ReturnStatementNode,
@@ -48,6 +49,16 @@ function createStatementAction(production: Production): SemanticValueAction | nu
 				end: ensureExpression(values[6], 'for range end'),
 				body: values[8] as BlockStatementNode,
 			} satisfies ForRangeStatementNode)
+		case 'ForStatement -> For LeftParen Identifier Equal Expression Semicolon Expression Semicolon Identifier Equal Expression RightParen BlockStatement':
+			return values => ({
+				type: 'ForStatement',
+				iterator: tokenLexeme(values[2]),
+				start: ensureExpression(values[4], 'for initializer'),
+				condition: ensureExpression(values[6], 'for condition'),
+				incrementTarget: tokenLexeme(values[8]),
+				increment: ensureExpression(values[10], 'for increment'),
+				body: values[12] as BlockStatementNode,
+			} satisfies ForStatementNode)
 
 		case 'ReturnStatement -> Return ReturnValueOpt Semicolon':
 			return values => ({

@@ -1,6 +1,7 @@
 import {
 	type ClassDeclarationNode,
 	type ConstructorDeclarationNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -265,7 +266,7 @@ class CompilerState {
 		return bindings
 	}
 
-	getForRangeBinding(statement: ForRangeStatementNode): SemanticBinding {
+	getForRangeBinding(statement: ForRangeStatementNode | ForStatementNode): SemanticBinding {
 		const binding = this.model.forRangeBindings.get(statement)
 		if (binding === undefined) {
 			compilerInvariant('for-range binding not found')

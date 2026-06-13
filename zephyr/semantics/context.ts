@@ -2,6 +2,7 @@ import {
 	type ClassDeclarationNode,
 	type ClassMemberVisibility,
 	type ConstructorDeclarationNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -61,7 +62,7 @@ interface SuperSemanticBinding {
 
 interface IteratorSemanticBinding {
 	kind: 'iterator',
-	statement: ForRangeStatementNode,
+	statement: ForRangeStatementNode | ForStatementNode,
 	name: string,
 }
 
@@ -93,7 +94,7 @@ type CallableDeclarationNode =
 	| ConstructorDeclarationNode
 	| LambdaExpressionNode
 type SemanticFunctionOwner = ProgramNode | CallableDeclarationNode
-type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode
+type SemanticLoopOwner = WhileStatementNode | ForRangeStatementNode | ForStatementNode
 
 interface SemanticModel {
 	identifierBindings: WeakMap<IdentifierExpressionNode, SemanticBinding>,
@@ -104,7 +105,7 @@ interface SemanticModel {
 		SemanticBinding
 	>,
 	functionParameterBindings: WeakMap<CallableDeclarationNode, SemanticBinding[]>,
-	forRangeBindings: WeakMap<ForRangeStatementNode, SemanticBinding>,
+	forRangeBindings: WeakMap<ForRangeStatementNode | ForStatementNode, SemanticBinding>,
 	returnOwners: WeakMap<ReturnStatementNode, CallableDeclarationNode | null>,
 	bindingFunctionOwners: WeakMap<OwnedSemanticBinding, SemanticFunctionOwner>,
 	callableCaptures: WeakMap<CallableDeclarationNode, SemanticBinding[]>,

@@ -2,6 +2,7 @@ IfStatement -> if '(' Expression ')' BlockStatement ElseBranchOpt
 ElseBranchOpt -> else BlockStatement | ε
 
 WhileStatement -> while '(' Expression ')' BlockStatement
+ForStatement -> for '(' Identifier '=' Expression ';' Expression ';' Identifier '=' Expression ')' BlockStatement
 ForRangeStatement -> for '(' Identifier in Expression '..' Expression ')' BlockStatement
 ReturnStatement -> return ReturnValueOpt ';'
 BreakStatement -> break ';'

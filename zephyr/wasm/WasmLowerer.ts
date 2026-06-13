@@ -4,6 +4,7 @@ import {
 	type BlockStatementNode,
 	type CallExpressionNode,
 	type ExpressionNode,
+	type ForStatementNode,
 	type ForRangeStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -107,6 +108,8 @@ function lowerStatement(statement: StatementNode, context: FunctionLoweringConte
 			return lowerWhileStatement(statement, context)
 		case 'ForRangeStatement':
 			return lowerForRangeStatement(statement, context)
+		case 'ForStatement':
+			return lowerForStatement(statement, context)
 		case 'ReturnStatement':
 			return lowerReturnStatement(statement, context)
 		case 'ExpressionStatement':
@@ -263,6 +266,59 @@ function lowerForRangeStatement(statement: ForRangeStatementNode, context: Funct
 						{
 							op: 'f64.add',
 						},
+						{
+							op: 'local.set',
+							index: iteratorBinding.index,
+						},
+						{
+							op: 'br',
+							labelIndex: 0,
+						},
+					],
+				},
+			],
+		},
+	]
+}
+
+function lowerForStatement(statement: ForStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	const previousIteratorBinding = context.locals.get(statement.iterator) ?? null
+	const iteratorBinding = declareNumberLocal(context, statement.iterator)
+	const start = lowerNumberExpression(statement.start, context)
+	const condition = lowerBooleanExpression(statement.condition, context)
+	const body = lowerBlockStatement(statement.body, context)
+	if (statement.incrementTarget !== statement.iterator) {
+		throw new Error(`Wasm lowering requires for increment to update ${statement.iterator}`)
+	}
+	const increment = lowerNumberExpression(statement.increment, context)
+	restoreLocalBinding(context, statement.iterator, previousIteratorBinding)
+
+	return [
+		...start,
+		{
+			op: 'local.set',
+			index: iteratorBinding.index,
+		},
+		{
+			op: 'block',
+			body: [
+				{
+					op: 'loop',
+					body: [
+						...condition,
+						{
+							op: 'i32.const',
+							value: 0,
+						},
+						{
+							op: 'i32.eq',
+						},
+						{
+							op: 'br_if',
+							labelIndex: 1,
+						},
+						...body,
+						...increment,
 						{
 							op: 'local.set',
 							index: iteratorBinding.index,

@@ -5,6 +5,7 @@ import {
 	type ConstructorDeclarationNode,
 	type ExpressionNode,
 	type ForRangeStatementNode,
+	type ForStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IdentifierTargetNode,
@@ -189,6 +190,9 @@ class Resolver {
 				return
 			case 'ForRangeStatement':
 				this.resolveForRangeStatement(statement)
+				return
+			case 'ForStatement':
+				this.resolveForStatement(statement)
 				return
 			case 'ReturnStatement':
 				this.model.returnOwners.set(statement, this.getCurrentFunction())
@@ -418,6 +422,24 @@ class Resolver {
 		this.enterLoop(statement)
 		this.enterScope()
 		this.declare(statement.iterator, binding, statement)
+		for (const bodyStatement of statement.body.statements) {
+			this.resolveStatement(bodyStatement)
+		}
+		this.leaveScope()
+		this.leaveLoop(statement)
+	}
+
+	private resolveForStatement(statement: ForStatementNode): void {
+		this.resolveExpression(statement.start)
+		const binding = this.createIteratorBinding(statement)
+		this.enterLoop(statement)
+		this.enterScope()
+		this.declare(statement.iterator, binding, statement)
+		this.resolveExpression(statement.condition)
+		if (statement.incrementTarget !== statement.iterator) {
+			this.reporter.error(`Итератор for должен обновлять ${statement.iterator}`, this.nodeLocations.get(statement))
+		}
+		this.resolveExpression(statement.increment)
 		for (const bodyStatement of statement.body.statements) {
 			this.resolveStatement(bodyStatement)
 		}
@@ -773,7 +795,7 @@ class Resolver {
 		return binding
 	}
 
-	private createIteratorBinding(statement: ForRangeStatementNode): SemanticBinding {
+	private createIteratorBinding(statement: ForRangeStatementNode | ForStatementNode): SemanticBinding {
 		const binding: SemanticBinding = {
 			kind: 'iterator',
 			statement,

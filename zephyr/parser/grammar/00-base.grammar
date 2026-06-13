@@ -12,6 +12,7 @@ Statement -> ImportStatement
 Statement -> ExportStatement
 Statement -> IfStatement
 Statement -> WhileStatement
+Statement -> ForStatement
 Statement -> ForRangeStatement
 Statement -> ReturnStatement
 Statement -> BreakStatement

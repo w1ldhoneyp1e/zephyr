@@ -542,6 +542,14 @@ fn sumRange(limit: number): number {
 	return total;
 }
 
+fn sumFor(limit: number): number {
+	var total: number = 0;
+	for (i = 0; i < limit; i = i + 1) {
+		total = total + i;
+	}
+	return total;
+}
+
 fn sumDoubles(limit: number): number {
 	var total: number = 0;
 	for (i in 0..limit) {
@@ -589,6 +597,7 @@ fn setAmount(rows: number, index: number, value: number): number {
 	const max = instance.exports.max
 	const sumTo = instance.exports.sumTo
 	const sumRange = instance.exports.sumRange
+	const sumFor = instance.exports.sumFor
 	const sumDoubles = instance.exports.sumDoubles
 	const sumF64Array = instance.exports.sumF64Array
 	const writeDouble = instance.exports.writeDouble
@@ -602,6 +611,7 @@ fn setAmount(rows: number, index: number, value: number): number {
 	assert(typeof max === 'function', 'Expected lowered source to export max function')
 	assert(typeof sumTo === 'function', 'Expected lowered source to export sumTo function')
 	assert(typeof sumRange === 'function', 'Expected lowered source to export sumRange function')
+	assert(typeof sumFor === 'function', 'Expected lowered source to export sumFor function')
 	assert(typeof sumDoubles === 'function', 'Expected lowered source to export sumDoubles function')
 	assert(typeof sumF64Array === 'function', 'Expected lowered source to export sumF64Array function')
 	assert(typeof writeDouble === 'function', 'Expected lowered source to export writeDouble function')
@@ -617,6 +627,7 @@ fn setAmount(rows: number, index: number, value: number): number {
 	const maxFn = max as (left: number, right: number) => number
 	const sumToFn = sumTo as (limit: number) => number
 	const sumRangeFn = sumRange as (limit: number) => number
+	const sumForFn = sumFor as (limit: number) => number
 	const sumDoublesFn = sumDoubles as (limit: number) => number
 	const sumF64ArrayFn = sumF64Array as (base: number, length: number) => number
 	const writeDoubleFn = writeDouble as (base: number, index: number, value: number) => number
@@ -630,6 +641,7 @@ fn setAmount(rows: number, index: number, value: number): number {
 	assert(maxFn(4, 9) === 9, 'Expected lowered max(4, 9) to return 9')
 	assert(sumToFn(10) === 55, 'Expected lowered sumTo(10) to return 55')
 	assert(sumRangeFn(10) === 45, 'Expected lowered sumRange(10) to return 45')
+	assert(sumForFn(10) === 45, 'Expected lowered sumFor(10) to return 45')
 	assert(sumDoublesFn(5) === 20, 'Expected lowered sumDoubles(5) to return 20')
 	const view = new DataView(memory.buffer)
 	const basePtr = 8192

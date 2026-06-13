@@ -433,6 +433,7 @@ class TypeAnalyzer {
 					}
 					break
 				case 'WhileStatement':
+				case 'ForStatement':
 				case 'ForRangeStatement':
 					types.push(...this.collectReturnTypes(statement.body.statements))
 					break
