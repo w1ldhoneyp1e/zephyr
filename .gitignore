@@ -3,3 +3,4 @@
 yarn.lock
 package-lock.json
 .codex
+examples/wasm_table_aggregate/browser/*.wasm

@@ -20,7 +20,9 @@
     "lint": "eslint vm zephyr --ext .ts --fix",
     "test:features": "ts-node --project tsconfig.json tests/runFeatureTests.ts",
     "test:wasm": "ts-node --project tsconfig.json tests/runWasmSmokeTests.ts",
-    "demo:wasm-table": "ts-node --project tsconfig.json examples/wasm_table_aggregate/run.ts"
+    "demo:wasm-table": "ts-node --project tsconfig.json examples/wasm_table_aggregate/run.ts",
+    "demo:wasm-browser:build": "yarn build && node dist/zephyrMain.js compile examples/wasm_table_aggregate/table_aggregate.zph --target wasm --out examples/wasm_table_aggregate/browser/table_aggregate.wasm",
+    "demo:wasm-browser": "node scripts/serve-wasm-browser-demo.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

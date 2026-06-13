@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Zephyr Wasm Table Aggregate</title>
+		<link rel="stylesheet" href="./styles.css">
+	</head>
+	<body>
+		<main class="shell">
+			<section class="hero">
+				<p class="eyebrow">Zephyr -> WebAssembly</p>
+				<h1>Table aggregate в браузере</h1>
+				<p class="lead">
+					Демо загружает <code>table_aggregate.wasm</code>, заполняет linear memory таблицей
+					и сравнивает вычисления на JS typed arrays и Zephyr Wasm.
+				</p>
+				<div class="actions">
+					<label>
+						<span>Rows</span>
+						<input id="row-count" type="number" min="1000" step="1000" value="500000">
+					</label>
+					<button id="run-button" type="button">Run benchmark</button>
+				</div>
+			</section>
+
+			<section class="cards" aria-live="polite">
+				<article class="card">
+					<h2>JS typed arrays</h2>
+					<p id="js-time" class="metric">-</p>
+					<p id="js-result" class="result">result: -</p>
+				</article>
+				<article class="card accent">
+					<h2>Zephyr Wasm</h2>
+					<p id="wasm-time" class="metric">-</p>
+					<p id="wasm-result" class="result">result: -</p>
+				</article>
+			</section>
+
+			<pre id="log" class="log">Нажмите Run benchmark.</pre>
+		</main>
+
+		<script type="module" src="./browser-demo.js"></script>
+	</body>
+</html>
