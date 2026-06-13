@@ -287,8 +287,13 @@ function lowerReturnStatement(statement: ReturnStatementNode, context: FunctionL
 }
 
 function lowerExpressionStatement(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
-	if (expression.type === 'CallExpression' && isStoreF64Call(expression)) {
-		return lowerStoreF64Call(expression, context)
+	if (expression.type === 'CallExpression') {
+		if (isStoreF64Call(expression)) {
+			return lowerStoreF64Call(expression, context)
+		}
+		if (isStoreRecordF64Call(expression)) {
+			return lowerStoreRecordF64Call(expression, context)
+		}
 	}
 
 	return [
@@ -424,8 +429,14 @@ function lowerCallExpression(expression: CallExpressionNode, context: FunctionLo
 	if (isLoadF64Call(expression)) {
 		return lowerLoadF64Call(expression, context)
 	}
+	if (isLoadRecordF64Call(expression)) {
+		return lowerLoadRecordF64Call(expression, context)
+	}
 	if (isStoreF64Call(expression)) {
 		throw new Error('Wasm lowering only supports storeF64 as an expression statement')
+	}
+	if (isStoreRecordF64Call(expression)) {
+		throw new Error('Wasm lowering only supports storeRecordF64 as an expression statement')
 	}
 	if (expression.callee.type !== 'IdentifierExpression') {
 		throw new Error('Wasm lowering only supports direct function calls')
@@ -473,6 +484,35 @@ function lowerStoreF64Call(expression: CallExpressionNode, context: FunctionLowe
 	]
 }
 
+function lowerLoadRecordF64Call(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	assertArgumentCount(expression, 4, 'loadRecordF64')
+	context.module.usesMemory = true
+
+	return [
+		...lowerRecordFieldAddressExpression(expression, context),
+		{
+			op: 'f64.load',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
+function lowerStoreRecordF64Call(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	assertArgumentCount(expression, 5, 'storeRecordF64')
+	context.module.usesMemory = true
+
+	return [
+		...lowerRecordFieldAddressExpression(expression, context),
+		...lowerNumberExpression(expression.args[4], context),
+		{
+			op: 'f64.store',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
 function lowerAddressExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
 	return [
 		...lowerNumberExpression(expression, context),
@@ -482,14 +522,45 @@ function lowerAddressExpression(expression: ExpressionNode, context: FunctionLow
 	]
 }
 
+function lowerRecordFieldAddressExpression(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	const [base, index, rowSize, fieldOffset] = expression.args
+
+	return lowerAddressExpression({
+		type: 'BinaryExpression',
+		operator: '+',
+		left: {
+			type: 'BinaryExpression',
+			operator: '+',
+			left: base,
+			right: {
+				type: 'BinaryExpression',
+				operator: '*',
+				left: index,
+				right: rowSize,
+			},
+		},
+		right: fieldOffset,
+	}, context)
+}
+
 function isLoadF64Call(expression: CallExpressionNode): boolean {
 	return expression.callee.type === 'IdentifierExpression'
 		&& expression.callee.name === 'loadF64'
 }
 
+function isLoadRecordF64Call(expression: CallExpressionNode): boolean {
+	return expression.callee.type === 'IdentifierExpression'
+		&& expression.callee.name === 'loadRecordF64'
+}
+
 function isStoreF64Call(expression: CallExpressionNode): boolean {
 	return expression.callee.type === 'IdentifierExpression'
 		&& expression.callee.name === 'storeF64'
+}
+
+function isStoreRecordF64Call(expression: CallExpressionNode): boolean {
+	return expression.callee.type === 'IdentifierExpression'
+		&& expression.callee.name === 'storeRecordF64'
 }
 
 function assertArgumentCount(expression: CallExpressionNode, expected: number, name: string): void {

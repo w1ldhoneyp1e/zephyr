@@ -571,6 +571,21 @@ fn writeDouble(base: number, index: number, value: number): number {
 	storeF64(address, value * 2);
 	return loadF64(address);
 }
+
+fn sumActiveAmount(rows: number, length: number): number {
+	var total: number = 0;
+	for (i in 0..length) {
+		if (loadRecordF64(rows, i, 16, 0) == 1) {
+			total = total + loadRecordF64(rows, i, 16, 8);
+		}
+	}
+	return total;
+}
+
+fn setAmount(rows: number, index: number, value: number): number {
+	storeRecordF64(rows, index, 16, 8, value);
+	return loadRecordF64(rows, index, 16, 8);
+}
 `)
 	const module = lowerProgramToWasmIr(program)
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
@@ -586,6 +601,8 @@ fn writeDouble(base: number, index: number, value: number): number {
 	const sumDoubles = instance.exports.sumDoubles
 	const sumF64Array = instance.exports.sumF64Array
 	const writeDouble = instance.exports.writeDouble
+	const sumActiveAmount = instance.exports.sumActiveAmount
+	const setAmount = instance.exports.setAmount
 	const memory = instance.exports.memory
 	assert(typeof add === 'function', 'Expected lowered source to export add function')
 	assert(typeof addViaCall === 'function', 'Expected lowered source to export addViaCall function')
@@ -597,6 +614,8 @@ fn writeDouble(base: number, index: number, value: number): number {
 	assert(typeof sumDoubles === 'function', 'Expected lowered source to export sumDoubles function')
 	assert(typeof sumF64Array === 'function', 'Expected lowered source to export sumF64Array function')
 	assert(typeof writeDouble === 'function', 'Expected lowered source to export writeDouble function')
+	assert(typeof sumActiveAmount === 'function', 'Expected lowered source to export sumActiveAmount function')
+	assert(typeof setAmount === 'function', 'Expected lowered source to export setAmount function')
 	if (!isWasmMemory(memory)) {
 		throw new Error('Expected lowered source to export memory')
 	}
@@ -610,6 +629,8 @@ fn writeDouble(base: number, index: number, value: number): number {
 	const sumDoublesFn = sumDoubles as (limit: number) => number
 	const sumF64ArrayFn = sumF64Array as (base: number, length: number) => number
 	const writeDoubleFn = writeDouble as (base: number, index: number, value: number) => number
+	const sumActiveAmountFn = sumActiveAmount as (rows: number, length: number) => number
+	const setAmountFn = setAmount as (rows: number, index: number, value: number) => number
 	assert(addFn(7, 8) === 15, 'Expected lowered add(7, 8) to return 15')
 	assert(addViaCallFn(20, 22) === 42, 'Expected lowered addViaCall(20, 22) to return 42')
 	assert(callsForwardFn(8) === 17, 'Expected lowered callsForward(8) to return 17')
@@ -628,6 +649,20 @@ fn writeDouble(base: number, index: number, value: number): number {
 	assert(sumF64ArrayFn(basePtr, values.length) === 60.75, 'Expected lowered sumF64Array to read f64 values')
 	assert(writeDoubleFn(basePtr, 1, 7) === 14, 'Expected lowered writeDouble to return written value')
 	assert(view.getFloat64(basePtr + 8, true) === 14, 'Expected lowered writeDouble to update memory')
+	const rowsPtr = 12288
+	const rows = [
+		[1, 10],
+		[0, 20],
+		[1, 30.5],
+	] as const
+	for (const [index, row] of rows.entries()) {
+		const rowPtr = rowsPtr + index * 16
+		view.setFloat64(rowPtr, row[0], true)
+		view.setFloat64(rowPtr + 8, row[1], true)
+	}
+	assert(sumActiveAmountFn(rowsPtr, rows.length) === 40.5, 'Expected lowered sumActiveAmount to aggregate active rows')
+	assert(setAmountFn(rowsPtr, 1, 12.25) === 12.25, 'Expected lowered setAmount to return written amount')
+	assert(view.getFloat64(rowsPtr + 16 + 8, true) === 12.25, 'Expected lowered setAmount to update packed row')
 }
 
 function parseProgram(source: string): ProgramNode {
