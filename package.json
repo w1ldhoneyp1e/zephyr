@@ -13,7 +13,8 @@
     "build": "tsup",
     "build:tsc": "tsc --project tsconfig.json",
     "lint": "eslint vm zephyr --ext .ts --fix",
-    "test:features": "ts-node --project tsconfig.json tests/runFeatureTests.ts"
+    "test:features": "ts-node --project tsconfig.json tests/runFeatureTests.ts",
+    "test:wasm": "ts-node --project tsconfig.json tests/runWasmSmokeTests.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
