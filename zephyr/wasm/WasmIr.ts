@@ -46,6 +46,12 @@ type WasmInstruction =
 		body: WasmInstruction[],
 	}
 	| {
+		op: 'if',
+		result?: WasmValueType,
+		thenBody: WasmInstruction[],
+		elseBody?: WasmInstruction[],
+	}
+	| {
 		op: 'br' | 'br_if',
 		labelIndex: number,
 	}

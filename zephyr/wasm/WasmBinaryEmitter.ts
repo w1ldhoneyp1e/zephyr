@@ -23,8 +23,10 @@ const FUNCTION_TYPE = 0x60
 
 const OPCODES = {
 	'end': 0x0b,
+	'else': 0x05,
 	'block': 0x02,
 	'loop': 0x03,
+	'if': 0x04,
 	'br': 0x0c,
 	'br_if': 0x0d,
 	'return': 0x0f,
@@ -246,6 +248,19 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 			writeBlockType(writer, instruction.result ?? null)
 			for (const child of instruction.body) {
 				writeInstruction(writer, child)
+			}
+			writer.writeByte(OPCODES.end)
+			break
+		case 'if':
+			writeBlockType(writer, instruction.result ?? null)
+			for (const child of instruction.thenBody) {
+				writeInstruction(writer, child)
+			}
+			if (instruction.elseBody !== undefined) {
+				writer.writeByte(OPCODES.else)
+				for (const child of instruction.elseBody) {
+					writeInstruction(writer, child)
+				}
 			}
 			writer.writeByte(OPCODES.end)
 			break

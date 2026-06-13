@@ -1,9 +1,11 @@
 import {
 	type AssignmentStatementNode,
 	type BinaryExpressionNode,
+	type BlockStatementNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
+	type IfStatementNode,
 	type LiteralExpressionNode,
 	type ProgramNode,
 	type ReturnStatementNode,
@@ -11,6 +13,7 @@ import {
 	type TypeName,
 	type UnaryExpressionNode,
 	type VariableDeclarationNode,
+	type WhileStatementNode,
 	typeNameToString,
 } from '../ast'
 import {
@@ -20,6 +23,7 @@ import {
 } from './WasmIr'
 
 type NumericBinaryOpcode = 'f64.add' | 'f64.sub' | 'f64.mul' | 'f64.div'
+type NumericComparisonOpcode = 'f64.eq' | 'f64.ne' | 'f64.lt' | 'f64.le' | 'f64.gt' | 'f64.ge'
 
 interface WasmLocalBinding {
 	index: number,
@@ -49,9 +53,7 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode): WasmFunctionIr {
 		localTypes: [],
 	}
 	const body: WasmInstruction[] = []
-	for (const statement of fn.body.statements) {
-		body.push(...lowerStatement(statement, context))
-	}
+	body.push(...lowerBlockStatement(fn.body, context))
 
 	return {
 		name: fn.name,
@@ -69,11 +71,19 @@ function lowerStatement(statement: StatementNode, context: FunctionLoweringConte
 			return lowerVariableDeclaration(statement, context)
 		case 'AssignmentStatement':
 			return lowerAssignmentStatement(statement, context)
+		case 'IfStatement':
+			return lowerIfStatement(statement, context)
+		case 'WhileStatement':
+			return lowerWhileStatement(statement, context)
 		case 'ReturnStatement':
 			return lowerReturnStatement(statement, context)
 		default:
 			throw new Error(`Wasm lowering does not support statement ${statement.type}`)
 	}
+}
+
+function lowerBlockStatement(block: BlockStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	return block.statements.flatMap(statement => lowerStatement(statement, context))
 }
 
 function lowerVariableDeclaration(statement: VariableDeclarationNode, context: FunctionLoweringContext): WasmInstruction[] {
@@ -95,7 +105,7 @@ function lowerVariableDeclaration(statement: VariableDeclarationNode, context: F
 	}
 
 	return [
-		...lowerExpression(statement.initializer, context),
+		...lowerNumberExpression(statement.initializer, context),
 		{
 			op: 'local.set',
 			index,
@@ -110,10 +120,55 @@ function lowerAssignmentStatement(statement: AssignmentStatementNode, context: F
 	const binding = getLocal(context, statement.target.name)
 
 	return [
-		...lowerExpression(statement.value, context),
+		...lowerNumberExpression(statement.value, context),
 		{
 			op: 'local.set',
 			index: binding.index,
+		},
+	]
+}
+
+function lowerIfStatement(statement: IfStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	return [
+		...lowerBooleanExpression(statement.condition, context),
+		{
+			op: 'if',
+			thenBody: lowerBlockStatement(statement.thenBranch, context),
+			elseBody: statement.elseBranch === null
+				? undefined
+				: lowerBlockStatement(statement.elseBranch, context),
+		},
+	]
+}
+
+function lowerWhileStatement(statement: WhileStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	return [
+		{
+			op: 'block',
+			body: [
+				{
+					op: 'loop',
+					body: [
+						...lowerBooleanExpression(statement.condition, context),
+						{
+							op: 'i32.const',
+							value: 0,
+						},
+						{
+							op: 'i32.eq',
+						},
+						{
+							op: 'br_if',
+							labelIndex: 1,
+						},
+						...lowerBlockStatement(statement.body, context),
+						{
+							op: 'br',
+							labelIndex: 0,
+						},
+					],
+				},
+			],
 		},
 	]
 }
@@ -124,29 +179,42 @@ function lowerReturnStatement(statement: ReturnStatementNode, context: FunctionL
 	}
 
 	return [
-		...lowerExpression(statement.value, context),
+		...lowerNumberExpression(statement.value, context),
 		{
 			op: 'return',
 		},
 	]
 }
 
-function lowerExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+function lowerNumberExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
 	switch (expression.type) {
 		case 'LiteralExpression':
-			return lowerLiteralExpression(expression)
+			return lowerNumericLiteralExpression(expression)
 		case 'IdentifierExpression':
 			return lowerIdentifierExpression(expression, context)
 		case 'UnaryExpression':
-			return lowerUnaryExpression(expression, context)
+			return lowerNumericUnaryExpression(expression, context)
 		case 'BinaryExpression':
-			return lowerBinaryExpression(expression, context)
+			return lowerNumericBinaryExpression(expression, context)
 		default:
-			throw new Error(`Wasm lowering does not support expression ${expression.type}`)
+			throw new Error(`Wasm lowering does not support numeric expression ${expression.type}`)
 	}
 }
 
-function lowerLiteralExpression(expression: LiteralExpressionNode): WasmInstruction[] {
+function lowerBooleanExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	switch (expression.type) {
+		case 'LiteralExpression':
+			return lowerBooleanLiteralExpression(expression)
+		case 'UnaryExpression':
+			return lowerBooleanUnaryExpression(expression, context)
+		case 'BinaryExpression':
+			return lowerBooleanBinaryExpression(expression, context)
+		default:
+			throw new Error(`Wasm lowering does not support boolean expression ${expression.type}`)
+	}
+}
+
+function lowerNumericLiteralExpression(expression: LiteralExpressionNode): WasmInstruction[] {
 	if (typeof expression.value !== 'number') {
 		throw new Error('Wasm lowering only supports numeric literals')
 	}
@@ -155,6 +223,21 @@ function lowerLiteralExpression(expression: LiteralExpressionNode): WasmInstruct
 		{
 			op: 'f64.const',
 			value: expression.value,
+		},
+	]
+}
+
+function lowerBooleanLiteralExpression(expression: LiteralExpressionNode): WasmInstruction[] {
+	if (typeof expression.value !== 'boolean') {
+		throw new Error('Wasm lowering only supports boolean literals in conditions')
+	}
+
+	return [
+		{
+			op: 'i32.const',
+			value: expression.value
+				? 1
+				: 0,
 		},
 	]
 }
@@ -168,25 +251,54 @@ function lowerIdentifierExpression(expression: IdentifierExpressionNode, context
 	]
 }
 
-function lowerUnaryExpression(expression: UnaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+function lowerNumericUnaryExpression(expression: UnaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
 	if (expression.operator !== '-') {
 		throw new Error(`Wasm lowering does not support unary operator ${expression.operator}`)
 	}
 
 	return [
-		...lowerExpression(expression.argument, context),
+		...lowerNumberExpression(expression.argument, context),
 		{
 			op: 'f64.neg',
 		},
 	]
 }
 
-function lowerBinaryExpression(expression: BinaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+function lowerBooleanUnaryExpression(expression: UnaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (expression.operator !== '!') {
+		throw new Error(`Wasm lowering does not support boolean unary operator ${expression.operator}`)
+	}
+
+	return [
+		...lowerBooleanExpression(expression.argument, context),
+		{
+			op: 'i32.const',
+			value: 0,
+		},
+		{
+			op: 'i32.eq',
+		},
+	]
+}
+
+function lowerNumericBinaryExpression(expression: BinaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
 	const op = getBinaryNumericOpcode(expression.operator)
 
 	return [
-		...lowerExpression(expression.left, context),
-		...lowerExpression(expression.right, context),
+		...lowerNumberExpression(expression.left, context),
+		...lowerNumberExpression(expression.right, context),
+		{
+			op,
+		},
+	]
+}
+
+function lowerBooleanBinaryExpression(expression: BinaryExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	const op = getNumericComparisonOpcode(expression.operator)
+
+	return [
+		...lowerNumberExpression(expression.left, context),
+		...lowerNumberExpression(expression.right, context),
 		{
 			op,
 		},
@@ -205,6 +317,25 @@ function getBinaryNumericOpcode(operator: BinaryExpressionNode['operator']): Num
 			return 'f64.div'
 		default:
 			throw new Error(`Wasm lowering does not support binary operator ${operator}`)
+	}
+}
+
+function getNumericComparisonOpcode(operator: BinaryExpressionNode['operator']): NumericComparisonOpcode {
+	switch (operator) {
+		case '==':
+			return 'f64.eq'
+		case '!=':
+			return 'f64.ne'
+		case '<':
+			return 'f64.lt'
+		case '<=':
+			return 'f64.le'
+		case '>':
+			return 'f64.gt'
+		case '>=':
+			return 'f64.ge'
+		default:
+			throw new Error(`Wasm lowering does not support boolean operator ${operator}`)
 	}
 }
 

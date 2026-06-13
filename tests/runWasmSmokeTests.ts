@@ -511,6 +511,24 @@ fn calc(value: number): number {
 	total = total + 5;
 	return -total;
 }
+
+fn max(left: number, right: number): number {
+	var result: number = right;
+	if (left > right) {
+		result = left;
+	}
+	return result;
+}
+
+fn sumTo(limit: number): number {
+	var total: number = 0;
+	var i: number = 1;
+	while (i <= limit) {
+		total = total + i;
+		i = i + 1;
+	}
+	return total;
+}
 `)
 	const module = lowerProgramToWasmIr(program)
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
@@ -518,12 +536,21 @@ fn calc(value: number): number {
 	const instance = await wasm.instantiate(compiled)
 	const add = instance.exports.add
 	const calc = instance.exports.calc
+	const max = instance.exports.max
+	const sumTo = instance.exports.sumTo
 	assert(typeof add === 'function', 'Expected lowered source to export add function')
 	assert(typeof calc === 'function', 'Expected lowered source to export calc function')
+	assert(typeof max === 'function', 'Expected lowered source to export max function')
+	assert(typeof sumTo === 'function', 'Expected lowered source to export sumTo function')
 	const addFn = add as (left: number, right: number) => number
 	const calcFn = calc as (value: number) => number
+	const maxFn = max as (left: number, right: number) => number
+	const sumToFn = sumTo as (limit: number) => number
 	assert(addFn(7, 8) === 15, 'Expected lowered add(7, 8) to return 15')
 	assert(calcFn(10) === -25, 'Expected lowered calc(10) to return -25')
+	assert(maxFn(10, 7) === 10, 'Expected lowered max(10, 7) to return 10')
+	assert(maxFn(4, 9) === 9, 'Expected lowered max(4, 9) to return 9')
+	assert(sumToFn(10) === 55, 'Expected lowered sumTo(10) to return 55')
 }
 
 function parseProgram(source: string): ProgramNode {
