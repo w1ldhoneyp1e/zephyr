@@ -21,8 +21,14 @@ const FUNCTION_TYPE = 0x60
 
 const OPCODES = {
 	'end': 0x0b,
+	'block': 0x02,
+	'loop': 0x03,
+	'br': 0x0c,
+	'br_if': 0x0d,
 	'return': 0x0f,
 	'local.get': 0x20,
+	'local.set': 0x21,
+	'local.tee': 0x22,
 	'i32.const': 0x41,
 	'f64.const': 0x44,
 	'i32.load': 0x28,
@@ -32,6 +38,18 @@ const OPCODES = {
 	'i32.add': 0x6a,
 	'i32.sub': 0x6b,
 	'i32.mul': 0x6c,
+	'i32.eq': 0x46,
+	'i32.ne': 0x47,
+	'i32.lt_s': 0x48,
+	'i32.gt_s': 0x4a,
+	'i32.le_s': 0x4c,
+	'i32.ge_s': 0x4e,
+	'f64.eq': 0x61,
+	'f64.ne': 0x62,
+	'f64.lt': 0x63,
+	'f64.gt': 0x64,
+	'f64.le': 0x65,
+	'f64.ge': 0x66,
 	'f64.add': 0xa0,
 	'f64.sub': 0xa1,
 	'f64.mul': 0xa2,
@@ -164,6 +182,8 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 	writer.writeByte(OPCODES[instruction.op])
 	switch (instruction.op) {
 		case 'local.get':
+		case 'local.set':
+		case 'local.tee':
 			writer.writeUnsignedLeb128(instruction.index)
 			break
 		case 'i32.const':
@@ -179,9 +199,33 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 			writer.writeUnsignedLeb128(instruction.align)
 			writer.writeUnsignedLeb128(instruction.offset)
 			break
+		case 'block':
+		case 'loop':
+			writeBlockType(writer, instruction.result ?? null)
+			for (const child of instruction.body) {
+				writeInstruction(writer, child)
+			}
+			writer.writeByte(OPCODES.end)
+			break
+		case 'br':
+		case 'br_if':
+			writer.writeUnsignedLeb128(instruction.labelIndex)
+			break
 		case 'i32.add':
 		case 'i32.sub':
 		case 'i32.mul':
+		case 'i32.eq':
+		case 'i32.ne':
+		case 'i32.lt_s':
+		case 'i32.gt_s':
+		case 'i32.le_s':
+		case 'i32.ge_s':
+		case 'f64.eq':
+		case 'f64.ne':
+		case 'f64.lt':
+		case 'f64.gt':
+		case 'f64.le':
+		case 'f64.ge':
 		case 'f64.add':
 		case 'f64.sub':
 		case 'f64.mul':
@@ -189,6 +233,14 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'return':
 			break
 	}
+}
+
+function writeBlockType(writer: BinaryWriter, result: WasmValueType | null): void {
+	if (result === null) {
+		writer.writeByte(0x40)
+		return
+	}
+	writer.writeByte(encodeValueType(result))
 }
 
 function writeValueTypeVector(writer: BinaryWriter, types: WasmValueType[]): void {

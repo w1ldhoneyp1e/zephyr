@@ -50,6 +50,7 @@ async function run(): Promise<void> {
 	const addFn = add as (left: number, right: number) => number
 	assert(addFn(20, 22) === 42, 'Expected add(20, 22) to return 42')
 	await assertMemoryStore()
+	await assertLoopSum()
 	console.log('passed wasm smoke tests')
 }
 
@@ -104,6 +105,111 @@ function isWasmMemory(value: unknown): value is {buffer: ArrayBuffer} {
 		&& value !== null
 		&& 'buffer' in value
 		&& value.buffer instanceof ArrayBuffer
+}
+
+async function assertLoopSum(): Promise<void> {
+	const module: WasmModuleIr = {
+		functions: [
+			{
+				name: 'sumTo',
+				params: ['i32'],
+				result: 'i32',
+				locals: ['i32', 'i32'],
+				body: [
+					{
+						op: 'i32.const',
+						value: 0,
+					},
+					{
+						op: 'local.set',
+						index: 1,
+					},
+					{
+						op: 'i32.const',
+						value: 1,
+					},
+					{
+						op: 'local.set',
+						index: 2,
+					},
+					{
+						op: 'block',
+						body: [
+							{
+								op: 'loop',
+								body: [
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'local.get',
+										index: 0,
+									},
+									{
+										op: 'i32.gt_s',
+									},
+									{
+										op: 'br_if',
+										labelIndex: 1,
+									},
+									{
+										op: 'local.get',
+										index: 1,
+									},
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'i32.add',
+									},
+									{
+										op: 'local.set',
+										index: 1,
+									},
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'i32.const',
+										value: 1,
+									},
+									{
+										op: 'i32.add',
+									},
+									{
+										op: 'local.set',
+										index: 2,
+									},
+									{
+										op: 'br',
+										labelIndex: 0,
+									},
+								],
+							},
+						],
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'return',
+					},
+				],
+				exported: true,
+			},
+		],
+	}
+	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
+	const compiled = await wasm.compile(emitWasmModule(module))
+	const instance = await wasm.instantiate(compiled)
+	const sumTo = instance.exports.sumTo
+	assert(typeof sumTo === 'function', 'Expected exported sumTo function')
+	const sumToFn = sumTo as (value: number) => number
+	assert(sumToFn(10) === 55, 'Expected sumTo(10) to return 55')
 }
 
 run().catch(error => {
