@@ -8,8 +8,17 @@ import {
 	createRecordLayout,
 	emitWasmModule,
 	getRecordField,
+	lowerProgramToWasmIr,
 	type WasmModuleIr,
 } from '../zephyr/wasm'
+import {type ProgramNode} from '../zephyr/ast'
+import {
+	DiagnosticReporter,
+	NodeLocations,
+	diagnosticToMessage,
+} from '../zephyr/diagnostics'
+import {Lexer} from '../zephyr/Lexer'
+import {LalrAstParser} from '../zephyr/parser/LalrAstParser'
 
 interface WebAssemblyRuntime {
 	compile: (bytes: Uint8Array) => Promise<unknown>,
@@ -65,6 +74,7 @@ async function run(): Promise<void> {
 	await assertAlloc()
 	await assertArrayHelpers()
 	await assertRecordAggregate()
+	await assertSourceLowering()
 	console.log('passed wasm smoke tests')
 }
 
@@ -488,6 +498,56 @@ async function assertRecordAggregate(): Promise<void> {
 	}
 	const sumSecondFieldFn = sumSecondField as (basePtr: number, length: number) => number
 	assert(sumSecondFieldFn(basePtr, rows.length) === 60.75, 'Expected record aggregate sum to be 60.75')
+}
+
+async function assertSourceLowering(): Promise<void> {
+	const program = parseProgram(`
+fn add(a: number, b: number): number {
+	return a + b;
+}
+
+fn calc(value: number): number {
+	var total: number = value * 2;
+	total = total + 5;
+	return -total;
+}
+`)
+	const module = lowerProgramToWasmIr(program)
+	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
+	const compiled = await wasm.compile(emitWasmModule(module))
+	const instance = await wasm.instantiate(compiled)
+	const add = instance.exports.add
+	const calc = instance.exports.calc
+	assert(typeof add === 'function', 'Expected lowered source to export add function')
+	assert(typeof calc === 'function', 'Expected lowered source to export calc function')
+	const addFn = add as (left: number, right: number) => number
+	const calcFn = calc as (value: number) => number
+	assert(addFn(7, 8) === 15, 'Expected lowered add(7, 8) to return 15')
+	assert(calcFn(10) === -25, 'Expected lowered calc(10) to return -25')
+}
+
+function parseProgram(source: string): ProgramNode {
+	const reporter = new DiagnosticReporter()
+	const nodeLocations = new NodeLocations()
+	const sourceFile = 'wasm-smoke.zph'
+	const lexer = new Lexer(source, reporter, sourceFile)
+	const tokens = lexer.scanTokens()
+	if (reporter.hasErrors()) {
+		throw new Error(formatDiagnostics(reporter))
+	}
+	const parser = new LalrAstParser(tokens, sourceFile, nodeLocations, reporter)
+	const result = parser.parseProgram()
+	if (!result.ok || reporter.hasErrors()) {
+		throw new Error(formatDiagnostics(reporter))
+	}
+
+	return result.value
+}
+
+function formatDiagnostics(reporter: DiagnosticReporter): string {
+	return reporter.getDiagnostics()
+		.map(diagnosticToMessage)
+		.join('\n')
 }
 
 run().catch(error => {

@@ -1,4 +1,5 @@
 export {emitWasmModule} from './WasmBinaryEmitter'
+export {lowerProgramToWasmIr} from './WasmLowerer'
 export {
 	type WasmRecordField,
 	type WasmRecordFieldLayout,

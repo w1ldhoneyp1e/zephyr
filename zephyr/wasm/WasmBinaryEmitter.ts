@@ -36,6 +36,7 @@ const OPCODES = {
 	'global.set': 0x24,
 	'i32.const': 0x41,
 	'f64.const': 0x44,
+	'f64.neg': 0x9a,
 	'i32.load': 0x28,
 	'f64.load': 0x2b,
 	'i32.store': 0x36,
@@ -267,6 +268,7 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'f64.gt':
 		case 'f64.le':
 		case 'f64.ge':
+		case 'f64.neg':
 		case 'f64.add':
 		case 'f64.sub':
 		case 'f64.mul':

@@ -26,6 +26,9 @@ type WasmInstruction =
 		value: number,
 	}
 	| {
+		op: 'f64.neg',
+	}
+	| {
 		op: 'i32.add' | 'i32.sub' | 'i32.mul' | 'f64.add' | 'f64.sub' | 'f64.mul' | 'f64.div',
 	}
 	| {
