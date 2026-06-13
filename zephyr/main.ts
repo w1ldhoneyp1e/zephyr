@@ -14,8 +14,11 @@ import {match} from './utils'
 interface CliOptions {
 	inputPath: string,
 	emitBytecode: boolean,
+	jsonOutput: boolean,
 	outputPath: string | null,
 	runProgram: boolean,
+	checkOnly: boolean,
+	sourceStdin: boolean,
 }
 
 interface CliParseState extends CliOptions {
@@ -44,8 +47,11 @@ function parseArgs(args: string[]): CliOptions {
 	const initialOptions: CliParseState = {
 		inputPath: '',
 		emitBytecode: false,
+		jsonOutput: false,
 		outputPath: null,
 		runProgram: true,
+		checkOnly: false,
+		sourceStdin: false,
 		skipNext: false,
 	}
 
@@ -62,9 +68,22 @@ function parseArgs(args: string[]): CliOptions {
 				...acc,
 				emitBytecode: true,
 			},
+			'--check': {
+				...acc,
+				checkOnly: true,
+				runProgram: false,
+			},
+			'--json': {
+				...acc,
+				jsonOutput: true,
+			},
 			'--no-run': {
 				...acc,
 				runProgram: false,
+			},
+			'--source-stdin': {
+				...acc,
+				sourceStdin: true,
 			},
 			'--out': (() => {
 				const nextArg = arr[index + 1]
@@ -101,9 +120,16 @@ function parseArgs(args: string[]): CliOptions {
 	return {
 		inputPath: parsed.inputPath,
 		emitBytecode: parsed.emitBytecode,
+		jsonOutput: parsed.jsonOutput,
 		outputPath: parsed.outputPath,
 		runProgram: parsed.runProgram,
+		checkOnly: parsed.checkOnly,
+		sourceStdin: parsed.sourceStdin,
 	}
+}
+
+function readStdin(): string {
+	return fs.readFileSync(0, 'utf-8')
 }
 
 function serializeConstant(value: ConstantPoolItem): string {
@@ -184,8 +210,29 @@ function main(): void {
 	const options = parseArgs(process.argv.slice(2))
 	const filePath = resolveInputPath(options.inputPath)
 	const compiler = new Compiler()
+	if (options.checkOnly) {
+		const checkResult = options.sourceStdin
+			? compiler.checkSource(readStdin(), filePath)
+			: compiler.checkPath(filePath)
+		if (options.jsonOutput) {
+			console.log(JSON.stringify(checkResult))
+		}
+		else if (!checkResult.ok) {
+			for (const diagnostic of checkResult.diagnostics) {
+				console.error(diagnosticToMessage(diagnostic))
+			}
+		}
+		if (!checkResult.ok) {
+			process.exit(1)
+		}
+		return
+	}
 	const compileResult = compiler.compilePath(filePath)
 	if (!compileResult.ok) {
+		if (options.jsonOutput) {
+			console.log(JSON.stringify(compileResult))
+			process.exit(1)
+		}
 		for (const diagnostic of compileResult.diagnostics) {
 			console.error(diagnosticToMessage(diagnostic))
 		}

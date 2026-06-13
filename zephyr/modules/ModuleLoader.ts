@@ -36,6 +36,7 @@ class ModuleLoader {
 		private readonly reporter: DiagnosticReporter,
 		private readonly nodeLocations: NodeLocations,
 		private readonly workspaceRoot: string = process.cwd(),
+		private readonly sourceOverrides: ReadonlyMap<string, string> = new Map(),
 	) {
 	}
 
@@ -128,15 +129,11 @@ class ModuleLoader {
 			}
 		}
 
-		let source: string
-		try {
-			source = fs.readFileSync(filePath, 'utf-8')
-		}
-		catch (error) {
-			this.reporter.reportError(error)
+		const source = this.readSource(filePath)
+		if (!source.ok) {
 			return this.failure()
 		}
-		const programResult = this.parseSource(source, filePath)
+		const programResult = this.parseSource(source.value, filePath)
 		if (!programResult.ok) {
 			return this.failure()
 		}
@@ -300,6 +297,27 @@ class ModuleLoader {
 		message: string,
 	): void {
 		this.reporter.error(message, this.nodeLocations.get(node))
+	}
+
+	private readSource(filePath: string): PhaseResult<string> {
+		const overriddenSource = this.sourceOverrides.get(path.resolve(filePath))
+		if (overriddenSource !== undefined) {
+			return {
+				ok: true,
+				value: overriddenSource,
+			}
+		}
+
+		try {
+			return {
+				ok: true,
+				value: fs.readFileSync(filePath, 'utf-8'),
+			}
+		}
+		catch (error) {
+			this.reporter.reportError(error)
+			return this.failure()
+		}
 	}
 
 	private failure(): PhaseResult<never> {

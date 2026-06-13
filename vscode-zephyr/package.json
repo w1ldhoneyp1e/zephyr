@@ -4,11 +4,17 @@
   "description": "Syntax highlighting and editor basics for Zephyr source files.",
   "version": "0.0.1",
   "publisher": "zephyr",
+  "main": "./out/extension.js",
   "engines": {
     "vscode": "^1.85.0"
   },
+  "activationEvents": [
+    "onLanguage:zephyr"
+  ],
   "scripts": {
-    "package": "vsce package --allow-missing-repository --no-yarn --no-dependencies --skip-license",
+    "compile": "tsc --project tsconfig.json",
+    "watch": "tsc --project tsconfig.json --watch",
+    "package": "yarn compile && vsce package --allow-missing-repository --no-yarn --no-dependencies --skip-license",
     "install:local": "code --install-extension zephyr-language-0.0.1.vsix --force"
   },
   "categories": [
@@ -43,6 +49,9 @@
     ]
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.6.3"
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.6.3",
+    "typescript": "^6.0.2"
   }
 }
