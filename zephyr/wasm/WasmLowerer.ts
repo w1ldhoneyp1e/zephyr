@@ -2,6 +2,7 @@ import {
 	type AssignmentStatementNode,
 	type BinaryExpressionNode,
 	type BlockStatementNode,
+	type CallExpressionNode,
 	type ExpressionNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
@@ -29,26 +30,36 @@ interface WasmLocalBinding {
 	index: number,
 }
 
+interface ModuleLoweringContext {
+	functionIndices: Map<string, number>,
+}
+
 interface FunctionLoweringContext {
+	module: ModuleLoweringContext,
 	locals: Map<string, WasmLocalBinding>,
 	localTypes: WasmFunctionIr['locals'],
 }
 
 function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
+	const functions = program.body
+		.filter((statement): statement is FunctionDeclarationNode => statement.type === 'FunctionDeclaration')
+	const context: ModuleLoweringContext = {
+		functionIndices: new Map(functions.map((fn, index) => [fn.name, index])),
+	}
+
 	return {
-		functions: program.body
-			.filter((statement): statement is FunctionDeclarationNode => statement.type === 'FunctionDeclaration')
-			.map(lowerFunctionDeclaration),
+		functions: functions.map(fn => lowerFunctionDeclaration(fn, context)),
 	}
 }
 
-function lowerFunctionDeclaration(fn: FunctionDeclarationNode): WasmFunctionIr {
+function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: ModuleLoweringContext): WasmFunctionIr {
 	assertNumberType(fn.returnTypeName, `return type of ${fn.name}`)
 	const params = fn.params.map(param => {
 		assertNumberType(param.typeName, `parameter ${param.name}`)
 		return 'f64' as const
 	})
 	const context: FunctionLoweringContext = {
+		module: moduleContext,
 		locals: new Map(fn.params.map((param, index) => [param.name, {index}])),
 		localTypes: [],
 	}
@@ -196,6 +207,8 @@ function lowerNumberExpression(expression: ExpressionNode, context: FunctionLowe
 			return lowerNumericUnaryExpression(expression, context)
 		case 'BinaryExpression':
 			return lowerNumericBinaryExpression(expression, context)
+		case 'CallExpression':
+			return lowerCallExpression(expression, context)
 		default:
 			throw new Error(`Wasm lowering does not support numeric expression ${expression.type}`)
 	}
@@ -301,6 +314,24 @@ function lowerBooleanBinaryExpression(expression: BinaryExpressionNode, context:
 		...lowerNumberExpression(expression.right, context),
 		{
 			op,
+		},
+	]
+}
+
+function lowerCallExpression(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (expression.callee.type !== 'IdentifierExpression') {
+		throw new Error('Wasm lowering only supports direct function calls')
+	}
+	const functionIndex = context.module.functionIndices.get(expression.callee.name)
+	if (functionIndex === undefined) {
+		throw new Error(`Unknown function ${expression.callee.name}`)
+	}
+
+	return [
+		...expression.args.flatMap(arg => lowerNumberExpression(arg, context)),
+		{
+			op: 'call',
+			functionIndex,
 		},
 	]
 }
