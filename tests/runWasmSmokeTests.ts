@@ -51,6 +51,7 @@ async function run(): Promise<void> {
 	assert(addFn(20, 22) === 42, 'Expected add(20, 22) to return 42')
 	await assertMemoryStore()
 	await assertLoopSum()
+	await assertAlloc()
 	console.log('passed wasm smoke tests')
 }
 
@@ -210,6 +211,73 @@ async function assertLoopSum(): Promise<void> {
 	assert(typeof sumTo === 'function', 'Expected exported sumTo function')
 	const sumToFn = sumTo as (value: number) => number
 	assert(sumToFn(10) === 55, 'Expected sumTo(10) to return 55')
+}
+
+async function assertAlloc(): Promise<void> {
+	const module: WasmModuleIr = {
+		memory: {
+			minPages: 1,
+			exportName: 'memory',
+		},
+		globals: [
+			{
+				name: 'heapPtr',
+				type: 'i32',
+				mutable: true,
+				initialValue: 1024,
+				exportName: 'heapPtr',
+			},
+		],
+		functions: [
+			{
+				name: 'alloc',
+				params: ['i32'],
+				result: 'i32',
+				locals: ['i32'],
+				body: [
+					{
+						op: 'global.get',
+						index: 0,
+					},
+					{
+						op: 'local.set',
+						index: 1,
+					},
+					{
+						op: 'global.get',
+						index: 0,
+					},
+					{
+						op: 'local.get',
+						index: 0,
+					},
+					{
+						op: 'i32.add',
+					},
+					{
+						op: 'global.set',
+						index: 0,
+					},
+					{
+						op: 'local.get',
+						index: 1,
+					},
+					{
+						op: 'return',
+					},
+				],
+				exported: true,
+			},
+		],
+	}
+	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
+	const compiled = await wasm.compile(emitWasmModule(module))
+	const instance = await wasm.instantiate(compiled)
+	const alloc = instance.exports.alloc
+	assert(typeof alloc === 'function', 'Expected exported alloc function')
+	const allocFn = alloc as (size: number) => number
+	assert(allocFn(16) === 1024, 'Expected first alloc to return initial heap pointer')
+	assert(allocFn(8) === 1040, 'Expected second alloc to return advanced heap pointer')
 }
 
 run().catch(error => {

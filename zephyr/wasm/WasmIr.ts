@@ -10,6 +10,10 @@ type WasmInstruction =
 		index: number,
 	}
 	| {
+		op: 'global.get' | 'global.set',
+		index: number,
+	}
+	| {
 		op: 'i32.const',
 		value: number,
 	}
@@ -48,6 +52,14 @@ interface WasmMemoryIr {
 	exportName?: string,
 }
 
+interface WasmGlobalIr {
+	name?: string,
+	type: WasmValueType,
+	mutable: boolean,
+	initialValue: number,
+	exportName?: string,
+}
+
 interface WasmFunctionIr {
 	name: string,
 	params: WasmValueType[],
@@ -59,11 +71,13 @@ interface WasmFunctionIr {
 
 interface WasmModuleIr {
 	memory?: WasmMemoryIr,
+	globals?: WasmGlobalIr[],
 	functions: WasmFunctionIr[],
 }
 
 export {
 	type WasmFunctionIr,
+	type WasmGlobalIr,
 	type WasmInstruction,
 	type WasmMemoryIr,
 	type WasmModuleIr,

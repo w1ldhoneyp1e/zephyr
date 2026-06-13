@@ -12,10 +12,12 @@ const WASM_VERSION = [0x01, 0x00, 0x00, 0x00] as const
 const SECTION_TYPE = 1
 const SECTION_FUNCTION = 3
 const SECTION_MEMORY = 5
+const SECTION_GLOBAL = 6
 const SECTION_EXPORT = 7
 const SECTION_CODE = 10
 
 const EXPORT_KIND_FUNCTION = 0x00
+const EXPORT_KIND_GLOBAL = 0x03
 const EXPORT_KIND_MEMORY = 0x02
 const FUNCTION_TYPE = 0x60
 
@@ -29,6 +31,8 @@ const OPCODES = {
 	'local.get': 0x20,
 	'local.set': 0x21,
 	'local.tee': 0x22,
+	'global.get': 0x23,
+	'global.set': 0x24,
 	'i32.const': 0x41,
 	'f64.const': 0x44,
 	'i32.load': 0x28,
@@ -64,6 +68,9 @@ function emitWasmModule(module: WasmModuleIr): Uint8Array {
 	writeSection(writer, SECTION_FUNCTION, section => writeFunctionSection(section, module.functions))
 	if (module.memory !== undefined) {
 		writeSection(writer, SECTION_MEMORY, section => writeMemorySection(section, module))
+	}
+	if (module.globals !== undefined && module.globals.length > 0) {
+		writeSection(writer, SECTION_GLOBAL, section => writeGlobalSection(section, module))
 	}
 	writeSection(writer, SECTION_EXPORT, section => writeExportSection(section, module))
 	writeSection(writer, SECTION_CODE, section => writeCodeSection(section, module.functions))
@@ -116,6 +123,19 @@ function writeMemorySection(writer: BinaryWriter, module: WasmModuleIr): void {
 	}
 }
 
+function writeGlobalSection(writer: BinaryWriter, module: WasmModuleIr): void {
+	const globals = module.globals ?? []
+	writer.writeUnsignedLeb128(globals.length)
+	for (const global of globals) {
+		writer.writeByte(encodeValueType(global.type))
+		writer.writeByte(global.mutable
+			? 0x01
+			: 0x00)
+		writeConstInstruction(writer, global.type, global.initialValue)
+		writer.writeByte(OPCODES.end)
+	}
+}
+
 function writeExportSection(writer: BinaryWriter, module: WasmModuleIr): void {
 	const exportedFunctions = module.functions
 		.map((fn, index) => ({
@@ -123,14 +143,29 @@ function writeExportSection(writer: BinaryWriter, module: WasmModuleIr): void {
 			index,
 		}))
 		.filter(item => item.fn.exported)
+	const exportedGlobals = (module.globals ?? [])
+		.map((global, index) => ({
+			global,
+			index,
+		}))
+		.filter(item => item.global.exportName !== undefined)
 	const memoryExportName = module.memory?.exportName ?? null
-	writer.writeUnsignedLeb128(exportedFunctions.length + (memoryExportName === null
-		? 0
-		: 1))
+	writer.writeUnsignedLeb128(
+		exportedFunctions.length
+			+ exportedGlobals.length
+			+ (memoryExportName === null
+				? 0
+				: 1),
+	)
 	if (memoryExportName !== null) {
 		writer.writeString(memoryExportName)
 		writer.writeByte(EXPORT_KIND_MEMORY)
 		writer.writeUnsignedLeb128(0)
+	}
+	for (const {global, index} of exportedGlobals) {
+		writer.writeString(global.exportName ?? global.name ?? `global${index}`)
+		writer.writeByte(EXPORT_KIND_GLOBAL)
+		writer.writeUnsignedLeb128(index)
 	}
 	for (const {fn, index} of exportedFunctions) {
 		writer.writeString(fn.name)
@@ -184,6 +219,8 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'local.get':
 		case 'local.set':
 		case 'local.tee':
+		case 'global.get':
+		case 'global.set':
 			writer.writeUnsignedLeb128(instruction.index)
 			break
 		case 'i32.const':
@@ -231,6 +268,19 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'f64.mul':
 		case 'f64.div':
 		case 'return':
+			break
+	}
+}
+
+function writeConstInstruction(writer: BinaryWriter, type: WasmValueType, value: number): void {
+	switch (type) {
+		case 'i32':
+			writer.writeByte(OPCODES['i32.const'])
+			writer.writeSignedLeb128(value)
+			break
+		case 'f64':
+			writer.writeByte(OPCODES['f64.const'])
+			writer.writeFloat64(value)
 			break
 	}
 }
