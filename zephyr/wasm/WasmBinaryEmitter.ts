@@ -31,6 +31,7 @@ const OPCODES = {
 	'br_if': 0x0d,
 	'return': 0x0f,
 	'call': 0x10,
+	'drop': 0x1a,
 	'local.get': 0x20,
 	'local.set': 0x21,
 	'local.tee': 0x22,
@@ -62,6 +63,7 @@ const OPCODES = {
 	'f64.sub': 0xa1,
 	'f64.mul': 0xa2,
 	'f64.div': 0xa3,
+	'i32.trunc_f64_s': 0xaa,
 } as const
 
 function emitWasmModule(module: WasmModuleIr): Uint8Array {
@@ -288,6 +290,8 @@ function writeInstruction(writer: BinaryWriter, instruction: WasmInstruction): v
 		case 'f64.sub':
 		case 'f64.mul':
 		case 'f64.div':
+		case 'i32.trunc_f64_s':
+		case 'drop':
 		case 'return':
 			break
 	}

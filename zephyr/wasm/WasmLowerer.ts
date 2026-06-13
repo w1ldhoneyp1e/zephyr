@@ -33,6 +33,7 @@ interface WasmLocalBinding {
 
 interface ModuleLoweringContext {
 	functionIndices: Map<string, number>,
+	usesMemory: boolean,
 }
 
 interface FunctionLoweringContext {
@@ -48,10 +49,18 @@ function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
 		.filter((statement): statement is FunctionDeclarationNode => statement.type === 'FunctionDeclaration')
 	const context: ModuleLoweringContext = {
 		functionIndices: new Map(functions.map((fn, index) => [fn.name, index])),
+		usesMemory: false,
 	}
+	const loweredFunctions = functions.map(fn => lowerFunctionDeclaration(fn, context))
 
 	return {
-		functions: functions.map(fn => lowerFunctionDeclaration(fn, context)),
+		memory: context.usesMemory
+			? {
+				minPages: 1,
+				exportName: 'memory',
+			}
+			: undefined,
+		functions: loweredFunctions,
 	}
 }
 
@@ -95,6 +104,8 @@ function lowerStatement(statement: StatementNode, context: FunctionLoweringConte
 			return lowerForRangeStatement(statement, context)
 		case 'ReturnStatement':
 			return lowerReturnStatement(statement, context)
+		case 'ExpressionStatement':
+			return lowerExpressionStatement(statement.expression, context)
 		default:
 			throw new Error(`Wasm lowering does not support statement ${statement.type}`)
 	}
@@ -275,6 +286,19 @@ function lowerReturnStatement(statement: ReturnStatementNode, context: FunctionL
 	]
 }
 
+function lowerExpressionStatement(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (expression.type === 'CallExpression' && isStoreF64Call(expression)) {
+		return lowerStoreF64Call(expression, context)
+	}
+
+	return [
+		...lowerNumberExpression(expression, context),
+		{
+			op: 'drop',
+		},
+	]
+}
+
 function lowerNumberExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
 	switch (expression.type) {
 		case 'LiteralExpression':
@@ -397,6 +421,12 @@ function lowerBooleanBinaryExpression(expression: BinaryExpressionNode, context:
 }
 
 function lowerCallExpression(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (isLoadF64Call(expression)) {
+		return lowerLoadF64Call(expression, context)
+	}
+	if (isStoreF64Call(expression)) {
+		throw new Error('Wasm lowering only supports storeF64 as an expression statement')
+	}
 	if (expression.callee.type !== 'IdentifierExpression') {
 		throw new Error('Wasm lowering only supports direct function calls')
 	}
@@ -412,6 +442,60 @@ function lowerCallExpression(expression: CallExpressionNode, context: FunctionLo
 			functionIndex,
 		},
 	]
+}
+
+function lowerLoadF64Call(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	assertArgumentCount(expression, 1, 'loadF64')
+	context.module.usesMemory = true
+
+	return [
+		...lowerAddressExpression(expression.args[0], context),
+		{
+			op: 'f64.load',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
+function lowerStoreF64Call(expression: CallExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	assertArgumentCount(expression, 2, 'storeF64')
+	context.module.usesMemory = true
+
+	return [
+		...lowerAddressExpression(expression.args[0], context),
+		...lowerNumberExpression(expression.args[1], context),
+		{
+			op: 'f64.store',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
+function lowerAddressExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	return [
+		...lowerNumberExpression(expression, context),
+		{
+			op: 'i32.trunc_f64_s',
+		},
+	]
+}
+
+function isLoadF64Call(expression: CallExpressionNode): boolean {
+	return expression.callee.type === 'IdentifierExpression'
+		&& expression.callee.name === 'loadF64'
+}
+
+function isStoreF64Call(expression: CallExpressionNode): boolean {
+	return expression.callee.type === 'IdentifierExpression'
+		&& expression.callee.name === 'storeF64'
+}
+
+function assertArgumentCount(expression: CallExpressionNode, expected: number, name: string): void {
+	if (expression.args.length !== expected) {
+		throw new Error(`Wasm intrinsic ${name} expects ${expected} arguments, got ${expression.args.length}`)
+	}
 }
 
 function getBinaryNumericOpcode(operator: BinaryExpressionNode['operator']): NumericBinaryOpcode {
