@@ -1,5 +1,5 @@
 import {
-	type WasmModuleIr,
+	compileZephyrFileToWasmModule,
 	createRecordLayout,
 	emitWasmModule,
 	getRecordField,
@@ -21,6 +21,7 @@ interface RowObject {
 const ROW_COUNT = 5_000_000
 const ACTIVE_MOD = 3
 const BASE_PTR = 4096
+const SOURCE_PATH = 'examples/wasm_table_aggregate/table_aggregate.zph'
 
 async function main(): Promise<void> {
 	const rowLayout = createRecordLayout([
@@ -40,7 +41,15 @@ async function main(): Promise<void> {
 	const amountField = getRecordField(rowLayout, 'amount')
 	const activeField = getRecordField(rowLayout, 'active')
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
-	const instance = await wasm.instantiate(await wasm.compile(emitWasmModule(createAggregateModule(rowLayout.size, amountField.offset, activeField.offset))))
+	const sourceModule = compileZephyrFileToWasmModule(SOURCE_PATH)
+	const module = {
+		...sourceModule,
+		memory: {
+			minPages: Math.ceil((BASE_PTR + ROW_COUNT * rowLayout.size) / 65536),
+			exportName: 'memory',
+		},
+	}
+	const instance = await wasm.instantiate(await wasm.compile(emitWasmModule(module)))
 	const memory = instance.exports.memory
 	const sumActiveAmount = instance.exports.sumActiveAmount
 	if (!isWasmMemory(memory)) {
@@ -63,169 +72,10 @@ async function main(): Promise<void> {
 	assertClose(jsObjects.result, wasmPacked.result, 'JS object and Wasm results differ')
 
 	console.log(`rows: ${ROW_COUNT}`)
+	console.log(`source: ${SOURCE_PATH}`)
 	console.log(`${jsObjects.name}: ${jsObjects.durationMs.toFixed(2)}ms result=${jsObjects.result.toFixed(2)}`)
 	console.log(`${jsTyped.name}: ${jsTyped.durationMs.toFixed(2)}ms result=${jsTyped.result.toFixed(2)}`)
 	console.log(`${wasmPacked.name}: ${wasmPacked.durationMs.toFixed(2)}ms result=${wasmPacked.result.toFixed(2)}`)
-}
-
-function createAggregateModule(recordSize: number, amountOffset: number, activeOffset: number): WasmModuleIr {
-	return {
-		memory: {
-			minPages: Math.ceil((BASE_PTR + ROW_COUNT * recordSize) / 65536),
-			exportName: 'memory',
-		},
-		functions: [
-			{
-				name: 'sumActiveAmount',
-				params: ['i32', 'i32'],
-				result: 'f64',
-				locals: ['i32', 'f64'],
-				body: [
-					{
-						op: 'i32.const',
-						value: 0,
-					},
-					{
-						op: 'local.set',
-						index: 2,
-					},
-					{
-						op: 'f64.const',
-						value: 0,
-					},
-					{
-						op: 'local.set',
-						index: 3,
-					},
-					{
-						op: 'block',
-						body: [
-							{
-								op: 'loop',
-								body: [
-									{
-										op: 'local.get',
-										index: 2,
-									},
-									{
-										op: 'local.get',
-										index: 1,
-									},
-									{
-										op: 'i32.ge_s',
-									},
-									{
-										op: 'br_if',
-										labelIndex: 1,
-									},
-									{
-										op: 'block',
-										body: [
-											{
-												op: 'local.get',
-												index: 0,
-											},
-											{
-												op: 'local.get',
-												index: 2,
-											},
-											{
-												op: 'i32.const',
-												value: recordSize,
-											},
-											{
-												op: 'i32.mul',
-											},
-											{
-												op: 'i32.add',
-											},
-											{
-												op: 'i32.load',
-												align: 2,
-												offset: activeOffset,
-											},
-											{
-												op: 'i32.const',
-												value: 0,
-											},
-											{
-												op: 'i32.eq',
-											},
-											{
-												op: 'br_if',
-												labelIndex: 0,
-											},
-											{
-												op: 'local.get',
-												index: 3,
-											},
-											{
-												op: 'local.get',
-												index: 0,
-											},
-											{
-												op: 'local.get',
-												index: 2,
-											},
-											{
-												op: 'i32.const',
-												value: recordSize,
-											},
-											{
-												op: 'i32.mul',
-											},
-											{
-												op: 'i32.add',
-											},
-											{
-												op: 'f64.load',
-												align: 3,
-												offset: amountOffset,
-											},
-											{
-												op: 'f64.add',
-											},
-											{
-												op: 'local.set',
-												index: 3,
-											},
-										],
-									},
-									{
-										op: 'local.get',
-										index: 2,
-									},
-									{
-										op: 'i32.const',
-										value: 1,
-									},
-									{
-										op: 'i32.add',
-									},
-									{
-										op: 'local.set',
-										index: 2,
-									},
-									{
-										op: 'br',
-										labelIndex: 0,
-									},
-								],
-							},
-						],
-					},
-					{
-						op: 'local.get',
-						index: 3,
-					},
-					{
-						op: 'return',
-					},
-				],
-				exported: true,
-			},
-		],
-	}
 }
 
 function createObjectRows(count: number): RowObject[] {

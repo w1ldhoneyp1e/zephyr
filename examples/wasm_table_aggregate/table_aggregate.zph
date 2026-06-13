@@ -1,0 +1,9 @@
+fn sumActiveAmount(rows: number, length: number): number {
+	var total: number = 0;
+	for (i in 0..length) {
+		if (loadRecordI32(rows, i, 24, 16) == 1) {
+			total = total + loadRecordF64(rows, i, 24, 8);
+		}
+	}
+	return total;
+}

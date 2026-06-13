@@ -6,19 +6,11 @@ import {
 	createArrayGetPtrFunction,
 	createArrayNewFunction,
 	createRecordLayout,
+	compileZephyrSourceToWasmModule,
 	emitWasmModule,
 	getRecordField,
-	lowerProgramToWasmIr,
 	type WasmModuleIr,
 } from '../zephyr/wasm'
-import {type ProgramNode} from '../zephyr/ast'
-import {
-	DiagnosticReporter,
-	NodeLocations,
-	diagnosticToMessage,
-} from '../zephyr/diagnostics'
-import {Lexer} from '../zephyr/Lexer'
-import {LalrAstParser} from '../zephyr/parser/LalrAstParser'
 
 interface WebAssemblyRuntime {
 	compile: (bytes: Uint8Array) => Promise<unknown>,
@@ -501,7 +493,7 @@ async function assertRecordAggregate(): Promise<void> {
 }
 
 async function assertSourceLowering(): Promise<void> {
-	const program = parseProgram(`
+	const module = compileZephyrSourceToWasmModule(`
 fn add(a: number, b: number): number {
 	return a + b;
 }
@@ -587,7 +579,6 @@ fn setAmount(rows: number, index: number, value: number): number {
 	return loadRecordF64(rows, index, 16, 8);
 }
 `)
-	const module = lowerProgramToWasmIr(program)
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
 	const compiled = await wasm.compile(emitWasmModule(module))
 	const instance = await wasm.instantiate(compiled)
@@ -663,30 +654,6 @@ fn setAmount(rows: number, index: number, value: number): number {
 	assert(sumActiveAmountFn(rowsPtr, rows.length) === 40.5, 'Expected lowered sumActiveAmount to aggregate active rows')
 	assert(setAmountFn(rowsPtr, 1, 12.25) === 12.25, 'Expected lowered setAmount to return written amount')
 	assert(view.getFloat64(rowsPtr + 16 + 8, true) === 12.25, 'Expected lowered setAmount to update packed row')
-}
-
-function parseProgram(source: string): ProgramNode {
-	const reporter = new DiagnosticReporter()
-	const nodeLocations = new NodeLocations()
-	const sourceFile = 'wasm-smoke.zph'
-	const lexer = new Lexer(source, reporter, sourceFile)
-	const tokens = lexer.scanTokens()
-	if (reporter.hasErrors()) {
-		throw new Error(formatDiagnostics(reporter))
-	}
-	const parser = new LalrAstParser(tokens, sourceFile, nodeLocations, reporter)
-	const result = parser.parseProgram()
-	if (!result.ok || reporter.hasErrors()) {
-		throw new Error(formatDiagnostics(reporter))
-	}
-
-	return result.value
-}
-
-function formatDiagnostics(reporter: DiagnosticReporter): string {
-	return reporter.getDiagnostics()
-		.map(diagnosticToMessage)
-		.join('\n')
 }
 
 run().catch(error => {
