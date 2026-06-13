@@ -53,6 +53,7 @@ async function run(): Promise<void> {
 	await assertLoopSum()
 	await assertAlloc()
 	await assertArrayHelpers()
+	await assertRecordAggregate()
 	console.log('passed wasm smoke tests')
 }
 
@@ -482,6 +483,150 @@ function createAllocFunction(): WasmModuleIr['functions'][number] {
 		],
 		exported: false,
 	}
+}
+
+async function assertRecordAggregate(): Promise<void> {
+	const module: WasmModuleIr = {
+		memory: {
+			minPages: 1,
+			exportName: 'memory',
+		},
+		functions: [
+			{
+				name: 'sumSecondField',
+				params: ['i32', 'i32'],
+				result: 'f64',
+				locals: ['i32', 'f64'],
+				body: [
+					{
+						op: 'i32.const',
+						value: 0,
+					},
+					{
+						op: 'local.set',
+						index: 2,
+					},
+					{
+						op: 'f64.const',
+						value: 0,
+					},
+					{
+						op: 'local.set',
+						index: 3,
+					},
+					{
+						op: 'block',
+						body: [
+							{
+								op: 'loop',
+								body: [
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'local.get',
+										index: 1,
+									},
+									{
+										op: 'i32.ge_s',
+									},
+									{
+										op: 'br_if',
+										labelIndex: 1,
+									},
+									{
+										op: 'local.get',
+										index: 3,
+									},
+									{
+										op: 'local.get',
+										index: 0,
+									},
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'i32.const',
+										value: 16,
+									},
+									{
+										op: 'i32.mul',
+									},
+									{
+										op: 'i32.add',
+									},
+									{
+										op: 'f64.load',
+										align: 3,
+										offset: 8,
+									},
+									{
+										op: 'f64.add',
+									},
+									{
+										op: 'local.set',
+										index: 3,
+									},
+									{
+										op: 'local.get',
+										index: 2,
+									},
+									{
+										op: 'i32.const',
+										value: 1,
+									},
+									{
+										op: 'i32.add',
+									},
+									{
+										op: 'local.set',
+										index: 2,
+									},
+									{
+										op: 'br',
+										labelIndex: 0,
+									},
+								],
+							},
+						],
+					},
+					{
+						op: 'local.get',
+						index: 3,
+					},
+					{
+						op: 'return',
+					},
+				],
+				exported: true,
+			},
+		],
+	}
+	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
+	const compiled = await wasm.compile(emitWasmModule(module))
+	const instance = await wasm.instantiate(compiled)
+	const memory = instance.exports.memory
+	const sumSecondField = instance.exports.sumSecondField
+	if (!isWasmMemory(memory)) {
+		throw new Error('Expected exported memory')
+	}
+	assert(typeof sumSecondField === 'function', 'Expected exported sumSecondField function')
+	const view = new DataView(memory.buffer)
+	const basePtr = 4096
+	const rows = [
+		[1, 10],
+		[2, 20.5],
+		[3, 30.25],
+	] as const
+	for (const [index, row] of rows.entries()) {
+		const rowPtr = basePtr + index * 16
+		view.setFloat64(rowPtr, row[0], true)
+		view.setFloat64(rowPtr + 8, row[1], true)
+	}
+	const sumSecondFieldFn = sumSecondField as (basePtr: number, length: number) => number
+	assert(sumSecondFieldFn(basePtr, rows.length) === 60.75, 'Expected record aggregate sum to be 60.75')
 }
 
 run().catch(error => {
