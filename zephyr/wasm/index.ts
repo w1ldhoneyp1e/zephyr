@@ -1,5 +1,12 @@
 export {emitWasmModule} from './WasmBinaryEmitter'
 export {
+	type WasmRecordField,
+	type WasmRecordFieldLayout,
+	type WasmRecordLayout,
+	createRecordLayout,
+	getRecordField,
+} from './RecordLayout'
+export {
 	ARRAY_CAPACITY_OFFSET,
 	ARRAY_DATA_PTR_OFFSET,
 	ARRAY_HEADER_SIZE,

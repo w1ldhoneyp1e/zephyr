@@ -5,7 +5,9 @@ import {
 	createAllocFunction,
 	createArrayGetPtrFunction,
 	createArrayNewFunction,
+	createRecordLayout,
 	emitWasmModule,
+	getRecordField,
 	type WasmModuleIr,
 } from '../zephyr/wasm'
 
@@ -334,6 +336,17 @@ async function assertArrayHelpers(): Promise<void> {
 }
 
 async function assertRecordAggregate(): Promise<void> {
+	const rowLayout = createRecordLayout([
+		{
+			name: 'id',
+			type: 'f64',
+		},
+		{
+			name: 'amount',
+			type: 'f64',
+		},
+	])
+	const amountField = getRecordField(rowLayout, 'amount')
 	const module: WasmModuleIr = {
 		memory: {
 			minPages: 1,
@@ -397,7 +410,7 @@ async function assertRecordAggregate(): Promise<void> {
 									},
 									{
 										op: 'i32.const',
-										value: 16,
+										value: rowLayout.size,
 									},
 									{
 										op: 'i32.mul',
@@ -408,7 +421,7 @@ async function assertRecordAggregate(): Promise<void> {
 									{
 										op: 'f64.load',
 										align: 3,
-										offset: 8,
+										offset: amountField.offset,
 									},
 									{
 										op: 'f64.add',
@@ -469,9 +482,9 @@ async function assertRecordAggregate(): Promise<void> {
 		[3, 30.25],
 	] as const
 	for (const [index, row] of rows.entries()) {
-		const rowPtr = basePtr + index * 16
+		const rowPtr = basePtr + index * rowLayout.size
 		view.setFloat64(rowPtr, row[0], true)
-		view.setFloat64(rowPtr + 8, row[1], true)
+		view.setFloat64(rowPtr + amountField.offset, row[1], true)
 	}
 	const sumSecondFieldFn = sumSecondField as (basePtr: number, length: number) => number
 	assert(sumSecondFieldFn(basePtr, rows.length) === 60.75, 'Expected record aggregate sum to be 60.75')
