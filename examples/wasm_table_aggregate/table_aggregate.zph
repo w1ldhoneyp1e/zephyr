@@ -13,3 +13,21 @@ fn sumActiveAmount(rows: SaleRow[], length: number): number {
 	}
 	return total;
 }
+
+fn setAmount(rows: SaleRow[], index: number, value: number): number {
+	rows[index].amount = value;
+	return rows[index].amount;
+}
+
+fn sumNumbers(values: number[], length: number): number {
+	var total: number = 0;
+	for (i in 0..length) {
+		total = total + values[i];
+	}
+	return total;
+}
+
+fn setNumber(values: number[], index: number, value: number): number {
+	values[index] = value;
+	return values[index];
+}

@@ -558,18 +558,17 @@ fn sumDoubles(limit: number): number {
 	return total;
 }
 
-fn sumF64Array(base: number, length: number): number {
+fn sumArray(values: number[], length: number): number {
 	var total: number = 0;
 	for (i in 0..length) {
-		total = total + loadF64(base + i * 8);
+		total = total + values[i];
 	}
 	return total;
 }
 
-fn writeDouble(base: number, index: number, value: number): number {
-	var address: number = base + index * 8;
-	storeF64(address, value * 2);
-	return loadF64(address);
+fn writeDouble(values: number[], index: number, value: number): number {
+	values[index] = value * 2;
+	return values[index];
 }
 
 type TestRow = {
@@ -604,7 +603,7 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	const sumRange = instance.exports.sumRange
 	const sumFor = instance.exports.sumFor
 	const sumDoubles = instance.exports.sumDoubles
-	const sumF64Array = instance.exports.sumF64Array
+	const sumArray = instance.exports.sumArray
 	const writeDouble = instance.exports.writeDouble
 	const sumActiveAmount = instance.exports.sumActiveAmount
 	const setAmount = instance.exports.setAmount
@@ -618,7 +617,7 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	assert(typeof sumRange === 'function', 'Expected lowered source to export sumRange function')
 	assert(typeof sumFor === 'function', 'Expected lowered source to export sumFor function')
 	assert(typeof sumDoubles === 'function', 'Expected lowered source to export sumDoubles function')
-	assert(typeof sumF64Array === 'function', 'Expected lowered source to export sumF64Array function')
+	assert(typeof sumArray === 'function', 'Expected lowered source to export sumArray function')
 	assert(typeof writeDouble === 'function', 'Expected lowered source to export writeDouble function')
 	assert(typeof sumActiveAmount === 'function', 'Expected lowered source to export sumActiveAmount function')
 	assert(typeof setAmount === 'function', 'Expected lowered source to export setAmount function')
@@ -634,7 +633,7 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	const sumRangeFn = sumRange as (limit: number) => number
 	const sumForFn = sumFor as (limit: number) => number
 	const sumDoublesFn = sumDoubles as (limit: number) => number
-	const sumF64ArrayFn = sumF64Array as (base: number, length: number) => number
+	const sumArrayFn = sumArray as (base: number, length: number) => number
 	const writeDoubleFn = writeDouble as (base: number, index: number, value: number) => number
 	const sumActiveAmountFn = sumActiveAmount as (rows: number, length: number) => number
 	const setAmountFn = setAmount as (rows: number, index: number, value: number) => number
@@ -654,7 +653,7 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	for (const [index, value] of values.entries()) {
 		view.setFloat64(basePtr + index * 8, value, true)
 	}
-	assert(sumF64ArrayFn(basePtr, values.length) === 60.75, 'Expected lowered sumF64Array to read f64 values')
+	assert(sumArrayFn(basePtr, values.length) === 60.75, 'Expected lowered sumArray to read f64 values')
 	assert(writeDoubleFn(basePtr, 1, 7) === 14, 'Expected lowered writeDouble to return written value')
 	assert(view.getFloat64(basePtr + 8, true) === 14, 'Expected lowered writeDouble to update memory')
 	const rowsPtr = 12288

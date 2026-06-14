@@ -47,6 +47,7 @@ type NumericComparisonOpcode = 'f64.eq' | 'f64.ne' | 'f64.lt' | 'f64.le' | 'f64.
 interface WasmLocalBinding {
 	index: number,
 	valueType: WasmValueType,
+	numberArray?: boolean,
 	recordArrayLayout?: WasmRecordLayout,
 }
 
@@ -100,6 +101,7 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: Mo
 			{
 				index,
 				valueType: 'f64',
+				numberArray: isNumberArrayType(param.typeName),
 				recordArrayLayout: getRecordArrayLayout(param.typeName, moduleContext) ?? undefined,
 			},
 		])),
@@ -176,8 +178,11 @@ function lowerAssignmentStatement(statement: AssignmentStatementNode, context: F
 	if (statement.target.type === 'MemberTarget') {
 		return lowerMemberAssignmentStatement(statement, context)
 	}
+	if (statement.target.type === 'IndexTarget') {
+		return lowerIndexAssignmentStatement(statement, context)
+	}
 	if (statement.target.type !== 'IdentifierTarget') {
-		throw new Error('Wasm lowering only supports identifier and packed record field assignment targets')
+		throw new Error('Wasm lowering only supports identifier and packed array assignment targets')
 	}
 	const binding = getLocal(context, statement.target.name)
 
@@ -200,6 +205,18 @@ function lowerMemberAssignmentStatement(statement: AssignmentStatementNode, cont
 	}
 
 	return lowerRecordArrayFieldStore(access, statement.value, context)
+}
+
+function lowerIndexAssignmentStatement(statement: AssignmentStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (statement.target.type !== 'IndexTarget') {
+		throw new Error('Expected index assignment target')
+	}
+	const access = resolveNumberArrayAccess(statement.target.object, statement.target.index, context)
+	if (access === null) {
+		throw new Error('Wasm lowering does not support index assignment target')
+	}
+
+	return lowerNumberArrayElementStore(access, statement.value, context)
 }
 
 function lowerIfStatement(statement: IfStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
@@ -408,6 +425,8 @@ function lowerNumberExpression(expression: ExpressionNode, context: FunctionLowe
 			return lowerNumericLiteralExpression(expression)
 		case 'IdentifierExpression':
 			return lowerIdentifierExpression(expression, context)
+		case 'IndexExpression':
+			return lowerNumberArrayElementExpression(expression, context)
 		case 'MemberExpression':
 			return lowerRecordFieldNumberExpression(expression, context)
 		case 'UnaryExpression':
@@ -579,6 +598,88 @@ function lowerAddressExpression(expression: ExpressionNode, context: FunctionLow
 		...lowerNumberExpression(expression, context),
 		{
 			op: 'i32.trunc_f64_s',
+		},
+	]
+}
+
+interface NumberArrayAccess {
+	base: IdentifierExpressionNode,
+	index: ExpressionNode,
+}
+
+function lowerNumberArrayElementExpression(
+	expression: IndexExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	const access = resolveNumberArrayAccess(expression.object, expression.index, context)
+	if (access === null) {
+		throw new Error('Wasm lowering does not support numeric index expression')
+	}
+
+	return lowerNumberArrayElementLoad(access, context)
+}
+
+function resolveNumberArrayAccess(
+	object: ExpressionNode,
+	index: ExpressionNode,
+	context: FunctionLoweringContext,
+): NumberArrayAccess | null {
+	if (object.type !== 'IdentifierExpression') {
+		return null
+	}
+	const binding = getLocal(context, object.name)
+	if (binding.numberArray !== true) {
+		return null
+	}
+
+	return {
+		base: object,
+		index,
+	}
+}
+
+function lowerNumberArrayElementLoad(access: NumberArrayAccess, context: FunctionLoweringContext): WasmInstruction[] {
+	context.module.usesMemory = true
+	return [
+		...lowerNumberArrayElementAddress(access, context),
+		{
+			op: 'f64.load',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
+function lowerNumberArrayElementStore(
+	access: NumberArrayAccess,
+	value: ExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	context.module.usesMemory = true
+	return [
+		...lowerNumberArrayElementAddress(access, context),
+		...lowerNumberExpression(value, context),
+		{
+			op: 'f64.store',
+			align: 3,
+			offset: 0,
+		},
+	]
+}
+
+function lowerNumberArrayElementAddress(access: NumberArrayAccess, context: FunctionLoweringContext): WasmInstruction[] {
+	return [
+		...lowerAddressExpression(access.base, context),
+		...lowerAddressExpression(access.index, context),
+		{
+			op: 'i32.const',
+			value: 8,
+		},
+		{
+			op: 'i32.mul',
+		},
+		{
+			op: 'i32.add',
 		},
 	]
 }
@@ -856,6 +957,9 @@ function assertSupportedParameterType(typeName: TypeName, context: string, modul
 	if (typeNameToString(typeName) === 'number') {
 		return
 	}
+	if (isNumberArrayType(typeName)) {
+		return
+	}
 	if (getRecordArrayLayout(typeName, moduleContext) !== null) {
 		return
 	}
@@ -870,6 +974,10 @@ function getRecordArrayLayout(typeName: TypeName, context: ModuleLoweringContext
 	const recordName = source.slice(0, -2)
 
 	return context.recordLayouts.get(recordName) ?? null
+}
+
+function isNumberArrayType(typeName: TypeName): boolean {
+	return typeNameToString(typeName) === 'number[]'
 }
 
 function assertNumberType(typeName: TypeName, context: string): void {
