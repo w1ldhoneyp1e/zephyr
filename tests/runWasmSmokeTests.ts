@@ -569,6 +569,17 @@ fn boolScore(enabled: boolean, fallback: number): number {
 	return fallback;
 }
 
+fn isLarge(value: number): boolean {
+	return value > 10;
+}
+
+fn boolScoreViaCall(value: number): number {
+	if (isLarge(value)) {
+		return 1;
+	}
+	return 0;
+}
+
 fn sumArray(values: number[], length: number): number {
 	var total: number = 0;
 	for (i in 0..length) {
@@ -615,6 +626,8 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	const sumFor = instance.exports.sumFor
 	const sumDoubles = instance.exports.sumDoubles
 	const boolScore = instance.exports.boolScore
+	const isLarge = instance.exports.isLarge
+	const boolScoreViaCall = instance.exports.boolScoreViaCall
 	const sumArray = instance.exports.sumArray
 	const writeDouble = instance.exports.writeDouble
 	const sumActiveAmount = instance.exports.sumActiveAmount
@@ -630,6 +643,8 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	assert(typeof sumFor === 'function', 'Expected lowered source to export sumFor function')
 	assert(typeof sumDoubles === 'function', 'Expected lowered source to export sumDoubles function')
 	assert(typeof boolScore === 'function', 'Expected lowered source to export boolScore function')
+	assert(typeof isLarge === 'function', 'Expected lowered source to export isLarge function')
+	assert(typeof boolScoreViaCall === 'function', 'Expected lowered source to export boolScoreViaCall function')
 	assert(typeof sumArray === 'function', 'Expected lowered source to export sumArray function')
 	assert(typeof writeDouble === 'function', 'Expected lowered source to export writeDouble function')
 	assert(typeof sumActiveAmount === 'function', 'Expected lowered source to export sumActiveAmount function')
@@ -647,6 +662,8 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	const sumForFn = sumFor as (limit: number) => number
 	const sumDoublesFn = sumDoubles as (limit: number) => number
 	const boolScoreFn = boolScore as (enabled: number, fallback: number) => number
+	const isLargeFn = isLarge as (value: number) => number
+	const boolScoreViaCallFn = boolScoreViaCall as (value: number) => number
 	const sumArrayFn = sumArray as (base: number, length: number) => number
 	const writeDoubleFn = writeDouble as (base: number, index: number, value: number) => number
 	const sumActiveAmountFn = sumActiveAmount as (rows: number, length: number) => number
@@ -663,6 +680,10 @@ fn setAmount(rows: TestRow[], index: number, value: number): number {
 	assert(sumDoublesFn(5) === 20, 'Expected lowered sumDoubles(5) to return 20')
 	assert(boolScoreFn(0, 4) === 10, 'Expected lowered boolScore(false, 4) to promote active flag')
 	assert(boolScoreFn(1, 4) === 10, 'Expected lowered boolScore(true, 4) to keep active flag')
+	assert(isLargeFn(11) === 1, 'Expected lowered isLarge(11) to return true')
+	assert(isLargeFn(10) === 0, 'Expected lowered isLarge(10) to return false')
+	assert(boolScoreViaCallFn(11) === 1, 'Expected lowered boolScoreViaCall(11) to use boolean return')
+	assert(boolScoreViaCallFn(10) === 0, 'Expected lowered boolScoreViaCall(10) to use boolean return')
 	const view = new DataView(memory.buffer)
 	const basePtr = 8192
 	const values = [10, 20.5, 30.25]
