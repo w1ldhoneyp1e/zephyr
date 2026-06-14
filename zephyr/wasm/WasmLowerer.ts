@@ -4,21 +4,31 @@ import {
 	type BlockStatementNode,
 	type CallExpressionNode,
 	type ExpressionNode,
-	type ForStatementNode,
 	type ForRangeStatementNode,
+	type ForStatementNode,
 	type FunctionDeclarationNode,
 	type IdentifierExpressionNode,
 	type IfStatementNode,
+	type IndexExpressionNode,
 	type LiteralExpressionNode,
+	type MemberExpressionNode,
+	type ObjectTypeMemberNode,
 	type ProgramNode,
 	type ReturnStatementNode,
 	type StatementNode,
+	type TypeAliasDeclarationNode,
 	type TypeName,
 	type UnaryExpressionNode,
 	type VariableDeclarationNode,
 	type WhileStatementNode,
 	typeNameToString,
 } from '../ast'
+import {
+	type WasmRecordFieldLayout,
+	type WasmRecordLayout,
+	createRecordLayout,
+	getRecordField,
+} from './RecordLayout'
 import {
 	type WasmIntrinsicLoweringContext,
 	lowerIntrinsicExpressionStatement,
@@ -28,6 +38,7 @@ import {
 	type WasmFunctionIr,
 	type WasmInstruction,
 	type WasmModuleIr,
+	type WasmValueType,
 } from './WasmIr'
 
 type NumericBinaryOpcode = 'f64.add' | 'f64.sub' | 'f64.mul' | 'f64.div'
@@ -35,12 +46,16 @@ type NumericComparisonOpcode = 'f64.eq' | 'f64.ne' | 'f64.lt' | 'f64.le' | 'f64.
 
 interface WasmLocalBinding {
 	index: number,
+	recordArrayLayout?: WasmRecordLayout,
 }
 
 interface ModuleLoweringContext {
 	functionIndices: Map<string, number>,
+	recordLayouts: Map<string, WasmRecordLayout>,
 	usesMemory: boolean,
 }
+
+type WasmLoweringOptions = Record<string, never>
 
 interface FunctionLoweringContext {
 	module: ModuleLoweringContext,
@@ -55,6 +70,7 @@ function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
 		.filter((statement): statement is FunctionDeclarationNode => statement.type === 'FunctionDeclaration')
 	const context: ModuleLoweringContext = {
 		functionIndices: new Map(functions.map((fn, index) => [fn.name, index])),
+		recordLayouts: collectRecordLayouts(program),
 		usesMemory: false,
 	}
 	const loweredFunctions = functions.map(fn => lowerFunctionDeclaration(fn, context))
@@ -73,12 +89,18 @@ function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
 function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: ModuleLoweringContext): WasmFunctionIr {
 	assertNumberType(fn.returnTypeName, `return type of ${fn.name}`)
 	const params = fn.params.map(param => {
-		assertNumberType(param.typeName, `parameter ${param.name}`)
+		assertSupportedParameterType(param.typeName, `parameter ${param.name}`, moduleContext)
 		return 'f64' as const
 	})
 	const context: FunctionLoweringContext = {
 		module: moduleContext,
-		locals: new Map(fn.params.map((param, index) => [param.name, {index}])),
+		locals: new Map(fn.params.map((param, index) => [
+			param.name,
+			{
+				index,
+				recordArrayLayout: getRecordArrayLayout(param.typeName, moduleContext) ?? undefined,
+			},
+		])),
 		localTypes: [],
 		nextLocalIndex: fn.params.length,
 		nextInternalLocalId: 0,
@@ -369,6 +391,8 @@ function lowerNumberExpression(expression: ExpressionNode, context: FunctionLowe
 			return lowerNumericLiteralExpression(expression)
 		case 'IdentifierExpression':
 			return lowerIdentifierExpression(expression, context)
+		case 'MemberExpression':
+			return lowerRecordFieldNumberExpression(expression, context)
 		case 'UnaryExpression':
 			return lowerNumericUnaryExpression(expression, context)
 		case 'BinaryExpression':
@@ -384,6 +408,8 @@ function lowerBooleanExpression(expression: ExpressionNode, context: FunctionLow
 	switch (expression.type) {
 		case 'LiteralExpression':
 			return lowerBooleanLiteralExpression(expression)
+		case 'MemberExpression':
+			return lowerRecordFieldBooleanExpression(expression, context)
 		case 'UnaryExpression':
 			return lowerBooleanUnaryExpression(expression, context)
 		case 'BinaryExpression':
@@ -525,6 +551,129 @@ function createIntrinsicContext(context: FunctionLoweringContext): WasmIntrinsic
 	}
 }
 
+function lowerRecordFieldNumberExpression(
+	expression: MemberExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	const access = resolveRecordArrayFieldAccess(expression, context)
+	if (access === null) {
+		throw new Error(`Wasm lowering does not support numeric member expression .${expression.property}`)
+	}
+	const instructions = lowerRecordArrayFieldLoad(access, context)
+	if (access.field.type === 'i32') {
+		return [
+			...instructions,
+			{
+				op: 'f64.convert_i32_s',
+			},
+		]
+	}
+
+	return instructions
+}
+
+function lowerRecordFieldBooleanExpression(
+	expression: MemberExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	const access = resolveRecordArrayFieldAccess(expression, context)
+	if (access === null) {
+		throw new Error(`Wasm lowering does not support boolean member expression .${expression.property}`)
+	}
+	if (access.field.type !== 'i32') {
+		return [
+			...lowerRecordArrayFieldLoad(access, context),
+			{
+				op: 'f64.const',
+				value: 0,
+			},
+			{
+				op: 'f64.ne',
+			},
+		]
+	}
+
+	return lowerRecordArrayFieldLoad(access, context)
+}
+
+interface RecordArrayFieldAccess {
+	base: IdentifierExpressionNode,
+	index: ExpressionNode,
+	layout: WasmRecordLayout,
+	field: WasmRecordFieldLayout,
+}
+
+function resolveRecordArrayFieldAccess(
+	expression: MemberExpressionNode,
+	context: FunctionLoweringContext,
+): RecordArrayFieldAccess | null {
+	if (expression.object.type !== 'IndexExpression') {
+		return null
+	}
+	const indexExpression = expression.object as IndexExpressionNode
+	if (indexExpression.object.type !== 'IdentifierExpression') {
+		return null
+	}
+	const base = indexExpression.object
+	const binding = getLocal(context, base.name)
+	if (binding.recordArrayLayout === undefined) {
+		return null
+	}
+
+	return {
+		base,
+		index: indexExpression.index,
+		layout: binding.recordArrayLayout,
+		field: getRecordField(binding.recordArrayLayout, expression.property),
+	}
+}
+
+function lowerRecordArrayFieldLoad(
+	access: RecordArrayFieldAccess,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	context.module.usesMemory = true
+	return [
+		...lowerRecordArrayFieldAddress(access, context),
+		{
+			op: access.field.type === 'f64'
+				? 'f64.load'
+				: 'i32.load',
+			align: access.field.align === 8
+				? 3
+				: 2,
+			offset: 0,
+		},
+	]
+}
+
+function lowerRecordArrayFieldAddress(
+	access: RecordArrayFieldAccess,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	return [
+		...lowerAddressExpression(access.base, context),
+		...lowerAddressExpression(access.index, context),
+		{
+			op: 'i32.const',
+			value: access.layout.size,
+		},
+		{
+			op: 'i32.mul',
+		},
+		{
+			op: 'i32.add',
+		},
+		{
+			op: 'i32.const',
+			value: access.field.offset,
+		},
+		{
+			op: 'i32.add',
+		},
+	]
+}
+
 function getBinaryNumericOpcode(operator: BinaryExpressionNode['operator']): NumericBinaryOpcode {
 	switch (operator) {
 		case '+':
@@ -594,6 +743,64 @@ function restoreLocalBinding(context: FunctionLoweringContext, name: string, bin
 	context.locals.set(name, binding)
 }
 
+function collectRecordLayouts(program: ProgramNode): Map<string, WasmRecordLayout> {
+	const layouts = new Map<string, WasmRecordLayout>()
+	for (const statement of program.body) {
+		if (statement.type !== 'TypeAliasDeclaration') {
+			continue
+		}
+		const layout = createRecordLayoutFromTypeAlias(statement)
+		if (layout !== null) {
+			layouts.set(statement.name, layout)
+		}
+	}
+
+	return layouts
+}
+
+function createRecordLayoutFromTypeAlias(statement: TypeAliasDeclarationNode): WasmRecordLayout | null {
+	if (typeof statement.typeName === 'string' || statement.typeName.objectMembers === undefined) {
+		return null
+	}
+
+	return createRecordLayout(statement.typeName.objectMembers.map(member => ({
+		name: member.name,
+		type: getWasmFieldType(member),
+	})))
+}
+
+function getWasmFieldType(member: ObjectTypeMemberNode): WasmValueType {
+	const source = typeNameToString(member.typeName)
+	switch (source) {
+		case 'number':
+			return 'f64'
+		case 'boolean':
+			return 'i32'
+		default:
+			throw new Error(`Wasm lowering only supports number/boolean record fields, got ${source} for ${member.name}`)
+	}
+}
+
+function assertSupportedParameterType(typeName: TypeName, context: string, moduleContext: ModuleLoweringContext): void {
+	if (typeNameToString(typeName) === 'number') {
+		return
+	}
+	if (getRecordArrayLayout(typeName, moduleContext) !== null) {
+		return
+	}
+	throw new Error(`Wasm lowering only supports number or typed record array for ${context}`)
+}
+
+function getRecordArrayLayout(typeName: TypeName, context: ModuleLoweringContext): WasmRecordLayout | null {
+	const source = typeNameToString(typeName)
+	if (!source.endsWith('[]')) {
+		return null
+	}
+	const recordName = source.slice(0, -2)
+
+	return context.recordLayouts.get(recordName) ?? null
+}
+
 function assertNumberType(typeName: TypeName, context: string): void {
 	const source = typeNameToString(typeName)
 	if (source !== 'number') {
@@ -602,5 +809,6 @@ function assertNumberType(typeName: TypeName, context: string): void {
 }
 
 export {
+	type WasmLoweringOptions,
 	lowerProgramToWasmIr,
 }

@@ -61,7 +61,13 @@ async function main(): Promise<void> {
 
 	const objectRows = createObjectRows(ROW_COUNT)
 	const typedRows = createTypedRows(ROW_COUNT)
-	fillWasmRows(memory.buffer, rowLayout.size, amountField.offset, activeField.offset, ROW_COUNT)
+	fillWasmRows({
+		buffer: memory.buffer,
+		recordSize: rowLayout.size,
+		amountOffset: amountField.offset,
+		activeOffset: activeField.offset,
+		count: ROW_COUNT,
+	})
 
 	const jsObjects = measure('JS object array', () => sumObjectRows(objectRows))
 	const jsTyped = measure('JS typed arrays', () => sumTypedRows(typedRows.amounts, typedRows.active))
@@ -110,7 +116,21 @@ function createTypedRows(count: number): {
 	}
 }
 
-function fillWasmRows(buffer: ArrayBuffer, recordSize: number, amountOffset: number, activeOffset: number, count: number): void {
+interface FillWasmRowsArgs {
+	buffer: ArrayBuffer,
+	recordSize: number,
+	amountOffset: number,
+	activeOffset: number,
+	count: number,
+}
+
+function fillWasmRows({
+	buffer,
+	recordSize,
+	amountOffset,
+	activeOffset,
+	count,
+}: FillWasmRowsArgs): void {
 	const view = new DataView(buffer)
 	for (let index = 0; index < count; index++) {
 		const rowPtr = BASE_PTR + index * recordSize

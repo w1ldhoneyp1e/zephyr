@@ -1,8 +1,14 @@
-fn sumActiveAmount(rows: number, length: number): number {
+type SaleRow = {
+	id: number;
+	amount: number;
+	active: boolean;
+};
+
+fn sumActiveAmount(rows: SaleRow[], length: number): number {
 	var total: number = 0;
 	for (i in 0..length) {
-		if (loadRecordI32(rows, i, 24, 16) == 1) {
-			total = total + loadRecordF64(rows, i, 24, 8);
+		if (rows[i].active) {
+			total = total + rows[i].amount;
 		}
 	}
 	return total;

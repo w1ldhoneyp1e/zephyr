@@ -1,5 +1,6 @@
 export {emitWasmModule} from './WasmBinaryEmitter'
 export {
+	type WasmCompileOptions,
 	compileZephyrFileToWasmModule,
 	compileZephyrSourceToWasmModule,
 } from './WasmCompiler'

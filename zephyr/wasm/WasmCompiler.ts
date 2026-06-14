@@ -10,11 +10,16 @@ import {LalrAstParser} from '../parser/LalrAstParser'
 import {type WasmModuleIr} from './WasmIr'
 import {lowerProgramToWasmIr} from './WasmLowerer'
 
+type WasmCompileOptions = Record<string, never>
+
 function compileZephyrFileToWasmModule(filePath: string): WasmModuleIr {
 	return compileZephyrSourceToWasmModule(readFileSync(filePath, 'utf8'), filePath)
 }
 
-function compileZephyrSourceToWasmModule(source: string, sourceFile = 'wasm-source.zph'): WasmModuleIr {
+function compileZephyrSourceToWasmModule(
+	source: string,
+	sourceFile = 'wasm-source.zph',
+): WasmModuleIr {
 	return lowerProgramToWasmIr(parseProgram(source, sourceFile))
 }
 
@@ -42,6 +47,7 @@ function formatDiagnostics(reporter: DiagnosticReporter): string {
 }
 
 export {
+	type WasmCompileOptions,
 	compileZephyrFileToWasmModule,
 	compileZephyrSourceToWasmModule,
 }
