@@ -46,6 +46,7 @@ type NumericComparisonOpcode = 'f64.eq' | 'f64.ne' | 'f64.lt' | 'f64.le' | 'f64.
 
 interface WasmLocalBinding {
 	index: number,
+	valueType: WasmValueType,
 	recordArrayLayout?: WasmRecordLayout,
 }
 
@@ -98,6 +99,7 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: Mo
 			param.name,
 			{
 				index,
+				valueType: 'f64',
 				recordArrayLayout: getRecordArrayLayout(param.typeName, moduleContext) ?? undefined,
 			},
 		])),
@@ -171,8 +173,11 @@ function lowerVariableDeclaration(statement: VariableDeclarationNode, context: F
 }
 
 function lowerAssignmentStatement(statement: AssignmentStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (statement.target.type === 'MemberTarget') {
+		return lowerMemberAssignmentStatement(statement, context)
+	}
 	if (statement.target.type !== 'IdentifierTarget') {
-		throw new Error('Wasm lowering only supports identifier assignment targets')
+		throw new Error('Wasm lowering only supports identifier and packed record field assignment targets')
 	}
 	const binding = getLocal(context, statement.target.name)
 
@@ -183,6 +188,18 @@ function lowerAssignmentStatement(statement: AssignmentStatementNode, context: F
 			index: binding.index,
 		},
 	]
+}
+
+function lowerMemberAssignmentStatement(statement: AssignmentStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (statement.target.type !== 'MemberTarget') {
+		throw new Error('Expected member assignment target')
+	}
+	const access = resolveRecordArrayFieldAccess(statement.target.object, statement.target.property, context)
+	if (access === null) {
+		throw new Error(`Wasm lowering does not support member assignment .${statement.target.property}`)
+	}
+
+	return lowerRecordArrayFieldStore(access, statement.value, context)
 }
 
 function lowerIfStatement(statement: IfStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
@@ -232,18 +249,18 @@ function lowerWhileStatement(statement: WhileStatementNode, context: FunctionLow
 
 function lowerForRangeStatement(statement: ForRangeStatementNode, context: FunctionLoweringContext): WasmInstruction[] {
 	const previousIteratorBinding = context.locals.get(statement.iterator) ?? null
-	const iteratorBinding = declareNumberLocal(context, statement.iterator)
-	const endBinding = declareNumberLocal(context, createInternalLocalName(context, 'forEnd'))
+	const iteratorBinding = declareLocal(context, statement.iterator, 'i32')
+	const endBinding = declareLocal(context, createInternalLocalName(context, 'forEnd'), 'i32')
 	const body = lowerBlockStatement(statement.body, context)
 	restoreLocalBinding(context, statement.iterator, previousIteratorBinding)
 
 	return [
-		...lowerNumberExpression(statement.start, context),
+		...lowerAddressExpression(statement.start, context),
 		{
 			op: 'local.set',
 			index: iteratorBinding.index,
 		},
-		...lowerNumberExpression(statement.end, context),
+		...lowerAddressExpression(statement.end, context),
 		{
 			op: 'local.set',
 			index: endBinding.index,
@@ -263,7 +280,7 @@ function lowerForRangeStatement(statement: ForRangeStatementNode, context: Funct
 							index: endBinding.index,
 						},
 						{
-							op: 'f64.lt',
+							op: 'i32.lt_s',
 						},
 						{
 							op: 'i32.const',
@@ -282,11 +299,11 @@ function lowerForRangeStatement(statement: ForRangeStatementNode, context: Funct
 							index: iteratorBinding.index,
 						},
 						{
-							op: 'f64.const',
+							op: 'i32.const',
 							value: 1,
 						},
 						{
-							op: 'f64.add',
+							op: 'i32.add',
 						},
 						{
 							op: 'local.set',
@@ -448,10 +465,23 @@ function lowerBooleanLiteralExpression(expression: LiteralExpressionNode): WasmI
 }
 
 function lowerIdentifierExpression(expression: IdentifierExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	const binding = getLocal(context, expression.name)
+	if (binding.valueType === 'i32') {
+		return [
+			{
+				op: 'local.get',
+				index: binding.index,
+			},
+			{
+				op: 'f64.convert_i32_s',
+			},
+		]
+	}
+
 	return [
 		{
 			op: 'local.get',
-			index: getLocal(context, expression.name).index,
+			index: binding.index,
 		},
 	]
 }
@@ -533,6 +563,18 @@ function lowerCallExpression(expression: CallExpressionNode, context: FunctionLo
 }
 
 function lowerAddressExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (expression.type === 'IdentifierExpression') {
+		const binding = getLocal(context, expression.name)
+		if (binding.valueType === 'i32') {
+			return [
+				{
+					op: 'local.get',
+					index: binding.index,
+				},
+			]
+		}
+	}
+
 	return [
 		...lowerNumberExpression(expression, context),
 		{
@@ -555,7 +597,7 @@ function lowerRecordFieldNumberExpression(
 	expression: MemberExpressionNode,
 	context: FunctionLoweringContext,
 ): WasmInstruction[] {
-	const access = resolveRecordArrayFieldAccess(expression, context)
+	const access = resolveRecordArrayFieldAccess(expression.object, expression.property, context)
 	if (access === null) {
 		throw new Error(`Wasm lowering does not support numeric member expression .${expression.property}`)
 	}
@@ -576,7 +618,7 @@ function lowerRecordFieldBooleanExpression(
 	expression: MemberExpressionNode,
 	context: FunctionLoweringContext,
 ): WasmInstruction[] {
-	const access = resolveRecordArrayFieldAccess(expression, context)
+	const access = resolveRecordArrayFieldAccess(expression.object, expression.property, context)
 	if (access === null) {
 		throw new Error(`Wasm lowering does not support boolean member expression .${expression.property}`)
 	}
@@ -604,13 +646,14 @@ interface RecordArrayFieldAccess {
 }
 
 function resolveRecordArrayFieldAccess(
-	expression: MemberExpressionNode,
+	object: ExpressionNode,
+	property: string,
 	context: FunctionLoweringContext,
 ): RecordArrayFieldAccess | null {
-	if (expression.object.type !== 'IndexExpression') {
+	if (object.type !== 'IndexExpression') {
 		return null
 	}
-	const indexExpression = expression.object as IndexExpressionNode
+	const indexExpression = object as IndexExpressionNode
 	if (indexExpression.object.type !== 'IdentifierExpression') {
 		return null
 	}
@@ -624,7 +667,7 @@ function resolveRecordArrayFieldAccess(
 		base,
 		index: indexExpression.index,
 		layout: binding.recordArrayLayout,
-		field: getRecordField(binding.recordArrayLayout, expression.property),
+		field: getRecordField(binding.recordArrayLayout, property),
 	}
 }
 
@@ -639,6 +682,29 @@ function lowerRecordArrayFieldLoad(
 			op: access.field.type === 'f64'
 				? 'f64.load'
 				: 'i32.load',
+			align: access.field.align === 8
+				? 3
+				: 2,
+			offset: 0,
+		},
+	]
+}
+
+function lowerRecordArrayFieldStore(
+	access: RecordArrayFieldAccess,
+	value: ExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	context.module.usesMemory = true
+	return [
+		...lowerRecordArrayFieldAddress(access, context),
+		...(access.field.type === 'f64'
+			? lowerNumberExpression(value, context)
+			: lowerBooleanExpression(value, context)),
+		{
+			op: access.field.type === 'f64'
+				? 'f64.store'
+				: 'i32.store',
 			align: access.field.align === 8
 				? 3
 				: 2,
@@ -718,12 +784,17 @@ function getLocal(context: FunctionLoweringContext, name: string): WasmLocalBind
 }
 
 function declareNumberLocal(context: FunctionLoweringContext, name: string): WasmLocalBinding {
+	return declareLocal(context, name, 'f64')
+}
+
+function declareLocal(context: FunctionLoweringContext, name: string, valueType: WasmValueType): WasmLocalBinding {
 	const binding = {
 		index: context.nextLocalIndex,
+		valueType,
 	}
 	context.nextLocalIndex++
 	context.locals.set(name, binding)
-	context.localTypes.push('f64')
+	context.localTypes.push(valueType)
 
 	return binding
 }

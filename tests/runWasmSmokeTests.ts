@@ -572,19 +572,24 @@ fn writeDouble(base: number, index: number, value: number): number {
 	return loadF64(address);
 }
 
-fn sumActiveAmount(rows: number, length: number): number {
+type TestRow = {
+	active: boolean;
+	amount: number;
+};
+
+fn sumActiveAmount(rows: TestRow[], length: number): number {
 	var total: number = 0;
 	for (i in 0..length) {
-		if (loadRecordF64(rows, i, 16, 0) == 1) {
-			total = total + loadRecordF64(rows, i, 16, 8);
+		if (rows[i].active) {
+			total = total + rows[i].amount;
 		}
 	}
 	return total;
 }
 
-fn setAmount(rows: number, index: number, value: number): number {
-	storeRecordF64(rows, index, 16, 8, value);
-	return loadRecordF64(rows, index, 16, 8);
+fn setAmount(rows: TestRow[], index: number, value: number): number {
+	rows[index].amount = value;
+	return rows[index].amount;
 }
 `)
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
@@ -660,7 +665,7 @@ fn setAmount(rows: number, index: number, value: number): number {
 	] as const
 	for (const [index, row] of rows.entries()) {
 		const rowPtr = rowsPtr + index * 16
-		view.setFloat64(rowPtr, row[0], true)
+		view.setInt32(rowPtr, row[0], true)
 		view.setFloat64(rowPtr + 8, row[1], true)
 	}
 	assert(sumActiveAmountFn(rowsPtr, rows.length) === 40.5, 'Expected lowered sumActiveAmount to aggregate active rows')
