@@ -53,6 +53,7 @@ interface WasmLocalBinding {
 
 interface ModuleLoweringContext {
 	functionIndices: Map<string, number>,
+	functionParamTypes: Map<string, WasmValueType[]>,
 	recordLayouts: Map<string, WasmRecordLayout>,
 	usesMemory: boolean,
 }
@@ -70,9 +71,14 @@ interface FunctionLoweringContext {
 function lowerProgramToWasmIr(program: ProgramNode): WasmModuleIr {
 	const functions = program.body
 		.filter((statement): statement is FunctionDeclarationNode => statement.type === 'FunctionDeclaration')
+	const recordLayouts = collectRecordLayouts(program)
 	const context: ModuleLoweringContext = {
 		functionIndices: new Map(functions.map((fn, index) => [fn.name, index])),
-		recordLayouts: collectRecordLayouts(program),
+		functionParamTypes: new Map(functions.map(fn => [
+			fn.name,
+			fn.params.map(param => getWasmParameterType(param.typeName, recordLayouts)),
+		])),
+		recordLayouts,
 		usesMemory: false,
 	}
 	const loweredFunctions = functions.map(fn => lowerFunctionDeclaration(fn, context))
@@ -92,7 +98,7 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: Mo
 	assertNumberType(fn.returnTypeName, `return type of ${fn.name}`)
 	const params = fn.params.map(param => {
 		assertSupportedParameterType(param.typeName, `parameter ${param.name}`, moduleContext)
-		return 'f64' as const
+		return getWasmParameterType(param.typeName, moduleContext.recordLayouts)
 	})
 	const context: FunctionLoweringContext = {
 		module: moduleContext,
@@ -100,7 +106,7 @@ function lowerFunctionDeclaration(fn: FunctionDeclarationNode, moduleContext: Mo
 			param.name,
 			{
 				index,
-				valueType: 'f64',
+				valueType: params[index],
 				numberArray: isNumberArrayType(param.typeName),
 				recordArrayLayout: getRecordArrayLayout(param.typeName, moduleContext) ?? undefined,
 			},
@@ -150,12 +156,14 @@ function lowerBlockStatement(block: BlockStatementNode, context: FunctionLowerin
 }
 
 function lowerVariableDeclaration(statement: VariableDeclarationNode, context: FunctionLoweringContext): WasmInstruction[] {
-	assertNumberType(statement.typeName, `variable ${statement.name}`)
-	const binding = declareNumberLocal(context, statement.name)
+	const localType = getWasmLocalType(statement.typeName, `variable ${statement.name}`)
+	const binding = declareLocal(context, statement.name, localType)
 	if (statement.initializer === null) {
 		return [
 			{
-				op: 'f64.const',
+				op: localType === 'f64'
+					? 'f64.const'
+					: 'i32.const',
 				value: 0,
 			},
 			{
@@ -166,7 +174,7 @@ function lowerVariableDeclaration(statement: VariableDeclarationNode, context: F
 	}
 
 	return [
-		...lowerNumberExpression(statement.initializer, context),
+		...lowerExpressionAsWasmType(statement.initializer, binding.valueType, context),
 		{
 			op: 'local.set',
 			index: binding.index,
@@ -187,7 +195,7 @@ function lowerAssignmentStatement(statement: AssignmentStatementNode, context: F
 	const binding = getLocal(context, statement.target.name)
 
 	return [
-		...lowerNumberExpression(statement.value, context),
+		...lowerExpressionAsWasmType(statement.value, binding.valueType, context),
 		{
 			op: 'local.set',
 			index: binding.index,
@@ -444,6 +452,8 @@ function lowerBooleanExpression(expression: ExpressionNode, context: FunctionLow
 	switch (expression.type) {
 		case 'LiteralExpression':
 			return lowerBooleanLiteralExpression(expression)
+		case 'IdentifierExpression':
+			return lowerBooleanIdentifierExpression(expression, context)
 		case 'MemberExpression':
 			return lowerRecordFieldBooleanExpression(expression, context)
 		case 'UnaryExpression':
@@ -453,6 +463,23 @@ function lowerBooleanExpression(expression: ExpressionNode, context: FunctionLow
 		default:
 			throw new Error(`Wasm lowering does not support boolean expression ${expression.type}`)
 	}
+}
+
+function lowerBooleanIdentifierExpression(
+	expression: IdentifierExpressionNode,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	const binding = getLocal(context, expression.name)
+	if (binding.valueType !== 'i32') {
+		throw new Error(`Wasm lowering does not support number local ${expression.name} as boolean`)
+	}
+
+	return [
+		{
+			op: 'local.get',
+			index: binding.index,
+		},
+	]
 }
 
 function lowerNumericLiteralExpression(expression: LiteralExpressionNode): WasmInstruction[] {
@@ -571,14 +598,50 @@ function lowerCallExpression(expression: CallExpressionNode, context: FunctionLo
 	if (functionIndex === undefined) {
 		throw new Error(`Unknown function ${expression.callee.name}`)
 	}
+	const paramTypes = context.module.functionParamTypes.get(expression.callee.name) ?? []
 
 	return [
-		...expression.args.flatMap(arg => lowerNumberExpression(arg, context)),
+		...expression.args.flatMap((arg, index) => lowerExpressionAsWasmType(arg, paramTypes[index] ?? 'f64', context)),
 		{
 			op: 'call',
 			functionIndex,
 		},
 	]
+}
+
+function lowerExpressionAsWasmType(
+	expression: ExpressionNode,
+	type: WasmValueType,
+	context: FunctionLoweringContext,
+): WasmInstruction[] {
+	return type === 'i32'
+		? lowerI32Expression(expression, context)
+		: lowerNumberExpression(expression, context)
+}
+
+function lowerI32Expression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
+	if (isBooleanExpressionShape(expression)) {
+		return lowerBooleanExpression(expression, context)
+	}
+
+	return lowerAddressExpression(expression, context)
+}
+
+function isBooleanExpressionShape(expression: ExpressionNode): boolean {
+	if (expression.type === 'LiteralExpression') {
+		return typeof expression.value === 'boolean'
+	}
+	if (expression.type === 'UnaryExpression') {
+		return expression.operator === '!'
+	}
+	if (expression.type === 'BinaryExpression') {
+		return ['==', '!=', '<', '<=', '>', '>=', '&&', '||'].includes(expression.operator)
+	}
+	if (expression.type === 'MemberExpression') {
+		return true
+	}
+
+	return false
 }
 
 function lowerAddressExpression(expression: ExpressionNode, context: FunctionLoweringContext): WasmInstruction[] {
@@ -957,6 +1020,9 @@ function assertSupportedParameterType(typeName: TypeName, context: string, modul
 	if (typeNameToString(typeName) === 'number') {
 		return
 	}
+	if (typeNameToString(typeName) === 'boolean') {
+		return
+	}
 	if (isNumberArrayType(typeName)) {
 		return
 	}
@@ -964,6 +1030,24 @@ function assertSupportedParameterType(typeName: TypeName, context: string, modul
 		return
 	}
 	throw new Error(`Wasm lowering only supports number or typed record array for ${context}`)
+}
+
+function getWasmParameterType(typeName: TypeName, recordLayouts: Map<string, WasmRecordLayout>): WasmValueType {
+	if (typeNameToString(typeName) === 'number') {
+		return 'f64'
+	}
+	if (typeNameToString(typeName) === 'boolean') {
+		return 'i32'
+	}
+	if (isNumberArrayType(typeName)) {
+		return 'i32'
+	}
+	const source = typeNameToString(typeName)
+	if (source.endsWith('[]') && recordLayouts.has(source.slice(0, -2))) {
+		return 'i32'
+	}
+
+	throw new Error(`Wasm lowering does not support parameter type ${source}`)
 }
 
 function getRecordArrayLayout(typeName: TypeName, context: ModuleLoweringContext): WasmRecordLayout | null {
@@ -978,6 +1062,18 @@ function getRecordArrayLayout(typeName: TypeName, context: ModuleLoweringContext
 
 function isNumberArrayType(typeName: TypeName): boolean {
 	return typeNameToString(typeName) === 'number[]'
+}
+
+function getWasmLocalType(typeName: TypeName, context: string): WasmValueType {
+	const source = typeNameToString(typeName)
+	switch (source) {
+		case 'number':
+			return 'f64'
+		case 'boolean':
+			return 'i32'
+		default:
+			throw new Error(`Wasm lowering only supports number/boolean locals for ${context}`)
+	}
 }
 
 function assertNumberType(typeName: TypeName, context: string): void {
