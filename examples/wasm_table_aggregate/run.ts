@@ -1,8 +1,6 @@
 import {
 	compileZephyrFileToWasmModule,
-	createRecordLayout,
 	emitWasmModule,
-	getRecordField,
 } from '../../zephyr/wasm'
 
 interface WebAssemblyRuntime {
@@ -12,6 +10,29 @@ interface WebAssemblyRuntime {
 	}>,
 }
 
+interface TableRuntimeModule {
+	ROW_LAYOUT: {
+		size: number,
+	},
+	createObjectRows: (count: number) => RowObject[],
+	createTableAggregateRuntime: (instance: WebAssemblyInstance) => TableAggregateRuntime,
+	createTypedRows: (count: number) => {
+		amounts: Float64Array,
+		active: Int32Array,
+	},
+	sumObjectRows: (rows: RowObject[]) => number,
+	sumTypedRows: (amounts: Float64Array, active: Int32Array) => number,
+}
+
+interface WebAssemblyInstance {
+	exports: Record<string, unknown>,
+}
+
+interface TableAggregateRuntime {
+	fillRows: (count: number) => void,
+	sumActiveAmount: (count: number) => number,
+}
+
 interface RowObject {
 	id: number,
 	amount: number,
@@ -19,60 +40,31 @@ interface RowObject {
 }
 
 const ROW_COUNT = 5_000_000
-const ACTIVE_MOD = 3
 const BASE_PTR = 4096
 const SOURCE_PATH = 'examples/wasm_table_aggregate/table_aggregate.zph'
+const RUNTIME_PATH = './table-runtime.js'
 
 async function main(): Promise<void> {
-	const rowLayout = createRecordLayout([
-		{
-			name: 'id',
-			type: 'f64',
-		},
-		{
-			name: 'amount',
-			type: 'f64',
-		},
-		{
-			name: 'active',
-			type: 'i32',
-		},
-	])
-	const amountField = getRecordField(rowLayout, 'amount')
-	const activeField = getRecordField(rowLayout, 'active')
+	const runtimeModule = await import(RUNTIME_PATH) as TableRuntimeModule
 	const wasm = (globalThis as unknown as {WebAssembly: WebAssemblyRuntime}).WebAssembly
 	const sourceModule = compileZephyrFileToWasmModule(SOURCE_PATH)
 	const module = {
 		...sourceModule,
 		memory: {
-			minPages: Math.ceil((BASE_PTR + ROW_COUNT * rowLayout.size) / 65536),
+			minPages: Math.ceil((BASE_PTR + ROW_COUNT * runtimeModule.ROW_LAYOUT.size) / 65536),
 			exportName: 'memory',
 		},
 	}
 	const instance = await wasm.instantiate(await wasm.compile(emitWasmModule(module)))
-	const memory = instance.exports.memory
-	const sumActiveAmount = instance.exports.sumActiveAmount
-	if (!isWasmMemory(memory)) {
-		throw new Error('Expected exported memory')
-	}
-	if (typeof sumActiveAmount !== 'function') {
-		throw new Error('Expected exported sumActiveAmount')
-	}
+	const tableRuntime = runtimeModule.createTableAggregateRuntime(instance)
 
-	const objectRows = createObjectRows(ROW_COUNT)
-	const typedRows = createTypedRows(ROW_COUNT)
-	fillWasmRows({
-		buffer: memory.buffer,
-		recordSize: rowLayout.size,
-		amountOffset: amountField.offset,
-		activeOffset: activeField.offset,
-		count: ROW_COUNT,
-	})
+	const objectRows = runtimeModule.createObjectRows(ROW_COUNT)
+	const typedRows = runtimeModule.createTypedRows(ROW_COUNT)
+	tableRuntime.fillRows(ROW_COUNT)
 
-	const jsObjects = measure('JS object array', () => sumObjectRows(objectRows))
-	const jsTyped = measure('JS typed arrays', () => sumTypedRows(typedRows.amounts, typedRows.active))
-	const wasmPacked = measure('Zephyr Wasm packed records', () =>
-		(sumActiveAmount as (basePtr: number, length: number) => number)(BASE_PTR, ROW_COUNT))
+	const jsObjects = measure('JS object array', () => runtimeModule.sumObjectRows(objectRows))
+	const jsTyped = measure('JS typed arrays', () => runtimeModule.sumTypedRows(typedRows.amounts, typedRows.active))
+	const wasmPacked = measure('Zephyr Wasm packed records', () => tableRuntime.sumActiveAmount(ROW_COUNT))
 
 	assertClose(jsObjects.result, jsTyped.result, 'JS object and typed array results differ')
 	assertClose(jsObjects.result, wasmPacked.result, 'JS object and Wasm results differ')
@@ -82,94 +74,6 @@ async function main(): Promise<void> {
 	console.log(`${jsObjects.name}: ${jsObjects.durationMs.toFixed(2)}ms result=${jsObjects.result.toFixed(2)}`)
 	console.log(`${jsTyped.name}: ${jsTyped.durationMs.toFixed(2)}ms result=${jsTyped.result.toFixed(2)}`)
 	console.log(`${wasmPacked.name}: ${wasmPacked.durationMs.toFixed(2)}ms result=${wasmPacked.result.toFixed(2)}`)
-}
-
-function createObjectRows(count: number): RowObject[] {
-	const rows: RowObject[] = []
-	for (let index = 0; index < count; index++) {
-		rows.push({
-			id: index,
-			amount: createAmount(index),
-			active: isActive(index),
-		})
-	}
-
-	return rows
-}
-
-function createTypedRows(count: number): {
-	amounts: Float64Array,
-	active: Int32Array,
-} {
-	const amounts = new Float64Array(count)
-	const active = new Int32Array(count)
-	for (let index = 0; index < count; index++) {
-		amounts[index] = createAmount(index)
-		active[index] = isActive(index)
-			? 1
-			: 0
-	}
-
-	return {
-		amounts,
-		active,
-	}
-}
-
-interface FillWasmRowsArgs {
-	buffer: ArrayBuffer,
-	recordSize: number,
-	amountOffset: number,
-	activeOffset: number,
-	count: number,
-}
-
-function fillWasmRows({
-	buffer,
-	recordSize,
-	amountOffset,
-	activeOffset,
-	count,
-}: FillWasmRowsArgs): void {
-	const view = new DataView(buffer)
-	for (let index = 0; index < count; index++) {
-		const rowPtr = BASE_PTR + index * recordSize
-		view.setFloat64(rowPtr, index, true)
-		view.setFloat64(rowPtr + amountOffset, createAmount(index), true)
-		view.setInt32(rowPtr + activeOffset, isActive(index)
-			? 1
-			: 0, true)
-	}
-}
-
-function sumObjectRows(rows: RowObject[]): number {
-	let sum = 0
-	for (const row of rows) {
-		if (row.active) {
-			sum += row.amount
-		}
-	}
-
-	return sum
-}
-
-function sumTypedRows(amounts: Float64Array, active: Int32Array): number {
-	let sum = 0
-	for (let index = 0; index < amounts.length; index++) {
-		if (active[index] === 1) {
-			sum += amounts[index]
-		}
-	}
-
-	return sum
-}
-
-function createAmount(index: number): number {
-	return (index % 10_000) * 0.5 + 1
-}
-
-function isActive(index: number): boolean {
-	return index % ACTIVE_MOD !== 0
 }
 
 function measure(name: string, fn: () => number): {
@@ -193,13 +97,6 @@ function assertClose(actual: number, expected: number, context: string): void {
 	if (diff > 0.0001) {
 		throw new Error(`${context}: expected ${expected}, got ${actual}`)
 	}
-}
-
-function isWasmMemory(value: unknown): value is {buffer: ArrayBuffer} {
-	return typeof value === 'object'
-		&& value !== null
-		&& 'buffer' in value
-		&& value.buffer instanceof ArrayBuffer
 }
 
 main().catch(error => {

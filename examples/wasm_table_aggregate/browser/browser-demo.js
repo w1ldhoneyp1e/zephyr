@@ -1,8 +1,9 @@
-const BASE_PTR = 4096
-const RECORD_SIZE = 24
-const AMOUNT_OFFSET = 8
-const ACTIVE_OFFSET = 16
-const ACTIVE_MOD = 3
+import {
+	createTableAggregateRuntime,
+	createTypedRows,
+	sumTypedRows,
+} from '../table-runtime.js'
+
 const WASM_PATH = './table_aggregate.wasm'
 
 const rowCountInput = document.querySelector('#row-count')
@@ -27,22 +28,14 @@ async function runBenchmark() {
 	writeLog('Загружаю wasm...')
 	const rowCount = Number(rowCountInput.value)
 	const instance = await instantiateWasm()
-	const memory = instance.exports.memory
-	const sumActiveAmount = instance.exports.sumActiveAmount
-	if (!(memory instanceof WebAssembly.Memory)) {
-		throw new Error('Wasm module must export memory')
-	}
-	if (typeof sumActiveAmount !== 'function') {
-		throw new Error('Wasm module must export sumActiveAmount')
-	}
+	const tableRuntime = createTableAggregateRuntime(instance)
 
-	ensureMemoryCapacity(memory, BASE_PTR + rowCount * RECORD_SIZE)
 	writeLog(`Заполняю ${rowCount.toLocaleString('ru-RU')} строк...`)
 	const typedRows = createTypedRows(rowCount)
-	fillWasmRows(memory.buffer, rowCount)
+	tableRuntime.fillRows(rowCount)
 
 	const js = measure(() => sumTypedRows(typedRows.amounts, typedRows.active))
-	const wasm = measure(() => sumActiveAmount(BASE_PTR, rowCount))
+	const wasm = measure(() => tableRuntime.sumActiveAmount(rowCount))
 	assertClose(js.result, wasm.result)
 
 	jsTime.textContent = `${js.durationMs.toFixed(2)}ms`
@@ -71,62 +64,6 @@ async function instantiateWasm() {
 	const result = await WebAssembly.instantiate(bytes, {})
 
 	return result.instance
-}
-
-function ensureMemoryCapacity(memory, requiredBytes) {
-	const pageSize = 65536
-	const requiredPages = Math.ceil(requiredBytes / pageSize)
-	const currentPages = memory.buffer.byteLength / pageSize
-	if (requiredPages > currentPages) {
-		memory.grow(requiredPages - currentPages)
-	}
-}
-
-function createTypedRows(count) {
-	const amounts = new Float64Array(count)
-	const active = new Int32Array(count)
-	for (let index = 0; index < count; index++) {
-		amounts[index] = createAmount(index)
-		active[index] = isActive(index)
-			? 1
-			: 0
-	}
-
-	return {
-		amounts,
-		active,
-	}
-}
-
-function fillWasmRows(buffer, count) {
-	const view = new DataView(buffer)
-	for (let index = 0; index < count; index++) {
-		const rowPtr = BASE_PTR + index * RECORD_SIZE
-		view.setFloat64(rowPtr, index, true)
-		view.setFloat64(rowPtr + AMOUNT_OFFSET, createAmount(index), true)
-		view.setInt32(rowPtr + ACTIVE_OFFSET, isActive(index)
-			? 1
-			: 0, true)
-	}
-}
-
-function sumTypedRows(amounts, active) {
-	let sum = 0
-	for (let index = 0; index < amounts.length; index++) {
-		if (active[index] === 1) {
-			sum += amounts[index]
-		}
-	}
-
-	return sum
-}
-
-function createAmount(index) {
-	return (index % 10_000) * 0.5 + 1
-}
-
-function isActive(index) {
-	return index % ACTIVE_MOD !== 0
 }
 
 function measure(fn) {

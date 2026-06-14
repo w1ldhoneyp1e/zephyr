@@ -4,7 +4,7 @@ const fs = require('fs')
 const http = require('http')
 const path = require('path')
 
-const root = path.resolve(__dirname, '..', 'examples', 'wasm_table_aggregate', 'browser')
+const root = path.resolve(__dirname, '..', 'examples', 'wasm_table_aggregate')
 const port = Number(process.env.PORT ?? 8080)
 const host = process.env.HOST ?? '127.0.0.1'
 
@@ -18,7 +18,7 @@ const mimeTypes = {
 const server = http.createServer((request, response) => {
 	const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
 	const pathname = url.pathname === '/'
-		? '/index.html'
+		? '/browser/index.html'
 		: url.pathname
 	const filePath = path.join(root, pathname)
 	if (!filePath.startsWith(root)) {
