@@ -20,6 +20,8 @@ import {
 	type MatchValueBranchesValue,
 	type MatchValueBranchNode,
 	type MemberExpressionNode,
+	type ObjectExpressionNode,
+	type ObjectExpressionPropertyNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type ParameterNode,
@@ -53,6 +55,7 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 		case 'PostfixExpression -> PrimaryExpression':
 		case 'ArgumentListOpt -> ArgumentList ArgumentTrailingCommaOpt':
 		case 'ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt':
+		case 'ObjectExpressionPropertiesOpt -> ObjectExpressionProperties':
 			return values => values[0]
 
 		case 'PipelineExpression -> PipelineExpression ThinArrow PipelineStage':
@@ -185,6 +188,28 @@ function createExpressionAction(production: Production): SemanticValueAction | n
 				type: 'ArrayExpression',
 				elements: values[1] as ExpressionNode[],
 			} satisfies ArrayExpressionNode)
+		case 'PrimaryExpression -> ObjectExpression':
+			return values => values[0]
+		case 'ObjectExpression -> LeftBrace ObjectExpressionPropertiesOpt RightBrace':
+			return values => ({
+				type: 'ObjectExpression',
+				properties: values[1] as ObjectExpressionPropertyNode[],
+			} satisfies ObjectExpressionNode)
+		case 'ObjectExpressionPropertiesOpt -> ε':
+			return () => []
+		case 'ObjectExpressionProperties -> ObjectExpressionProperties ObjectExpressionProperty':
+			return values => [
+				...(values[0] as ObjectExpressionPropertyNode[]),
+				values[1] as ObjectExpressionPropertyNode,
+			]
+		case 'ObjectExpressionProperties -> ObjectExpressionProperty':
+			return values => [values[0] as ObjectExpressionPropertyNode]
+		case 'ObjectExpressionProperty -> Identifier Colon Expression Semicolon':
+			return values => ({
+				type: 'ObjectExpressionProperty',
+				name: tokenLexeme(values[0]),
+				value: ensureExpression(values[2], 'object property value'),
+			} satisfies ObjectExpressionPropertyNode)
 		case 'PrimaryExpression -> ChooseExpression':
 		case 'PrimaryExpression -> CollectExpression':
 		case 'PrimaryExpression -> MatchExpression':

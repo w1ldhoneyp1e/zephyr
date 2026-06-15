@@ -19,6 +19,7 @@ import {
 	formatSemanticType,
 	functionType,
 	hasNullType,
+	objectType,
 	parseSemanticType,
 	primitiveType,
 	removeNullFromType,
@@ -89,6 +90,8 @@ class TypeAnalyzer {
 				return primitiveType('number')
 			case 'ArrayExpression':
 				return this.inferArrayExpressionType(expression, expectedType)
+			case 'ObjectExpression':
+				return this.inferObjectExpressionType(expression, expectedType)
 			case 'ChooseExpression':
 				return this.inferCommonType([
 					...expression.branches.map(branch => this.inferExpressionType(branch.value, expectedType)),
@@ -288,6 +291,24 @@ class TypeAnalyzer {
 			))
 		}
 		return arrayType(this.inferCommonType(expression.elements.map(element => this.inferExpressionType(element))))
+	}
+
+	private inferObjectExpressionType(
+		expression: Extract<ExpressionNode, {type: 'ObjectExpression'}>,
+		expectedType: SemanticType | null,
+	): SemanticType {
+		const properties = new Map<string, SemanticType>()
+		const expectedObject = expectedType?.kind === 'object'
+			? expectedType
+			: null
+		for (const property of expression.properties) {
+			properties.set(
+				property.name,
+				this.inferExpressionType(property.value, expectedObject?.properties.get(property.name) ?? null),
+			)
+		}
+
+		return objectType(properties)
 	}
 
 	private inferMatchResultTypes(

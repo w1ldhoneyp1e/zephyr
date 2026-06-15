@@ -29,6 +29,7 @@ PrimaryExpression -> Identifier
 PrimaryExpression -> super
 PrimaryExpression -> '(' Expression ')'
 PrimaryExpression -> '[' ArrayElementsOpt ']'
+PrimaryExpression -> ObjectExpression
 
 ChooseExpression -> choose '{' ChooseBranches '}'
 ChooseBranches -> ChooseBranchList ',' ChooseDefaultBranch ChooseTrailingCommaOpt | ChooseDefaultBranch ChooseTrailingCommaOpt
@@ -61,3 +62,7 @@ LambdaBody -> BlockStatement | Expression
 ArrayElementsOpt -> ArrayElements ArrayTrailingCommaOpt | ε
 ArrayTrailingCommaOpt -> ',' | ε
 ArrayElements -> ArrayElements ',' Expression | Expression
+ObjectExpression -> '{' ObjectExpressionPropertiesOpt '}'
+ObjectExpressionPropertiesOpt -> ObjectExpressionProperties | ε
+ObjectExpressionProperties -> ObjectExpressionProperties ObjectExpressionProperty | ObjectExpressionProperty
+ObjectExpressionProperty -> Identifier ':' Expression ';'

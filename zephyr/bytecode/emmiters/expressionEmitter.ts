@@ -107,6 +107,21 @@ function emitExpressionCore(state: CompilerState, generator: BytecodeGenerator, 
 			state.emitNumArg(Opcode.CreateArr, expression.elements.length)
 			break
 		}
+		case 'ObjectExpression': {
+			state.enterScope()
+			const objectSlot = state.declareInternalLocal('object_literal')
+			state.emitNoArg(Opcode.CreateObj)
+			state.emitNumArg(Opcode.SetLocal, objectSlot)
+			for (const property of expression.properties) {
+				const propertyNameIndex = state.addConstant(property.name)
+				emitExpression(state, generator, property.value)
+				state.emitNumArg(Opcode.GetLocal, objectSlot)
+				state.emitNumArg(Opcode.SetProp, propertyNameIndex)
+			}
+			state.emitNumArg(Opcode.GetLocal, objectSlot)
+			state.leaveScope()
+			break
+		}
 		case 'ChooseExpression': {
 			const endJumps: number[] = []
 			for (const branch of expression.branches) {

@@ -466,6 +466,11 @@ class Resolver {
 					this.resolveExpression(element)
 				}
 				return
+			case 'ObjectExpression':
+				for (const property of expression.properties) {
+					this.resolveExpression(property.value)
+				}
+				return
 			case 'ChooseExpression':
 			case 'CollectExpression':
 				for (const branch of expression.branches) {

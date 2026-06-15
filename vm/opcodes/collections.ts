@@ -25,6 +25,14 @@ function execCollectionOpcode(
 			push(items)
 			return true
 		}
+		case Opcode.CreateObj:
+			push({
+				kind: 'object',
+				typeName: null,
+				structTemplate: null,
+				properties: {},
+			})
+			return true
 		case Opcode.GetEl: {
 			const index = pop()
 			const collection = pop()

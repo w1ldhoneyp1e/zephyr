@@ -30,6 +30,7 @@ const NO_ARG_OPCODES = new Map<string, NoArgOpcode>([
 	['or', Opcode.Or],
 	['not', Opcode.Not],
 	['return', Opcode.Return],
+	['create_obj', Opcode.CreateObj],
 	['get_el', Opcode.GetEl],
 	['set_el', Opcode.SetEl],
 	['make_super', Opcode.MakeSuper],

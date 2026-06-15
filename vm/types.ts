@@ -126,6 +126,7 @@ enum Opcode {
 	GetGlobal = 'get_global',
 
 	CreateArr = 'create_arr',
+	CreateObj = 'create_obj',
 	GetEl = 'get_el',
 	SetEl = 'set_el',
 	GetProp = 'get_prop',
@@ -141,7 +142,7 @@ type NoArgOpcode =
 	| Opcode.Add | Opcode.Sub | Opcode.Mul | Opcode.Div | Opcode.Mod | Opcode.Neg
 	| Opcode.Eq | Opcode.Ne | Opcode.Lt | Opcode.Lte | Opcode.Gt | Opcode.Gte
 	| Opcode.And | Opcode.Or | Opcode.Not
-	| Opcode.Return | Opcode.GetEl | Opcode.SetEl | Opcode.MakeSuper
+	| Opcode.Return | Opcode.GetEl | Opcode.SetEl | Opcode.CreateObj | Opcode.MakeSuper
 
 type NumArgOpcode =
 	| Opcode.Const

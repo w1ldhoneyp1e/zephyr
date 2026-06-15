@@ -87,6 +87,11 @@ class ValidationWalker {
 					this.validateExpression(element)
 				}
 				break
+			case 'ObjectExpression':
+				for (const property of expression.properties) {
+					this.validateExpression(property.value)
+				}
+				break
 			case 'ChooseExpression':
 			case 'CollectExpression':
 				for (const branch of expression.branches) {

@@ -39,6 +39,8 @@ import {
 	type MethodDeclarationNode,
 	type NamedExportStatementNode,
 	type ObjectTypeMemberNode,
+	type ObjectExpressionNode,
+	type ObjectExpressionPropertyNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type ParameterNode,
@@ -68,6 +70,9 @@ type SemanticValue =
 	| TypeName[]
 	| ObjectTypeMemberNode
 	| ObjectTypeMemberNode[]
+	| ObjectExpressionNode
+	| ObjectExpressionPropertyNode
+	| ObjectExpressionPropertyNode[]
 	| ExpressionNode[]
 	| ConditionalBranchNode
 	| ConditionalBranchNode[]
@@ -241,6 +246,7 @@ function isExpressionNodeType(type: string): boolean {
 		|| type === 'UnaryExpression'
 		|| type === 'BinaryExpression'
 		|| type === 'ArrayExpression'
+		|| type === 'ObjectExpression'
 		|| type === 'IndexExpression'
 		|| type === 'OptionalIndexExpression'
 		|| type === 'MemberExpression'
@@ -297,6 +303,8 @@ export {
 	type MatchValueBranchNode,
 	type NamedExportStatementNode,
 	type ObjectTypeMemberNode,
+	type ObjectExpressionNode,
+	type ObjectExpressionPropertyNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type PendingAssignmentNode,

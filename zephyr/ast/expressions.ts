@@ -34,6 +34,17 @@ interface ArrayExpressionNode {
 	elements: ExpressionNode[],
 }
 
+interface ObjectExpressionPropertyNode {
+	type: 'ObjectExpressionProperty',
+	name: string,
+	value: ExpressionNode,
+}
+
+interface ObjectExpressionNode {
+	type: 'ObjectExpression',
+	properties: ObjectExpressionPropertyNode[],
+}
+
 interface ConditionalBranchNode {
 	condition: ExpressionNode,
 	value: ExpressionNode,
@@ -136,6 +147,7 @@ type ExpressionNode =
 	| UnaryExpressionNode
 	| BinaryExpressionNode
 	| ArrayExpressionNode
+	| ObjectExpressionNode
 	| IndexExpressionNode
 	| OptionalIndexExpressionNode
 	| MemberExpressionNode
@@ -169,6 +181,8 @@ export {
 	type MatchValueBranchNode,
 	type MemberExpressionNode,
 	type MemberTargetNode,
+	type ObjectExpressionNode,
+	type ObjectExpressionPropertyNode,
 	type OptionalIndexExpressionNode,
 	type OptionalMemberExpressionNode,
 	type UnaryExpressionNode,

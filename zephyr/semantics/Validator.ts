@@ -231,6 +231,7 @@ class Validator {
 				return
 			case 'UnaryExpression':
 			case 'ArrayExpression':
+			case 'ObjectExpression':
 				this.getValidationWalker().walkExpressionChildren(expression)
 				return
 			case 'BinaryExpression':

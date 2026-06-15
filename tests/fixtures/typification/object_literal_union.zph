@@ -1,0 +1,25 @@
+type Evaluation = {
+	id: string;
+	value: number;
+	studentId: string;
+	taskId: string;
+};
+
+type Attendance = {
+	id: string;
+	kind: string;
+	studentId: string;
+	meetingId: string;
+};
+
+var something: Evaluation | Attendance = {
+	id: "123";
+	kind: "late";
+	studentId: "student-1";
+	meetingId: "meeting-1";
+};
+
+return match something by kind {
+	late => 7,
+	_ => 0,
+};

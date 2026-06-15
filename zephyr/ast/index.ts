@@ -20,6 +20,8 @@ export type {
 	MatchValueBranchNode,
 	MemberExpressionNode,
 	MemberTargetNode,
+	ObjectExpressionNode,
+	ObjectExpressionPropertyNode,
 	OptionalIndexExpressionNode,
 	OptionalMemberExpressionNode,
 	UnaryExpressionNode,

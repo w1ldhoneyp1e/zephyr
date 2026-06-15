@@ -64,6 +64,11 @@ const TEST_CASES: FeatureTestCase[] = [
 		expectedReturn: '3',
 	},
 	{
+		name: 'object_literal_union',
+		file: './typification/object_literal_union.zph',
+		expectedReturn: '7',
+	},
+	{
 		name: 'null_narrowing',
 		file: 'null_narrowing.zph',
 		expectedReturn: '12',
