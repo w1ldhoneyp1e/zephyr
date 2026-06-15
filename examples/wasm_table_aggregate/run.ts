@@ -1,7 +1,4 @@
-import {
-	compileZephyrFileToWasmModule,
-	emitWasmModule,
-} from '../../zephyr/wasm'
+import {compileZephyrFileToWasmModule, emitWasmModule} from '../../zephyr/wasm'
 
 interface WebAssemblyRuntime {
 	compile: (bytes: Uint8Array) => Promise<unknown>,

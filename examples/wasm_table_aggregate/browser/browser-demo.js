@@ -1,6 +1,8 @@
 import {
+	createObjectRows,
 	createTableAggregateRuntime,
 	createTypedRows,
+	sumObjectRows,
 	sumTypedRows,
 } from '../table-runtime.js'
 
@@ -9,8 +11,10 @@ const WASM_PATH = './table_aggregate.wasm'
 const rowCountInput = document.querySelector('#row-count')
 const runButton = document.querySelector('#run-button')
 const log = document.querySelector('#log')
-const jsTime = document.querySelector('#js-time')
-const jsResult = document.querySelector('#js-result')
+const objectTime = document.querySelector('#object-time')
+const objectResult = document.querySelector('#object-result')
+const typedTime = document.querySelector('#typed-time')
+const typedResult = document.querySelector('#typed-result')
 const wasmTime = document.querySelector('#wasm-time')
 const wasmResult = document.querySelector('#wasm-result')
 
@@ -31,18 +35,23 @@ async function runBenchmark() {
 	const tableRuntime = createTableAggregateRuntime(instance)
 
 	writeLog(`Заполняю ${rowCount.toLocaleString('ru-RU')} строк...`)
+	const objectRows = createObjectRows(rowCount)
 	const typedRows = createTypedRows(rowCount)
 	tableRuntime.fillRows(rowCount)
 
-	const js = measure(() => sumTypedRows(typedRows.amounts, typedRows.active))
+	const objectJs = measure(() => sumObjectRows(objectRows))
+	const typedJs = measure(() => sumTypedRows(typedRows.amounts, typedRows.active))
 	const wasm = measure(() => tableRuntime.sumActiveAmount(rowCount))
-	assertClose(js.result, wasm.result)
+	assertClose(objectJs.result, typedJs.result)
+	assertClose(objectJs.result, wasm.result)
 
-	jsTime.textContent = `${js.durationMs.toFixed(2)}ms`
-	jsResult.textContent = `result: ${js.result.toFixed(2)}`
+	objectTime.textContent = `${objectJs.durationMs.toFixed(2)}ms`
+	objectResult.textContent = `result: ${objectJs.result.toFixed(2)}`
+	typedTime.textContent = `${typedJs.durationMs.toFixed(2)}ms`
+	typedResult.textContent = `result: ${typedJs.result.toFixed(2)}`
 	wasmTime.textContent = `${wasm.durationMs.toFixed(2)}ms`
 	wasmResult.textContent = `result: ${wasm.result.toFixed(2)}`
-	writeLog('Готово: результат JS и Zephyr Wasm совпал.')
+	writeLog('Готово: результаты JS object arrays, JS typed arrays и Zephyr Wasm совпали.')
 	runButton.disabled = false
 }
 

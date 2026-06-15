@@ -13,7 +13,7 @@
 				<h1>Table aggregate в браузере</h1>
 				<p class="lead">
 					Демо загружает <code>table_aggregate.wasm</code>, заполняет linear memory таблицей
-					и сравнивает вычисления на JS typed arrays и Zephyr Wasm.
+					и сравнивает вычисления на JS object arrays, JS typed arrays и Zephyr Wasm.
 				</p>
 				<div class="actions">
 					<label>
@@ -26,9 +26,14 @@
 
 			<section class="cards" aria-live="polite">
 				<article class="card">
+					<h2>JS object arrays</h2>
+					<p id="object-time" class="metric">-</p>
+					<p id="object-result" class="result">result: -</p>
+				</article>
+				<article class="card">
 					<h2>JS typed arrays</h2>
-					<p id="js-time" class="metric">-</p>
-					<p id="js-result" class="result">result: -</p>
+					<p id="typed-time" class="metric">-</p>
+					<p id="typed-result" class="result">result: -</p>
 				</article>
 				<article class="card accent">
 					<h2>Zephyr Wasm</h2>
