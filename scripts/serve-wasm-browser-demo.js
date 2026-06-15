@@ -17,7 +17,14 @@ const mimeTypes = {
 
 const server = http.createServer((request, response) => {
 	const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
-	const pathname = url.pathname === '/'
+	if (url.pathname === '/') {
+		response.writeHead(302, {
+			Location: '/browser/',
+		})
+		response.end()
+		return
+	}
+	const pathname = url.pathname === '/browser/'
 		? '/browser/index.html'
 		: url.pathname
 	const filePath = path.join(root, pathname)
