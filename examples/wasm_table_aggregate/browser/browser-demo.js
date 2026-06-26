@@ -62,7 +62,6 @@ async function instantiateWasm() {
 			return result.instance
 		}
 		catch {
-			// Some static servers do not send application/wasm. Fallback keeps the demo easy to run.
 		}
 	}
 	const response = await fetch(WASM_PATH)
